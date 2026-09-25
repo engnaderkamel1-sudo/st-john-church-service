@@ -77,29 +77,6 @@ export default function AuthModal({ isOpen, onClose, initialRole = 'student', on
     }
   };
 
-  const handleQuickDemo = (demoType) => {
-    if (demoType === 'student') {
-      onLoginSuccess({
-        id: 'demo-student-id',
-        fullName: 'مينا كمال عزيز',
-        phone: '01200000001',
-        role: 'student',
-        grade: 'second',
-        points: 120
-      });
-    } else {
-      onLoginSuccess({
-        id: 'demo-servant-id',
-        fullName: 'أ. بيشوي نعيم',
-        phone: '01200000002',
-        role: 'servant',
-        servantScope: 'all',
-        status: 'active'
-      });
-    }
-    onClose();
-  };
-
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
       <div className="bg-white border border-slate-200 rounded-3xl w-full max-w-md overflow-hidden shadow-2xl text-slate-800 flex flex-col animate-in fade-in zoom-in-95 duration-200">
@@ -258,27 +235,6 @@ export default function AuthModal({ isOpen, onClose, initialRole = 'student', on
             >
               {isLogin ? 'ليس لديك حساب؟ إنشاء حساب جديد' : 'لديك حساب بالفعل؟ تسجيل الدخول'}
             </button>
-          </div>
-
-          {/* Quick Demo */}
-          <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
-            <span>تجربة فورية:</span>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => handleQuickDemo('student')}
-                className="bg-slate-100 hover:bg-slate-200 text-maroon-900 font-bold px-2.5 py-1 rounded-lg"
-              >
-                مخدوم تجريبي
-              </button>
-              <button
-                type="button"
-                onClick={() => handleQuickDemo('servant')}
-                className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-2.5 py-1 rounded-lg"
-              >
-                خادم تجريبي
-              </button>
-            </div>
           </div>
         </form>
       </div>
