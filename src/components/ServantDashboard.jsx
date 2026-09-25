@@ -3,7 +3,7 @@ import {
   ShieldCheck, Users, QrCode, BookOpen, CheckCircle, Clock, 
   Printer, UserCheck, Search, Award, FileCheck, Edit3, Save, Check, 
   FileText, Plus, Download, UploadCloud, ChevronLeft, Trash2, FolderPlus,
-  HelpCircle, Filter, Send, Layers
+  HelpCircle, Filter, Send, Layers, AlertCircle, MessageSquare, TrendingUp, Trophy
 } from 'lucide-react';
 
 export default function ServantDashboard({ user }) {
@@ -100,8 +100,8 @@ export default function ServantDashboard({ user }) {
       id: 'qb-1',
       subject: 'العقيدة المسيحية الأساسية',
       grade: 'first',
-      type: 'mcq', // mcq, true_false, essay
-      difficulty: 'easy', // easy, medium, hard
+      type: 'mcq',
+      difficulty: 'easy',
       questionText: 'ما هو سر الأسرار وينبوع كل النعم الكنسية؟',
       options: ['سر المعمودية', 'سر الإفخارستيا (التناول)', 'سر التوبة والاعتراف', 'سر الزيجة'],
       correctAnswer: 'سر الإفخارستيا (التناول)',
@@ -128,24 +128,10 @@ export default function ServantDashboard({ user }) {
       options: ['مجمع نيقية 325م', 'مجمع القسطنطينية 381م', 'مجمع أفسس 431م', 'مجمع خلقيدونية'],
       correctAnswer: 'مجمع نيقية 325م',
       points: 5
-    },
-    {
-      id: 'qb-4',
-      subject: 'مهارات إعداد الخادم والقيادة',
-      grade: 'elisha',
-      type: 'essay',
-      difficulty: 'hard',
-      questionText: 'اذكر باختصار ثلاث صفات روحية وسلوكية يجب أن يتحلى بها خادم المسيح في التعامل مع المخدومين.',
-      options: null,
-      correctAnswer: 'مقال تحليلي',
-      points: 10
     }
   ]);
 
-  // Exam Sub-tab inside Exams Hub: 'bank', 'assign', 'grading'
   const [examSubSection, setExamSubSection] = useState('bank');
-  
-  // Add Question Form
   const [showAddQuestionModal, setShowAddQuestionModal] = useState(false);
   const [newQuestion, setNewQuestion] = useState({
     subject: 'العقيدة المسيحية الأساسية',
@@ -157,7 +143,6 @@ export default function ServantDashboard({ user }) {
     points: 5
   });
 
-  // Assign Exam State
   const [createdExams, setCreatedExams] = useState([
     {
       id: 'ex-1',
@@ -176,33 +161,47 @@ export default function ServantDashboard({ user }) {
   const [newExamSubject, setNewExamSubject] = useState('العقيدة المسيحية الأساسية');
   const [newExamDuration, setNewExamDuration] = useState(20);
 
-  // Essay Grading Submissions
-  const [pendingEssays, setPendingEssays] = useState([
-    {
-      id: 'sub-1',
-      studentName: 'مينا كمال عزيز',
-      grade: 'second',
-      examTitle: 'امتحان العقيدة والطقس',
-      questionText: 'اكتب باختصار عن أهمية قراءة الكتاب المقدس يومياً في حياة الشاب المسيحي.',
-      studentAnswer: 'الكتاب المقدس هو غذاء الروح اليومي وصوت الله الحي لنا، يرشدنا في قراراتنا اليومية ويحمينا من الخطية ويعطينا سلاماً واستنارة في دراستنا وتعاملاتنا.',
-      autoScore: 20,
-      essayScore: '',
-      status: 'pending'
-    },
-    {
-      id: 'sub-2',
-      studentName: 'ديفيد مجدي لمعي',
-      grade: 'elisha',
-      examTitle: 'اختبار مهارات إعداد الخادم',
-      questionText: 'اذكر باختصار ثلاث صفات روحية وسلوكية يجب أن يتحلى بها خادم المسيح في التعامل مع المخدومين.',
-      studentAnswer: '١. المحبة والقدوة في السلوك والكلام. ٢. الصلاة الدائمة من أجل المخدومين وافتقادهم. ٣. سعة الصدر والإنصات الجيد لمشاكلهم دون إدانة.',
-      autoScore: 20,
-      essayScore: '',
-      status: 'pending'
-    }
-  ]);
+  // Students Data with Attendance, Scores, Red Flags, and Servant Comments
+  const [studentsByGrade, setStudentsByGrade] = useState({
+    first: [
+      { id: '101', fullName: 'كيرلس عماد صبحي', phone: '01012345672', attendanceRate: 92, examScore: 28, points: 145, comment: 'ملتزم جداً وله استجابة سريعة في الحفظ والمشاركات.', isRedFlag: false },
+      { id: '102', fullName: 'مينا سمير جرجس', phone: '01211122233', attendanceRate: 88, examScore: 25, points: 110, comment: 'هادئ ومواظب، يحتاج تشجيعاً في الأسئلة المقالية.', isRedFlag: false },
+      { id: '103', fullName: 'مارك عاطف فهيم', phone: '01287654321', attendanceRate: 60, examScore: 14, points: 55, comment: 'تغيب لجمعتين متتاليتين، تم الاتصال بوالده ويحتاج افتقاداً منزلياً.', isRedFlag: true },
+      { id: '104', fullName: 'بولا رأفت نعيم', phone: '01099887766', attendanceRate: 50, examScore: 12, points: 40, comment: 'منقطع عن الحضور وعنده تعارض مع دروس الثانوية، يحتاج متابعة.', isRedFlag: true }
+    ],
+    second: [
+      { id: '201', fullName: 'ديفيد مجدي لمعي', phone: '01234567894', attendanceRate: 98, examScore: 30, points: 220, comment: 'ممتاز في التناول والصلاة ويصلح بقوة للترشيح لفصل أليشع.', isRedFlag: false },
+      { id: '202', fullName: 'مينا كمال عزيز', phone: '01223456781', attendanceRate: 94, examScore: 29, points: 190, comment: 'قائد مجموعة متميز وله روح خدمة ومحبة بين زملائه.', isRedFlag: false },
+      { id: '203', fullName: 'أبانوب رفعت موريس', phone: '01198765432', attendanceRate: 85, examScore: 24, points: 130, comment: 'منتظم في الحضور ولكن يحتاج تحفيزاً في قراءة الإنجيل اليومية.', isRedFlag: false },
+      { id: '204', fullName: 'يوسف هاني فخري', phone: '01544332211', attendanceRate: 65, examScore: 15, points: 60, comment: 'نسبة الحضور متراجعة والدرجة ضعيفة، يحتاج جلسة مع أب الاعتراف.', isRedFlag: true }
+    ],
+    third: [
+      { id: '301', fullName: 'توماس رأفت شحاتة', phone: '01123456783', attendanceRate: 90, examScore: 27, points: 160, comment: 'ملتزم رغم ضغوط شهادة الثانوية العامة.', isRedFlag: false },
+      { id: '302', fullName: 'جورج فادي عزمي', phone: '01022334455', attendanceRate: 55, examScore: 16, points: 45, comment: 'متغيب بسبب مواعيد الدروس الخصوصية، مطلوب افتقاده تليفونياً.', isRedFlag: true }
+    ],
+    elisha: [
+      { id: '401', fullName: 'فادي نبيل رمزي', phone: '01098765435', attendanceRate: 100, examScore: 30, points: 260, comment: 'نموذج رائع لخادم المستقبل، يجيد التحضير وسيكولوجية المخدومين.', isRedFlag: false },
+      { id: '402', fullName: 'بيتر سامي نصيف', phone: '01277665544', attendanceRate: 96, examScore: 28, points: 230, comment: 'ملتزم في الأسرار والافتقاد الميداني التجريبي.', isRedFlag: false }
+    ]
+  });
 
-  // Handlers
+  const [savedCommentId, setSavedCommentId] = useState(null);
+
+  // Handle Update Comment
+  const handleCommentChange = (studentId, text) => {
+    setStudentsByGrade(prev => {
+      const list = prev[selectedGrade] || [];
+      const updated = list.map(s => s.id === studentId ? { ...s, comment: text } : s);
+      return { ...prev, [selectedGrade]: updated };
+    });
+  };
+
+  const handleSaveComment = (studentId) => {
+    setSavedCommentId(studentId);
+    setTimeout(() => setSavedCommentId(null), 2000);
+  };
+
+  // Handlers for Add Question & Subject
   const handleAddSubject = (e) => {
     e.preventDefault();
     if (!newSubjectName.trim()) return;
@@ -270,15 +269,6 @@ export default function ServantDashboard({ user }) {
 
     setQuestionBank([qItem, ...questionBank]);
     setShowAddQuestionModal(false);
-    setNewQuestion({
-      subject: currentGradeSubjects[0]?.name || 'العقيدة',
-      type: 'mcq',
-      difficulty: 'medium',
-      questionText: '',
-      options: ['', '', '', ''],
-      correctAnswer: '',
-      points: 5
-    });
   };
 
   const handleCreateExamSubmit = (e) => {
@@ -301,15 +291,6 @@ export default function ServantDashboard({ user }) {
     setShowCreateExamModal(false);
   };
 
-  const handleGradeEssay = (subId, score) => {
-    setPendingEssays(prev => prev.map(item => {
-      if (item.id === subId) {
-        return { ...item, essayScore: score, status: 'graded' };
-      }
-      return item;
-    }));
-  };
-
   const getGradeTitle = (g) => {
     const titles = {
       first: 'سنة أولى ثانوي',
@@ -322,6 +303,16 @@ export default function ServantDashboard({ user }) {
 
   const currentGradeSubjects = subjectsByGrade[selectedGrade] || [];
   const currentGradeQuestions = questionBank.filter(q => q.grade === selectedGrade);
+  const currentGradeStudents = studentsByGrade[selectedGrade] || [];
+
+  // Analytics Calculations
+  const totalStudents = currentGradeStudents.length;
+  const avgAttendance = totalStudents ? Math.round(currentGradeStudents.reduce((acc, s) => acc + s.attendanceRate, 0) / totalStudents) : 0;
+  const avgScore = totalStudents ? Math.round(currentGradeStudents.reduce((acc, s) => acc + s.examScore, 0) / totalStudents) : 0;
+  const redFlagsCount = currentGradeStudents.filter(s => s.isRedFlag).length;
+  
+  // Sorted Top Students (Honor Roll)
+  const topStudents = [...currentGradeStudents].sort((a, b) => b.points - a.points).slice(0, 3);
 
   return (
     <div className="w-full max-w-5xl mx-auto space-y-6 pb-12 text-right">
@@ -372,25 +363,25 @@ export default function ServantDashboard({ user }) {
 
         <button
           onClick={() => setMainTab('exams_bank_hub')}
-          className={`py-2 px-3 rounded-xl flex items-center gap-1.5 transition-all shrink-0 relative ${
+          className={`py-2 px-3 rounded-xl flex items-center gap-1.5 transition-all shrink-0 ${
             mainTab === 'exams_bank_hub' ? 'bg-maroon-800 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'
           }`}
         >
           <FileText className="w-4 h-4" />
           <span>بنك الأسئلة والامتحانات</span>
-          {pendingEssays.filter(e => e.status === 'pending').length > 0 && (
-            <span className="w-2 h-2 bg-amber-500 rounded-full"></span>
-          )}
         </button>
 
         <button
           onClick={() => setMainTab('analytics_hub')}
-          className={`py-2 px-3 rounded-xl flex items-center gap-1.5 transition-all shrink-0 ${
+          className={`py-2 px-3 rounded-xl flex items-center gap-1.5 transition-all shrink-0 relative ${
             mainTab === 'analytics_hub' ? 'bg-maroon-800 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'
           }`}
         >
           <Award className="w-4 h-4" />
-          <span>الإحصائيات والأوائل</span>
+          <span>الإحصائيات والأوائل والتقييم</span>
+          {redFlagsCount > 0 && (
+            <span className="w-2 h-2 bg-red-500 rounded-full inline-block mr-1 animate-pulse"></span>
+          )}
         </button>
 
         <button
@@ -558,10 +549,9 @@ export default function ServantDashboard({ user }) {
         </div>
       )}
 
-      {/* 2. Question Bank & Exams Hub (بنك الأسئلة والامتحانات) */}
+      {/* 2. Question Bank & Exams Hub */}
       {mainTab === 'exams_bank_hub' && (
         <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-6">
-          {/* Sub Switcher: Bank vs Assign vs Grading */}
           <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
             <button
               onClick={() => setExamSubSection('bank')}
@@ -579,20 +569,8 @@ export default function ServantDashboard({ user }) {
             >
               تكليف ونشر امتحان (Assign Exam)
             </button>
-            <button
-              onClick={() => setExamSubSection('grading')}
-              className={`text-xs px-4 py-2 rounded-xl font-bold transition-all relative ${
-                examSubSection === 'grading' ? 'bg-maroon-800 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              تصحيح الأسئلة المقالية
-              {pendingEssays.filter(e => e.status === 'pending').length > 0 && (
-                <span className="w-2 h-2 bg-amber-500 rounded-full inline-block mr-1"></span>
-              )}
-            </button>
           </div>
 
-          {/* Section A: Question Bank */}
           {examSubSection === 'bank' && (
             <div className="space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -609,44 +587,38 @@ export default function ServantDashboard({ user }) {
                 </button>
               </div>
 
-              {/* Add Question Modal */}
               {showAddQuestionModal && (
                 <form onSubmit={handleAddQuestionSubmit} className="bg-slate-50 border border-slate-200 p-5 rounded-2xl space-y-3">
                   <h5 className="font-extrabold text-xs text-maroon-900">إضافة سؤال جديد لبنك الأسئلة ({getGradeTitle(selectedGrade)})</h5>
-                  
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div>
-                      <label className="block text-[11px] font-bold text-slate-700 mb-1">المادة التابع لها</label>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">المادة</label>
                       <select
                         value={newQuestion.subject}
                         onChange={(e) => setNewQuestion({ ...newQuestion, subject: e.target.value })}
-                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-maroon-800"
+                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs"
                       >
-                        {currentGradeSubjects.map(s => (
-                          <option key={s.id} value={s.name}>{s.name}</option>
-                        ))}
+                        {currentGradeSubjects.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
                       </select>
                     </div>
-
                     <div>
                       <label className="block text-[11px] font-bold text-slate-700 mb-1">نوع السؤال</label>
                       <select
                         value={newQuestion.type}
                         onChange={(e) => setNewQuestion({ ...newQuestion, type: e.target.value })}
-                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-maroon-800"
+                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs"
                       >
                         <option value="mcq">اختيار من متعدد (MCQ)</option>
                         <option value="true_false">صح أو خطأ</option>
                         <option value="essay">سؤال مقالي (يصححه الخادم)</option>
                       </select>
                     </div>
-
                     <div>
                       <label className="block text-[11px] font-bold text-slate-700 mb-1">درجة الصعوبة</label>
                       <select
                         value={newQuestion.difficulty}
                         onChange={(e) => setNewQuestion({ ...newQuestion, difficulty: e.target.value })}
-                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-maroon-800"
+                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs"
                       >
                         <option value="easy">سهل جداً 🟢</option>
                         <option value="medium">متوسط 🟡</option>
@@ -663,59 +635,9 @@ export default function ServantDashboard({ user }) {
                       placeholder="اكتب صيغة السؤال هنا..."
                       value={newQuestion.questionText}
                       onChange={(e) => setNewQuestion({ ...newQuestion, questionText: e.target.value })}
-                      className="w-full bg-white border border-slate-200 rounded-xl p-3 text-xs focus:outline-none focus:border-maroon-800"
+                      className="w-full bg-white border border-slate-200 rounded-xl p-3 text-xs"
                     />
                   </div>
-
-                  {newQuestion.type === 'mcq' && (
-                    <div className="space-y-2">
-                      <label className="block text-[11px] font-bold text-slate-700">خيارات الإجابة</label>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        {newQuestion.options.map((opt, idx) => (
-                          <input
-                            key={idx}
-                            type="text"
-                            required
-                            placeholder={`خيار ${idx + 1}`}
-                            value={opt}
-                            onChange={(e) => {
-                              const opts = [...newQuestion.options];
-                              opts[idx] = e.target.value;
-                              setNewQuestion({ ...newQuestion, options: opts });
-                            }}
-                            className="bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs"
-                          />
-                        ))}
-                      </div>
-                      <div>
-                        <label className="block text-[11px] font-bold text-slate-700 mt-2 mb-1">الإجابة الصحيحة</label>
-                        <select
-                          value={newQuestion.correctAnswer}
-                          onChange={(e) => setNewQuestion({ ...newQuestion, correctAnswer: e.target.value })}
-                          className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs"
-                        >
-                          <option value="">اختر الإجابة الصحيحة...</option>
-                          {newQuestion.options.filter(Boolean).map((opt, i) => (
-                            <option key={i} value={opt}>{opt}</option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-                  )}
-
-                  {newQuestion.type === 'true_false' && (
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-700 mb-1">الإجابة الصحيحة</label>
-                      <select
-                        value={newQuestion.correctAnswer}
-                        onChange={(e) => setNewQuestion({ ...newQuestion, correctAnswer: e.target.value })}
-                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs"
-                      >
-                        <option value="صح">صح</option>
-                        <option value="خطأ">خطأ</option>
-                      </select>
-                    </div>
-                  )}
 
                   <div className="flex justify-end gap-2 pt-2 border-t border-slate-200">
                     <button type="button" onClick={() => setShowAddQuestionModal(false)} className="bg-white border border-slate-200 text-slate-600 text-xs px-3 py-1.5 rounded-xl font-bold">
@@ -728,53 +650,33 @@ export default function ServantDashboard({ user }) {
                 </form>
               )}
 
-              {/* Questions List */}
               <div className="space-y-3">
-                {currentGradeQuestions.length === 0 ? (
-                  <div className="text-center py-8 text-slate-400 text-xs">لا توجد أسئلة مسجلة في هذا الصف بعد.</div>
-                ) : (
-                  currentGradeQuestions.map((q, idx) => (
-                    <div key={q.id} className="bg-slate-50 border border-slate-200 p-4 rounded-2xl space-y-2 text-xs">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <span className="font-extrabold text-slate-900">س {idx + 1}</span>
-                          <span className="bg-maroon-50 text-maroon-900 border border-maroon-200 px-2 py-0.5 rounded-md font-bold text-[10px]">
-                            {q.subject}
-                          </span>
-                          <span className="text-[10px] text-slate-500 font-bold">
-                            {q.type === 'mcq' ? 'اختيار من متعدد' : q.type === 'true_false' ? 'صح/خطأ' : 'مقالي'}
-                          </span>
-                        </div>
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                          q.difficulty === 'easy' ? 'bg-emerald-100 text-emerald-800' : q.difficulty === 'medium' ? 'bg-amber-100 text-amber-800' : 'bg-red-100 text-red-800'
-                        }`}>
-                          {q.difficulty === 'easy' ? 'سهل جداً 🟢' : q.difficulty === 'medium' ? 'متوسط 🟡' : 'صعب 🔴'}
-                        </span>
+                {currentGradeQuestions.map((q, idx) => (
+                  <div key={q.id} className="bg-slate-50 border border-slate-200 p-4 rounded-2xl space-y-1.5 text-xs">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="font-extrabold text-slate-900">س {idx + 1}</span>
+                        <span className="bg-maroon-50 text-maroon-900 border border-maroon-200 px-2 py-0.5 rounded font-bold text-[10px]">{q.subject}</span>
                       </div>
-                      <p className="font-bold text-slate-800 leading-relaxed">{q.questionText}</p>
-                      {q.options && (
-                        <div className="text-[11px] text-slate-500 flex flex-wrap gap-2 pt-1">
-                          {q.options.map((opt, i) => (
-                            <span key={i} className={`px-2 py-0.5 rounded-lg border ${opt === q.correctAnswer ? 'bg-emerald-50 border-emerald-300 text-emerald-800 font-bold' : 'bg-white border-slate-200'}`}>
-                              {opt} {opt === q.correctAnswer && '✓'}
-                            </span>
-                          ))}
-                        </div>
-                      )}
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                        q.difficulty === 'easy' ? 'bg-emerald-100 text-emerald-800' : q.difficulty === 'medium' ? 'bg-amber-100 text-amber-800' : 'bg-red-100 text-red-800'
+                      }`}>
+                        {q.difficulty === 'easy' ? 'سهل جداً 🟢' : q.difficulty === 'medium' ? 'متوسط 🟡' : 'صعب 🔴'}
+                      </span>
                     </div>
-                  ))
-                )}
+                    <p className="font-bold text-slate-800">{q.questionText}</p>
+                  </div>
+                ))}
               </div>
             </div>
           )}
 
-          {/* Section B: Assign / Create Exam */}
           {examSubSection === 'assign' && (
             <div className="space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
-                  <h4 className="font-extrabold text-slate-900 text-base">تكليف ونشر امتحان جديد (Assign Exam)</h4>
-                  <p className="text-xs text-slate-500 mt-0.5">تحديد ميعاد، مدة، ومادة الامتحان وإتاحته لمخدومي {getGradeTitle(selectedGrade)}.</p>
+                  <h4 className="font-extrabold text-slate-900 text-base">تكليف ونشر امتحان (Assign Exam)</h4>
+                  <p className="text-xs text-slate-500 mt-0.5">نشر امتحان لمخدومي {getGradeTitle(selectedGrade)}.</p>
                 </div>
                 <button
                   onClick={() => setShowCreateExamModal(true)}
@@ -841,67 +743,146 @@ export default function ServantDashboard({ user }) {
                         <span className="font-extrabold text-slate-900 text-sm">{ex.title}</span>
                         <span className="bg-maroon-100 text-maroon-900 font-bold px-2 py-0.5 rounded text-[10px]">{ex.subject}</span>
                       </div>
-                      <span className="text-[11px] text-slate-500">المدة: {ex.durationMinutes} دقيقة • الدرجة العظمى: {ex.totalScore} درجة • عدد الأسئلة: {ex.questionsCount}</span>
+                      <span className="text-[11px] text-slate-500">المدة: {ex.durationMinutes} دقيقة • الدرجة العظمى: {ex.totalScore} درجة</span>
                     </div>
-                    <span className="bg-emerald-100 text-emerald-800 font-bold px-3 py-1 rounded-xl text-[11px]">
-                      متاح ونشط للطلاب ✓
-                    </span>
+                    <span className="bg-emerald-100 text-emerald-800 font-bold px-3 py-1 rounded-xl text-[11px]">متاح ونشط للطلاب ✓</span>
                   </div>
                 ))}
               </div>
             </div>
           )}
-
-          {/* Section C: Essay Grading */}
-          {examSubSection === 'grading' && (
-            <div className="space-y-3">
-              <h4 className="font-extrabold text-slate-900 text-sm">تصحيح الأسئلة المقالية المسلمة</h4>
-              {pendingEssays.map((item) => (
-                <div key={item.id} className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-2 text-xs">
-                  <div className="flex items-center justify-between border-b border-slate-200 pb-2">
-                    <div>
-                      <span className="font-bold text-slate-900">{item.studentName}</span>
-                      <span className="text-slate-500 text-[11px] mr-2">({getGradeTitle(item.grade)})</span>
-                    </div>
-                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
-                      item.status === 'graded' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
-                    }`}>
-                      {item.status === 'graded' ? `تم التقدير (${item.essayScore}/10)` : 'بانتظار تقدير الخادم'}
-                    </span>
-                  </div>
-                  <div>
-                    <div className="text-maroon-800 font-bold mb-1">السؤال: {item.questionText}</div>
-                    <div className="bg-white border border-slate-200 p-2.5 rounded-xl text-slate-700 leading-relaxed font-normal">
-                      {item.studentAnswer}
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-end gap-2 pt-1">
-                    <span className="text-slate-500 text-[11px] font-bold">تقدير الدرجة:</span>
-                    {[7, 8, 9, 10].map((score) => (
-                      <button
-                        key={score}
-                        onClick={() => handleGradeEssay(item.id, score)}
-                        className={`text-xs px-2.5 py-1 rounded-lg font-bold transition-colors ${
-                          item.essayScore === score ? 'bg-maroon-800 text-white shadow-xs' : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-100'
-                        }`}
-                      >
-                        {score}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
         </div>
       )}
 
-      {/* Placeholder for Stage 5: Analytics & Observations */}
+      {/* 3. Analytics, Honor Roll, Red Flags, & Servant Comments Hub */}
       {mainTab === 'analytics_hub' && (
-        <div className="bg-white border border-slate-200 rounded-3xl p-8 shadow-sm text-center space-y-2">
-          <Award className="w-10 h-10 text-maroon-800 mx-auto" />
-          <h4 className="font-extrabold text-slate-900 text-base">الإحصائيات والأوائل والعلامات الحمراء</h4>
-          <p className="text-xs text-slate-500">جاري تفعيله في المرحلة 5 (لوحة الشرف والعلامات الحمراء وكومنتات الخدام لكل مخدوم).</p>
+        <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-6">
+          {/* Header */}
+          <div className="border-b border-slate-100 pb-3">
+            <h3 className="font-extrabold text-slate-900 text-base">
+              الإحصائيات ولوحة الشرف والتقييم الرعوي: {getGradeTitle(selectedGrade)}
+            </h3>
+            <p className="text-xs text-slate-500 mt-0.5">
+              متابعة نسب الحضور، تكريم الأوائل، كشف العلامات الحمراء (المتغيبين والمقصرين)، وكتابة تقييم وملاحظات الخدام.
+            </p>
+          </div>
+
+          {/* Quick Metrics KPI Cards */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="bg-slate-50 border border-slate-200 p-4 rounded-2xl text-center">
+              <span className="text-[11px] text-slate-500 font-bold block">إجمالي المخدومين</span>
+              <span className="text-xl font-extrabold text-slate-900">{totalStudents}</span>
+            </div>
+
+            <div className="bg-slate-50 border border-slate-200 p-4 rounded-2xl text-center">
+              <span className="text-[11px] text-slate-500 font-bold block">متوسط الحضور</span>
+              <span className="text-xl font-extrabold text-emerald-600">{avgAttendance}%</span>
+            </div>
+
+            <div className="bg-slate-50 border border-slate-200 p-4 rounded-2xl text-center">
+              <span className="text-[11px] text-slate-500 font-bold block">متوسط الامتحانات</span>
+              <span className="text-xl font-extrabold text-amber-600">{avgScore} / 30</span>
+            </div>
+
+            <div className="bg-red-50 border border-red-200 p-4 rounded-2xl text-center">
+              <span className="text-[11px] text-red-700 font-bold block">علامات حمراء (افتقاد عاجل)</span>
+              <span className="text-xl font-extrabold text-red-600 flex items-center justify-center gap-1">
+                <span>🔴</span>
+                <span>{redFlagsCount}</span>
+              </span>
+            </div>
+          </div>
+
+          {/* Honor Roll (Top 3 Students) */}
+          <div className="bg-gradient-to-r from-amber-50 to-amber-100/50 border border-amber-200 p-5 rounded-2xl space-y-3">
+            <h4 className="font-extrabold text-amber-950 text-sm flex items-center gap-2">
+              <Trophy className="w-5 h-5 text-amber-600" />
+              لوحة الشرف والأوائل ({getGradeTitle(selectedGrade)}) 🏆
+            </h4>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {topStudents.map((st, rank) => (
+                <div key={st.id} className="bg-white border border-amber-200/80 p-3.5 rounded-xl flex items-center justify-between text-xs shadow-2xs">
+                  <div>
+                    <span className="font-extrabold text-slate-900 block text-xs">
+                      {rank === 0 ? '🥇' : rank === 1 ? '🥈' : '🥉'} {st.fullName}
+                    </span>
+                    <span className="text-[10px] text-slate-500 mt-0.5 block">
+                      حضور: {st.attendanceRate}% • امتحان: {st.examScore}/30
+                    </span>
+                  </div>
+                  <span className="text-amber-700 font-extrabold text-xs">{st.points} نقطة</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Student Evaluation Table with Servant Comments & Red Flags */}
+          <div className="space-y-3">
+            <h4 className="font-extrabold text-slate-900 text-sm flex items-center gap-2">
+              <MessageSquare className="w-4 h-4 text-maroon-800" />
+              سجل تقييمات وملاحظات الخدام لكل مخدوم
+            </h4>
+
+            <div className="overflow-x-auto border border-slate-200 rounded-2xl">
+              <table className="w-full text-right text-xs">
+                <thead className="bg-slate-50 border-b border-slate-200 text-slate-600">
+                  <tr>
+                    <th className="py-3 px-3">المخدوم</th>
+                    <th className="py-3 px-2">الحضور</th>
+                    <th className="py-3 px-2">الدرجة</th>
+                    <th className="py-3 px-2">الحالة</th>
+                    <th className="py-3 px-4">ملاحظات وتقييم الخادم (هل ملتزم / يصلح لإعداد خدام)</th>
+                    <th className="py-3 px-3">حفظ</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {currentGradeStudents.map((st) => (
+                    <tr key={st.id} className={`hover:bg-slate-50/80 transition-colors ${st.isRedFlag ? 'bg-red-50/30' : ''}`}>
+                      <td className="py-3 px-3 font-bold text-slate-900">
+                        {st.fullName}
+                        <span className="text-[10px] text-slate-400 block font-normal">{st.phone}</span>
+                      </td>
+                      <td className="py-3 px-2 font-bold text-slate-800">{st.attendanceRate}%</td>
+                      <td className="py-3 px-2 font-bold text-slate-800">{st.examScore}/30</td>
+                      <td className="py-3 px-2">
+                        {st.isRedFlag ? (
+                          <span className="inline-flex items-center gap-1 bg-red-100 text-red-700 text-[10px] font-extrabold px-2 py-0.5 rounded-full border border-red-200">
+                            🔴 افتقاد
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                            🟢 منتظم
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-3 px-4">
+                        <input
+                          type="text"
+                          placeholder="اكتب ملاحظة رعوية، مستوى التزامه، أو ترشيحه لإعداد خدام..."
+                          value={st.comment}
+                          onChange={(e) => handleCommentChange(st.id, e.target.value)}
+                          className="w-full bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-800 focus:outline-none focus:border-maroon-800"
+                        />
+                      </td>
+                      <td className="py-3 px-3">
+                        <button
+                          onClick={() => handleSaveComment(st.id)}
+                          className={`px-3 py-1.5 rounded-xl font-bold text-[11px] transition-all flex items-center gap-1 ${
+                            savedCommentId === st.id
+                              ? 'bg-emerald-600 text-white'
+                              : 'bg-maroon-800 hover:bg-maroon-700 text-white shadow-xs'
+                          }`}
+                        >
+                          {savedCommentId === st.id ? <Check className="w-3.5 h-3.5" /> : <Save className="w-3.5 h-3.5" />}
+                          <span>{savedCommentId === st.id ? 'تم الحفظ' : 'حفظ'}</span>
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
       )}
 
