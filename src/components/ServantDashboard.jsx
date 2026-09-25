@@ -4,7 +4,7 @@ import {
   Printer, UserCheck, Search, Award, FileCheck, Edit3, Save, Check, 
   FileText, Plus, Download, UploadCloud, ChevronLeft, Trash2, FolderPlus,
   HelpCircle, Filter, Send, Layers, AlertCircle, MessageSquare, TrendingUp, Trophy, UserCog, RefreshCw,
-  BellRing, Unlock, Lock, UserPlus, UserX, KeyRound, Copy
+  BellRing, Unlock, Lock, UserPlus, UserX, KeyRound, Copy, Sun, Sunset, Moon, Sparkles, Heart
 } from 'lucide-react';
 import { db } from '../firebase';
 import { collection, getDocs, doc, updateDoc, setDoc, addDoc, query, orderBy, serverTimestamp } from 'firebase/firestore';
@@ -254,6 +254,57 @@ export default function ServantDashboard({ user }) {
     } finally {
       setRemoteAccessLoading(false);
     }
+  };
+
+  // Servant Spiritual Diary State
+  const todayDateStr = new Date().toISOString().split('T')[0];
+  const yesterdayDateStr = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+  const [selectedDiaryDate, setSelectedDiaryDate] = useState(todayDateStr);
+  const [servantDiary, setServantDiary] = useState({
+    [todayDateStr]: {
+      baker: false,
+      ghoroub: false,
+      nowm: false,
+      bible: false,
+      lessonPrep: false,
+      visitation: false,
+      communion: false,
+      confession: false,
+      spiritualBook: false,
+      notes: ''
+    }
+  });
+
+  const handleToggleServantDiaryItem = (key) => {
+    setServantDiary(prev => {
+      const dayData = prev[selectedDiaryDate] || {
+        baker: false,
+        ghoroub: false,
+        nowm: false,
+        bible: false,
+        lessonPrep: false,
+        visitation: false,
+        communion: false,
+        confession: false,
+        spiritualBook: false,
+        notes: ''
+      };
+      const nextVal = !dayData[key];
+      return {
+        ...prev,
+        [selectedDiaryDate]: { ...dayData, [key]: nextVal }
+      };
+    });
+  };
+
+  const handleServantDiaryNoteChange = (text) => {
+    setServantDiary(prev => {
+      const dayData = prev[selectedDiaryDate] || {};
+      return {
+        ...prev,
+        [selectedDiaryDate]: { ...dayData, notes: text }
+      };
+    });
   };
 
   // Subjects Managed by Grade
@@ -515,6 +566,16 @@ export default function ServantDashboard({ user }) {
           {redFlagsCount > 0 && (
             <span className="w-2 h-2 bg-red-500 rounded-full inline-block mr-1 animate-pulse"></span>
           )}
+        </button>
+
+        <button
+          onClick={() => setMainTab('spiritual_diary')}
+          className={`py-2 px-3 rounded-xl flex items-center gap-1.5 transition-all shrink-0 ${
+            mainTab === 'spiritual_diary' ? 'bg-maroon-800 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          <Sun className="w-4 h-4 text-gold-400" />
+          <span>نوتة الخادم الروحية</span>
         </button>
 
         <button
@@ -1443,6 +1504,153 @@ export default function ServantDashboard({ user }) {
             <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200 text-slate-500">
               النافذة المعتمدة العادية: 10:30 ص إلى 02:00 م.
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* 5. Tab: Servant Spiritual Diary (نوتة الخادم الروحية) */}
+      {mainTab === 'spiritual_diary' && (
+        <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-6 text-right">
+          {/* Header */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+            <div>
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-900 flex items-center justify-center font-bold">
+                  <Sun className="w-5 h-5 text-amber-700" />
+                </div>
+                <h3 className="font-extrabold text-slate-900 text-base">
+                  نوتة الخادم الروحية اليومية
+                </h3>
+              </div>
+              <p className="text-xs text-slate-500 mt-1">
+                «كُنْ قُدْوَةً لِلْمُؤْمِنِينَ فِي الْكَلاَمِ، فِي التَّصَرُّفِ، فِي الْمَحَبَّةِ، فِي الرُّوحِ، فِي الإِيمَانِ، فِي الطَّهَارَةِ» (1 تيموثاوس 4: 12)
+              </p>
+            </div>
+
+            {/* Date Selector */}
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-slate-600">اختر اليوم:</span>
+              <select
+                value={selectedDiaryDate}
+                onChange={(e) => setSelectedDiaryDate(e.target.value)}
+                className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-800 focus:outline-none focus:border-maroon-800"
+              >
+                <option value={todayDateStr}>اليوم ({todayDateStr})</option>
+                <option value={yesterdayDateStr}>أمس ({yesterdayDateStr})</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Daily Canonical Prayers & Personal Devotions */}
+          <div className="space-y-3">
+            <h4 className="font-extrabold text-slate-800 text-xs flex items-center gap-1.5">
+              <Sparkles className="w-4 h-4 text-amber-600" />
+              <span>الصلوات والأجبية والإنجيل</span>
+            </h4>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {[
+                { key: 'baker', label: 'صلاة باكر', icon: Sun, desc: 'حضور باكر وطلب معونة الله' },
+                { key: 'ghoroub', label: 'صلاة الغروب', icon: Sunset, desc: 'شكر اليوم ومراجعة النفس' },
+                { key: 'nowm', label: 'صلاة النوم', icon: Moon, desc: 'تسليم النفس ليد الفادي' },
+                { key: 'bible', label: 'قراءة الإنجيل بتأمل', icon: BookOpen, desc: 'غذاء الروح اليومي' }
+              ].map(({ key, label, icon: Icon, desc }) => {
+                const checked = servantDiary[selectedDiaryDate]?.[key] || false;
+                return (
+                  <div
+                    key={key}
+                    onClick={() => handleToggleServantDiaryItem(key)}
+                    className={`p-4 rounded-2xl border transition-all flex flex-col justify-between h-30 cursor-pointer ${
+                      checked
+                        ? 'bg-amber-50/70 border-amber-300 text-amber-950 shadow-xs'
+                        : 'bg-slate-50 border-slate-200 text-slate-600 hover:border-slate-300'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <Icon className={`w-5 h-5 ${checked ? 'text-amber-600' : 'text-slate-400'}`} />
+                      <div className={`w-6 h-6 rounded-lg flex items-center justify-center border text-xs ${
+                        checked ? 'bg-amber-500 border-amber-500 text-white font-bold' : 'border-slate-300 bg-white'
+                      }`}>
+                        {checked && <Check className="w-4 h-4 stroke-[3]" />}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="font-extrabold text-xs">{label}</div>
+                      <div className="text-[10px] text-slate-400 mt-0.5">{desc}</div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Service & Ministry Duties (مسؤوليات الخدمة والرعاية) */}
+          <div className="space-y-3 pt-2">
+            <h4 className="font-extrabold text-slate-800 text-xs flex items-center gap-1.5">
+              <Heart className="w-4 h-4 text-maroon-800" />
+              <span>أمانة الخدمة والافتقاد</span>
+            </h4>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {[
+                { 
+                  key: 'lessonPrep', 
+                  label: 'تحضير درس الخدمة والصلاة لأجله', 
+                  desc: 'الدراسة المتأنية واستخراج الشواهد والوسائل الإيضاحية' 
+                },
+                { 
+                  key: 'visitation', 
+                  label: 'افتقاد المخدومين (مكالمة / زيارة)', 
+                  desc: 'السؤال عن الغائبين والمحتاجين إلى رعاية ومتابعة' 
+                },
+                { 
+                  key: 'spiritualBook', 
+                  label: 'قراءة في كتاب روحي / سير قديسين', 
+                  desc: 'تنمية المعرفة الآبائية والروحية المستمرة' 
+                },
+                { 
+                  key: 'confession', 
+                  label: 'جلسة الاعتراف والإرشاد الروحي', 
+                  desc: 'المواظبة على سر التوبة والاعتراف مع أب الاعتراف' 
+                }
+              ].map(({ key, label, desc }) => {
+                const checked = servantDiary[selectedDiaryDate]?.[key] || false;
+                return (
+                  <div
+                    key={key}
+                    onClick={() => handleToggleServantDiaryItem(key)}
+                    className={`p-3.5 rounded-2xl border transition-all flex items-center justify-between cursor-pointer ${
+                      checked
+                        ? 'bg-emerald-50 border-emerald-300 text-emerald-950 shadow-2xs'
+                        : 'bg-slate-50 border-slate-200 text-slate-700 hover:border-slate-300'
+                    }`}
+                  >
+                    <div>
+                      <span className="font-extrabold text-xs block">{label}</span>
+                      <span className="text-[11px] text-slate-500 mt-0.5">{desc}</span>
+                    </div>
+                    <div className={`w-6 h-6 rounded-lg flex items-center justify-center border text-xs shrink-0 mr-3 ${
+                      checked ? 'bg-emerald-600 border-emerald-600 text-white font-bold' : 'border-slate-300 bg-white'
+                    }`}>
+                      {checked && <Check className="w-4 h-4 stroke-[3]" />}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Personal Servant Reflections / Notes */}
+          <div className="space-y-2 pt-2 border-t border-slate-100">
+            <h4 className="font-extrabold text-slate-800 text-xs flex items-center gap-1.5">
+              <Edit3 className="w-4 h-4 text-maroon-800" />
+              <span>تأملات، صلوات شخصية، وملاحظات روحية</span>
+            </h4>
+            <textarea
+              rows={3}
+              value={servantDiary[selectedDiaryDate]?.notes || ''}
+              onChange={(e) => handleServantDiaryNoteChange(e.target.value)}
+              placeholder="اكتب ما لمسه قلبك اليوم من كلمة الله، أو أسماء المخدومين الذين وضعتهم في صلاتك الخاصة..."
+              className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-3 text-xs text-slate-800 focus:outline-none focus:border-maroon-800 focus:bg-white transition-all"
+            />
           </div>
         </div>
       )}
