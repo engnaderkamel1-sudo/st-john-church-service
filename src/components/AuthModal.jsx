@@ -3,8 +3,8 @@ import { X, User, Phone, Lock, BookOpen, GraduationCap, ShieldAlert } from 'luci
 import { db } from '../firebase';
 import { collection, addDoc, getDocs, query, where, serverTimestamp } from 'firebase/firestore';
 
-export default function AuthModal({ isOpen, onClose, initialRole = 'student', onLoginSuccess }) {
-  const [isLogin, setIsLogin] = useState(true);
+export default function AuthModal({ isOpen, onClose, initialRole = 'student', initialMode = 'login', onLoginSuccess }) {
+  const [isLogin, setIsLogin] = useState(initialMode !== 'register');
   const [role, setRole] = useState(initialRole);
   const [grade, setGrade] = useState('first');
   const [servantScope, setServantScope] = useState('all');
@@ -15,6 +15,14 @@ export default function AuthModal({ isOpen, onClose, initialRole = 'student', on
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  React.useEffect(() => {
+    if (isOpen) {
+      setIsLogin(initialMode !== 'register');
+      setRole(initialRole);
+      setError('');
+    }
+  }, [isOpen, initialMode, initialRole]);
 
   if (!isOpen) return null;
 
