@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Church, BookOpen, QrCode, ShieldCheck, HeartHandshake, LogOut, CheckCircle2, User, Sparkles } from 'lucide-react';
+import { Church, BookOpen, QrCode, ShieldCheck, HeartHandshake, LogOut, CheckCircle2, User, Sparkles, Bell } from 'lucide-react';
 import { db } from './firebase';
 import AuthModal from './components/AuthModal';
 import StudentDashboard from './components/StudentDashboard';
@@ -9,6 +9,12 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState(null);
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [targetRole, setTargetRole] = useState('student');
+  const [showNotifications, setShowNotifications] = useState(false);
+
+  const notifications = [
+    { id: 1, title: 'تذكير بميعاد الخدمة', desc: 'نافذة تسجيل الحضور بالـ QR تفتح الجمعة 10:30 ص حتى 02:00 م', time: 'اليوم' },
+    { id: 2, title: 'امتحان جديد متاح', desc: 'تم فتح امتحان منتصف الفصل لمرحلتك', time: 'أمس' }
+  ];
 
   // Check saved session in localStorage
   useEffect(() => {
@@ -64,8 +70,35 @@ export default function App() {
             </div>
           </div>
 
-          {/* User Status / Login Buttons */}
+          {/* User Status / Login Buttons / Notifications */}
           <div className="flex items-center gap-3">
+            {/* Notification Bell */}
+            <div className="relative">
+              <button
+                onClick={() => setShowNotifications(!showNotifications)}
+                className="p-2 text-slate-300 hover:text-gold-300 hover:bg-slate-800/80 rounded-xl transition-colors relative"
+                title="التنبيهات"
+              >
+                <Bell className="w-5 h-5" />
+                <span className="w-2 h-2 bg-amber-400 rounded-full absolute top-1.5 right-1.5 ring-2 ring-maroon-950"></span>
+              </button>
+
+              {showNotifications && (
+                <div className="absolute left-0 sm:right-0 sm:left-auto mt-2 w-72 bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl p-4 z-50 text-right space-y-3">
+                  <div className="font-bold text-xs text-gold-300 border-b border-slate-800 pb-2">
+                    التنبيهات والإشعارات
+                  </div>
+                  {notifications.map((n) => (
+                    <div key={n.id} className="bg-slate-950/60 p-2.5 rounded-xl border border-slate-800/80 text-xs">
+                      <div className="font-semibold text-white">{n.title}</div>
+                      <div className="text-[11px] text-slate-400 mt-0.5">{n.desc}</div>
+                      <div className="text-[10px] text-slate-500 mt-1">{n.time}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
             {currentUser ? (
               <div className="flex items-center gap-3 bg-slate-900 border border-slate-700 py-1.5 px-3 rounded-xl">
                 <div className="text-right">
