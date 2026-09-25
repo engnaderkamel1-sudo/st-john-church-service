@@ -366,9 +366,9 @@ export default function AuthModal({ isOpen, onClose, initialRole = 'student', in
                   onChange={(e) => setGrade(e.target.value)}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:border-maroon-700 focus:bg-white transition-colors"
                 >
-                  <option value="first">سنة أولى ثانوي</option>
-                  <option value="second">سنة ثانية ثانوي</option>
-                  <option value="third">سنة ثالثة ثانوي</option>
+                  <option value="first">سنة أولى</option>
+                  <option value="second">سنة ثانية</option>
+                  <option value="third">سنة ثالثة</option>
                   <option value="elisha">فصل أليشع (إعداد خدام)</option>
                 </select>
               </div>
