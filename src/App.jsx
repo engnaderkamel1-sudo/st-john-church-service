@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Church, BookOpen, QrCode, ShieldCheck, HeartHandshake, LogOut, CheckCircle2, User, Sparkles } from 'lucide-react';
 import { db } from './firebase';
 import AuthModal from './components/AuthModal';
+import StudentDashboard from './components/StudentDashboard';
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState(null);
@@ -106,39 +107,28 @@ export default function App() {
       {/* Main Content */}
       <main className="flex-1 max-w-6xl mx-auto px-4 py-8 w-full flex flex-col items-center justify-center">
         {currentUser ? (
-          // Active User Overview Container
-          <div className="w-full max-w-4xl bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl text-right">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-800">
-              <div>
-                <span className="text-xs text-gold-400 font-semibold">مرحباً بك</span>
-                <h2 className="text-2xl font-bold text-white">{currentUser.fullName}</h2>
-                <p className="text-sm text-slate-400 mt-1">
-                  الصفة: {currentUser.role === 'student' ? `مخدوم - ${getGradeName(currentUser.grade)}` : 'خادم / أمين خدمة'}
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="bg-emerald-950/80 border border-emerald-500/40 text-emerald-300 text-xs px-3 py-1.5 rounded-full font-medium flex items-center gap-1.5">
-                  <CheckCircle2 className="w-3.5 h-3.5" />
-                  حساب نشط ومسجل
+          currentUser.role === 'student' ? (
+            <StudentDashboard user={currentUser} />
+          ) : (
+            // Active Servant Placeholder for Stage 4
+            <div className="w-full max-w-4xl bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl text-right">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-800">
+                <div>
+                  <span className="text-xs text-gold-400 font-semibold">مرحباً بك</span>
+                  <h2 className="text-2xl font-bold text-white">{currentUser.fullName}</h2>
+                  <p className="text-sm text-slate-400 mt-1">خادم / أمين خدمة</p>
+                </div>
+                <span className="bg-maroon-900/80 border border-maroon-700/60 text-gold-300 text-xs px-3 py-1.5 rounded-full font-medium">
+                  لوحة الخدام
                 </span>
               </div>
-            </div>
-
-            {/* Next Stage Preview */}
-            <div className="mt-8 bg-slate-950/50 border border-dashed border-slate-800 rounded-xl p-8 text-center">
-              <div className="w-12 h-12 bg-maroon-900/60 text-gold-400 rounded-xl flex items-center justify-center mx-auto mb-3">
-                {currentUser.role === 'student' ? <QrCode className="w-6 h-6" /> : <ShieldCheck className="w-6 h-6" />}
+              <div className="mt-8 bg-slate-950/50 border border-dashed border-slate-800 rounded-xl p-8 text-center">
+                <ShieldCheck className="w-10 h-10 text-gold-400 mx-auto mb-2" />
+                <h3 className="text-base font-bold text-white mb-1">لوحة الخدام جاهزة للتفعيل في المرحلة 4</h3>
+                <p className="text-xs text-slate-400">إدارة الفصول، توليد كود الحضور، وتصحيح الامتحانات.</p>
               </div>
-              <h3 className="text-lg font-bold text-white mb-2">
-                {currentUser.role === 'student' ? 'لوحة المخدوم جاهزة للتفعيل' : 'لوحة الخدام جاهزة للتفعيل'}
-              </h3>
-              <p className="text-sm text-slate-400 max-w-md mx-auto">
-                {currentUser.role === 'student' 
-                  ? 'المرحلة 2 ستتضمن ماسح QR الحضور من 10:30 إلى 02:00، ودفتر الإنجاز الروحي.'
-                  : 'المرحلة 4 ستتضمن إدارة مخدومي الفصول، توليد كود الحضور، وإعداد الامتحانات.'}
-              </p>
             </div>
-          </div>
+          )
         ) : (
           // Landing View
           <div className="w-full max-w-3xl text-center">
