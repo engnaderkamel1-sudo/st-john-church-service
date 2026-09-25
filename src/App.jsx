@@ -33,7 +33,7 @@ export default function App() {
 
   // Auto-Update Detection State
   const [hasUpdate, setHasUpdate] = useState(false);
-  const [appVersion, setAppVersion] = useState('1.0.4');
+  const [appVersion, setAppVersion] = useState('1.0.5');
 
   useEffect(() => {
     // Check for new version from /version.json
