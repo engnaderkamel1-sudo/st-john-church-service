@@ -66,8 +66,12 @@ export default function ServantDashboard({ user }) {
     try {
       const userRef = doc(db, 'users', userId);
       const updateData = { role: newRole };
-      if (newGrade) updateData.grade = newGrade;
-      if (newRole === 'servant') updateData.status = 'active';
+      if (newRole === 'servant') {
+        updateData.status = 'active';
+        updateData.servantScope = newGrade || 'all';
+      } else {
+        if (newGrade) updateData.grade = newGrade;
+      }
 
       await updateDoc(userRef, updateData);
       
@@ -514,12 +518,18 @@ export default function ServantDashboard({ user }) {
             <ShieldCheck className="w-7 h-7 text-gold-300" />
           </div>
           <div>
-            <h2 className="text-base sm:text-lg font-extrabold text-slate-900">{user.fullName || 'أ. بيشوي نعيم'}</h2>
+            <h2 className="text-base sm:text-lg font-extrabold text-slate-900">{user.fullName || 'أمين الخدمة'}</h2>
             <div className="flex items-center gap-2 text-xs text-slate-500 mt-1">
               <span className="bg-maroon-50 text-maroon-900 border border-maroon-200 font-bold px-2.5 py-0.5 rounded-full text-[10px]">
-                لوحة الخدام
+                {(user.role === 'admin' || user.phone === '01275571569' || (user.email && user.email.includes('nader.kamel')))
+                  ? 'مشرف التطبيق 👑'
+                  : 'لوحة الخدام'}
               </span>
-              <span>النطاق: {user.servantScope === 'all' ? 'أمين خدمة عام' : getGradeTitle(user.servantScope)}</span>
+              <span>
+                الصفة: {(user.role === 'admin' || user.phone === '01275571569' || (user.email && user.email.includes('nader.kamel')))
+                  ? 'مشرف التطبيق'
+                  : 'خادم عام (كافة المراحل)'}
+              </span>
             </div>
           </div>
         </div>
@@ -762,8 +772,10 @@ export default function ServantDashboard({ user }) {
                           </span>
                         </td>
                         <td className="py-3 px-3 font-bold text-slate-700">
-                          {item.role === 'servant' 
-                            ? (item.servantScope === 'all' ? 'أمين خدمة عام' : getGradeTitle(item.servantScope || 'all'))
+                          {(item.role === 'admin' || item.phone === '01275571569' || (item.email && item.email.includes('nader.kamel')))
+                            ? <span className="text-amber-700 font-extrabold">مشرف التطبيق 👑</span>
+                            : item.role === 'servant'
+                            ? <span className="text-maroon-800 font-bold">خادم عام (جميع المراحل)</span>
                             : getGradeTitle(item.grade || 'first')}
                         </td>
                         <td className="py-3 px-3">
@@ -832,7 +844,7 @@ export default function ServantDashboard({ user }) {
                             ) : (
                               <button
                                 onClick={() => handleUpdateUserRole(item.id, 'student', item.grade || 'first')}
-                                disabled={roleUpdatingId === item.id}
+                                disabled={roleUpdatingId === item.id || item.phone === '01275571569'}
                                 className="bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 font-bold text-[11px] px-3 py-1 rounded-xl transition-all flex items-center gap-1"
                               >
                                 {roleUpdatingId === item.id ? 'جاري...' : 'تحويل إلى مخدوم ⬇️'}
@@ -841,25 +853,26 @@ export default function ServantDashboard({ user }) {
                           </div>
                         </td>
                         <td className="py-3 px-3">
-                          <select
-                            value={item.role === 'servant' ? (item.servantScope || 'all') : (item.grade || 'first')}
-                            onChange={(e) => {
-                              const newStage = e.target.value;
-                              if (item.role === 'servant') {
-                                handleUpdateUserRole(item.id, 'servant', newStage);
-                              } else {
+                          {item.role === 'servant' ? (
+                            <span className="text-xs text-slate-500 font-bold bg-slate-100 px-2 py-1 rounded-lg">
+                              خادم عام (كافة المراحل)
+                            </span>
+                          ) : (
+                            <select
+                              value={item.grade || 'first'}
+                              onChange={(e) => {
+                                const newStage = e.target.value;
                                 handleUpdateUserRole(item.id, 'student', newStage);
-                              }
-                            }}
-                            disabled={roleUpdatingId === item.id}
-                            className="bg-white border border-slate-200 rounded-xl px-2.5 py-1 text-xs focus:outline-none focus:border-maroon-800"
-                          >
-                            <option value="first">سنة أولى</option>
-                            <option value="second">سنة ثانية</option>
-                            <option value="third">سنة ثالثة</option>
-                            <option value="elisha">فصل أليشع (إعداد خدام)</option>
-                            {item.role === 'servant' && <option value="all">أمين عام (كافة المراحل)</option>}
-                          </select>
+                              }}
+                              disabled={roleUpdatingId === item.id}
+                              className="bg-white border border-slate-200 rounded-xl px-2.5 py-1 text-xs focus:outline-none focus:border-maroon-800"
+                            >
+                              <option value="first">سنة أولى</option>
+                              <option value="second">سنة ثانية</option>
+                              <option value="third">سنة ثالثة</option>
+                              <option value="elisha">فصل أليشع (إعداد خدام)</option>
+                            </select>
+                          )}
                         </td>
                       </tr>
                     ))}
