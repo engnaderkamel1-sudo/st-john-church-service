@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Church, BookOpen, QrCode, ShieldCheck, HeartHandshake, LogOut, CheckCircle2, User, Bell, ChevronLeft, Sparkles, RefreshCw, AlertCircle } from 'lucide-react';
 import { db } from './firebase';
 import AuthModal from './components/AuthModal';
@@ -11,12 +11,29 @@ export default function App() {
   const [targetRole, setTargetRole] = useState('student');
   const [targetMode, setTargetMode] = useState('login');
   const [showNotifications, setShowNotifications] = useState(false);
+  const notificationRef = useRef(null);
 
   const [notifications, setNotifications] = useState([]);
 
+  // Close notifications dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (notificationRef.current && !notificationRef.current.contains(event.target)) {
+        setShowNotifications(false);
+      }
+    };
+
+    if (showNotifications) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showNotifications]);
+
   // Auto-Update Detection State
   const [hasUpdate, setHasUpdate] = useState(false);
-  const [appVersion, setAppVersion] = useState('1.0.2');
+  const [appVersion, setAppVersion] = useState('1.0.3');
 
   useEffect(() => {
     // Check for new version from /version.json
@@ -108,14 +125,18 @@ export default function App() {
           {/* Right Action Icons */}
           <div className="flex items-center gap-2.5">
             {/* Notification Bell */}
-            <div className="relative">
+            <div className="relative" ref={notificationRef}>
               <button
-                onClick={() => setShowNotifications(!showNotifications)}
+                onClick={() => setShowNotifications(prev => !prev)}
                 className="p-2 text-slate-600 hover:text-maroon-900 hover:bg-slate-100 rounded-xl transition-colors relative"
                 title="التنبيهات"
               >
                 <Bell className="w-5 h-5" />
-                <span className="w-2 h-2 bg-amber-500 rounded-full absolute top-1.5 right-1.5 ring-2 ring-white"></span>
+                {notifications.length > 0 && (
+                  <span className="min-w-4 h-4 px-1 bg-amber-500 text-maroon-950 font-black text-[10px] rounded-full absolute -top-1 -right-1 ring-2 ring-white flex items-center justify-center">
+                    {notifications.length}
+                  </span>
+                )}
               </button>
 
               {showNotifications && (
