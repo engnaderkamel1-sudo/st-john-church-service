@@ -16,73 +16,10 @@ export default function ServantDashboard({ user }) {
 
   // Subjects Managed by Grade
   const [subjectsByGrade, setSubjectsByGrade] = useState({
-    first: [
-      {
-        id: 'sub-f1',
-        name: 'مقدمة في العهد القديم',
-        teacher: 'أ. بيشوي نعيم',
-        references: [
-          { id: 'rf-1', title: 'ملخص أسفار الشريعة والأنبياء', size: '2.1 MB', date: '2026-09-08' },
-          { id: 'rf-2', title: 'خريطة رحلة الخروج وأسئلة مراجعة', size: '1.5 MB', date: '2026-09-15' }
-        ]
-      },
-      {
-        id: 'sub-f2',
-        name: 'العقيدة المسيحية الأساسية',
-        teacher: 'د. ميشيل سامي',
-        references: [
-          { id: 'rf-3', title: 'مذكرة الثالوث القدوس وسر التجسد', size: '3.4 MB', date: '2026-09-10' }
-        ]
-      }
-    ],
-    second: [
-      {
-        id: 'sub-s1',
-        name: 'تاريخ الكنيسة والمجامع',
-        teacher: 'أ. بيشوي نعيم',
-        references: [
-          { id: 'rf-4', title: 'مجمع نيقية والرد على الأريوسية', size: '3.0 MB', date: '2026-09-12' },
-          { id: 'rf-5', title: 'عصر الاستشهاد وتاريخ الرهبنة', size: '2.5 MB', date: '2026-09-19' }
-        ]
-      },
-      {
-        id: 'sub-s2',
-        name: 'طقوس الكنيسة القبطية',
-        teacher: 'أ. أنطون يوسف',
-        references: [
-          { id: 'rf-6', title: 'طقس القداس الإلهي وصلوات التسبحة', size: '4.2 MB', date: '2026-09-14' }
-        ]
-      }
-    ],
-    third: [
-      {
-        id: 'sub-t1',
-        name: 'دراسات في العهد الجديد والرسائل',
-        teacher: 'م. مينا عاطف',
-        references: [
-          { id: 'rf-7', title: 'شرح وتأملات في رسالة رومية', size: '3.8 MB', date: '2026-09-11' }
-        ]
-      }
-    ],
-    elisha: [
-      {
-        id: 'sub-e1',
-        name: 'مهارات إعداد الخادم والقيادة',
-        teacher: 'أمين الخدمة',
-        references: [
-          { id: 'rf-8', title: 'فن إلقاء الدرس وسيكولوجية المراهقين', size: '4.5 MB', date: '2026-09-05' },
-          { id: 'rf-9', title: 'أسس الافتقاد الرعوي والعمل الميداني', size: '2.9 MB', date: '2026-09-18' }
-        ]
-      },
-      {
-        id: 'sub-e2',
-        name: 'اللاهوت المقارن والأبائيات',
-        teacher: 'د. ميشيل سامي',
-        references: [
-          { id: 'rf-10', title: 'كتابات الآباء الرسوليين والدفاعيات', size: '3.6 MB', date: '2026-09-16' }
-        ]
-      }
-    ]
+    first: [],
+    second: [],
+    third: [],
+    elisha: []
   });
 
   const [activeSubject, setActiveSubject] = useState(null);
@@ -95,46 +32,12 @@ export default function ServantDashboard({ user }) {
   const [newRefTitle, setNewRefTitle] = useState('');
 
   // Question Bank State
-  const [questionBank, setQuestionBank] = useState([
-    {
-      id: 'qb-1',
-      subject: 'العقيدة المسيحية الأساسية',
-      grade: 'first',
-      type: 'mcq',
-      difficulty: 'easy',
-      questionText: 'ما هو سر الأسرار وينبوع كل النعم الكنسية؟',
-      options: ['سر المعمودية', 'سر الإفخارستيا (التناول)', 'سر التوبة والاعتراف', 'سر الزيجة'],
-      correctAnswer: 'سر الإفخارستيا (التناول)',
-      points: 5
-    },
-    {
-      id: 'qb-2',
-      subject: 'العقيدة المسيحية الأساسية',
-      grade: 'first',
-      type: 'true_false',
-      difficulty: 'easy',
-      questionText: 'صلاة باكر في الأجبية تُصلى تذكاراً لقيامة السيد المسيح من بين الأموات.',
-      options: ['صح', 'خطأ'],
-      correctAnswer: 'صح',
-      points: 5
-    },
-    {
-      id: 'qb-3',
-      subject: 'تاريخ الكنيسة والمجامع',
-      grade: 'second',
-      type: 'mcq',
-      difficulty: 'medium',
-      questionText: 'في أي مجمع مسكوني تم إقرار قانون الإيمان النيقاوي؟',
-      options: ['مجمع نيقية 325م', 'مجمع القسطنطينية 381م', 'مجمع أفسس 431م', 'مجمع خلقيدونية'],
-      correctAnswer: 'مجمع نيقية 325م',
-      points: 5
-    }
-  ]);
+  const [questionBank, setQuestionBank] = useState([]);
 
   const [examSubSection, setExamSubSection] = useState('bank');
   const [showAddQuestionModal, setShowAddQuestionModal] = useState(false);
   const [newQuestion, setNewQuestion] = useState({
-    subject: 'العقيدة المسيحية الأساسية',
+    subject: '',
     type: 'mcq',
     difficulty: 'medium',
     questionText: '',
@@ -143,46 +46,19 @@ export default function ServantDashboard({ user }) {
     points: 5
   });
 
-  const [createdExams, setCreatedExams] = useState([
-    {
-      id: 'ex-1',
-      title: 'امتحان منتصف الفصل في العقيدة والطقوس',
-      subject: 'العقيدة المسيحية الأساسية',
-      grade: 'first',
-      durationMinutes: 20,
-      totalScore: 30,
-      questionsCount: 4,
-      status: 'active'
-    }
-  ]);
+  const [createdExams, setCreatedExams] = useState([]);
 
   const [showCreateExamModal, setShowCreateExamModal] = useState(false);
   const [newExamTitle, setNewExamTitle] = useState('');
-  const [newExamSubject, setNewExamSubject] = useState('العقيدة المسيحية الأساسية');
+  const [newExamSubject, setNewExamSubject] = useState('');
   const [newExamDuration, setNewExamDuration] = useState(20);
 
   // Students Data with Attendance, Scores, Red Flags, and Servant Comments
   const [studentsByGrade, setStudentsByGrade] = useState({
-    first: [
-      { id: '101', fullName: 'كيرلس عماد صبحي', phone: '01012345672', attendanceRate: 92, examScore: 28, points: 145, comment: 'ملتزم جداً وله استجابة سريعة في الحفظ والمشاركات.', isRedFlag: false },
-      { id: '102', fullName: 'مينا سمير جرجس', phone: '01211122233', attendanceRate: 88, examScore: 25, points: 110, comment: 'هادئ ومواظب، يحتاج تشجيعاً في الأسئلة المقالية.', isRedFlag: false },
-      { id: '103', fullName: 'مارك عاطف فهيم', phone: '01287654321', attendanceRate: 60, examScore: 14, points: 55, comment: 'تغيب لجمعتين متتاليتين، تم الاتصال بوالده ويحتاج افتقاداً منزلياً.', isRedFlag: true },
-      { id: '104', fullName: 'بولا رأفت نعيم', phone: '01099887766', attendanceRate: 50, examScore: 12, points: 40, comment: 'منقطع عن الحضور وعنده تعارض مع دروس الثانوية، يحتاج متابعة.', isRedFlag: true }
-    ],
-    second: [
-      { id: '201', fullName: 'ديفيد مجدي لمعي', phone: '01234567894', attendanceRate: 98, examScore: 30, points: 220, comment: 'ممتاز في التناول والصلاة ويصلح بقوة للترشيح لفصل أليشع.', isRedFlag: false },
-      { id: '202', fullName: 'مينا كمال عزيز', phone: '01223456781', attendanceRate: 94, examScore: 29, points: 190, comment: 'قائد مجموعة متميز وله روح خدمة ومحبة بين زملائه.', isRedFlag: false },
-      { id: '203', fullName: 'أبانوب رفعت موريس', phone: '01198765432', attendanceRate: 85, examScore: 24, points: 130, comment: 'منتظم في الحضور ولكن يحتاج تحفيزاً في قراءة الإنجيل اليومية.', isRedFlag: false },
-      { id: '204', fullName: 'يوسف هاني فخري', phone: '01544332211', attendanceRate: 65, examScore: 15, points: 60, comment: 'نسبة الحضور متراجعة والدرجة ضعيفة، يحتاج جلسة مع أب الاعتراف.', isRedFlag: true }
-    ],
-    third: [
-      { id: '301', fullName: 'توماس رأفت شحاتة', phone: '01123456783', attendanceRate: 90, examScore: 27, points: 160, comment: 'ملتزم رغم ضغوط شهادة الثانوية العامة.', isRedFlag: false },
-      { id: '302', fullName: 'جورج فادي عزمي', phone: '01022334455', attendanceRate: 55, examScore: 16, points: 45, comment: 'متغيب بسبب مواعيد الدروس الخصوصية، مطلوب افتقاده تليفونياً.', isRedFlag: true }
-    ],
-    elisha: [
-      { id: '401', fullName: 'فادي نبيل رمزي', phone: '01098765435', attendanceRate: 100, examScore: 30, points: 260, comment: 'نموذج رائع لخادم المستقبل، يجيد التحضير وسيكولوجية المخدومين.', isRedFlag: false },
-      { id: '402', fullName: 'بيتر سامي نصيف', phone: '01277665544', attendanceRate: 96, examScore: 28, points: 230, comment: 'ملتزم في الأسرار والافتقاد الميداني التجريبي.', isRedFlag: false }
-    ]
+    first: [],
+    second: [],
+    third: [],
+    elisha: []
   });
 
   const [savedCommentId, setSavedCommentId] = useState(null);
@@ -451,8 +327,15 @@ export default function ServantDashboard({ user }) {
                 </form>
               )}
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {currentGradeSubjects.map((sub) => (
+              {currentGradeSubjects.length === 0 ? (
+                <div className="text-center py-12 bg-slate-50 border border-dashed border-slate-200 rounded-2xl p-6">
+                  <BookOpen className="w-10 h-10 text-slate-300 mx-auto mb-2" />
+                  <p className="text-xs font-bold text-slate-700">لا توجد مواد دراسية مضافة لهذه المرحلة حتى الآن.</p>
+                  <p className="text-[11px] text-slate-400 mt-1">اضغط على زر "إضافة مادة جديدة" للبدء في إضافة المواد ورفع المناهج والمذكرات.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {currentGradeSubjects.map((sub) => (
                   <div
                     key={sub.id}
                     onClick={() => setActiveSubject(sub)}
@@ -475,6 +358,7 @@ export default function ServantDashboard({ user }) {
                   </div>
                 ))}
               </div>
+              )}
             </div>
           ) : (
             <div className="space-y-4">
@@ -650,24 +534,32 @@ export default function ServantDashboard({ user }) {
                 </form>
               )}
 
-              <div className="space-y-3">
-                {currentGradeQuestions.map((q, idx) => (
-                  <div key={q.id} className="bg-slate-50 border border-slate-200 p-4 rounded-2xl space-y-1.5 text-xs">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="font-extrabold text-slate-900">س {idx + 1}</span>
-                        <span className="bg-maroon-50 text-maroon-900 border border-maroon-200 px-2 py-0.5 rounded font-bold text-[10px]">{q.subject}</span>
+              {currentGradeQuestions.length === 0 ? (
+                <div className="text-center py-12 bg-slate-50 border border-dashed border-slate-200 rounded-2xl p-6">
+                  <FileText className="w-10 h-10 text-slate-300 mx-auto mb-2" />
+                  <p className="text-xs font-bold text-slate-700">بنك الأسئلة فارغ لهذه المرحلة حالياً.</p>
+                  <p className="text-[11px] text-slate-400 mt-1">اضغط على "إضافة سؤال لبنك الأسئلة" للبدء في تجميع بنك أسئلة المرحلة.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {currentGradeQuestions.map((q, idx) => (
+                    <div key={q.id} className="bg-slate-50 border border-slate-200 p-4 rounded-2xl space-y-1.5 text-xs">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="font-extrabold text-slate-900">س {idx + 1}</span>
+                          <span className="bg-maroon-50 text-maroon-900 border border-maroon-200 px-2 py-0.5 rounded font-bold text-[10px]">{q.subject}</span>
+                        </div>
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                          q.difficulty === 'easy' ? 'bg-emerald-100 text-emerald-800' : q.difficulty === 'medium' ? 'bg-amber-100 text-amber-800' : 'bg-red-100 text-red-800'
+                        }`}>
+                          {q.difficulty === 'easy' ? 'سهل جداً 🟢' : q.difficulty === 'medium' ? 'متوسط 🟡' : 'صعب 🔴'}
+                        </span>
                       </div>
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                        q.difficulty === 'easy' ? 'bg-emerald-100 text-emerald-800' : q.difficulty === 'medium' ? 'bg-amber-100 text-amber-800' : 'bg-red-100 text-red-800'
-                      }`}>
-                        {q.difficulty === 'easy' ? 'سهل جداً 🟢' : q.difficulty === 'medium' ? 'متوسط 🟡' : 'صعب 🔴'}
-                      </span>
+                      <p className="font-bold text-slate-800">{q.questionText}</p>
                     </div>
-                    <p className="font-bold text-slate-800">{q.questionText}</p>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
@@ -735,20 +627,28 @@ export default function ServantDashboard({ user }) {
                 </form>
               )}
 
-              <div className="space-y-3">
-                {createdExams.map((ex) => (
-                  <div key={ex.id} className="bg-slate-50 border border-slate-200 p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-                    <div>
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="font-extrabold text-slate-900 text-sm">{ex.title}</span>
-                        <span className="bg-maroon-100 text-maroon-900 font-bold px-2 py-0.5 rounded text-[10px]">{ex.subject}</span>
+              {createdExams.length === 0 ? (
+                <div className="text-center py-12 bg-slate-50 border border-dashed border-slate-200 rounded-2xl p-6">
+                  <FileText className="w-10 h-10 text-slate-300 mx-auto mb-2" />
+                  <p className="text-xs font-bold text-slate-700">لا توجد امتحانات منشورة لهذه المرحلة حتى الآن.</p>
+                  <p className="text-[11px] text-slate-400 mt-1">اضغط على زر "تجهيز وتكليف امتحان" لاختيار مادة وتكليف امتحان للطلاب.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {createdExams.map((ex) => (
+                    <div key={ex.id} className="bg-slate-50 border border-slate-200 p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="font-extrabold text-slate-900 text-sm">{ex.title}</span>
+                          <span className="bg-maroon-100 text-maroon-900 font-bold px-2 py-0.5 rounded text-[10px]">{ex.subject}</span>
+                        </div>
+                        <span className="text-[11px] text-slate-500">المدة: {ex.durationMinutes} دقيقة • الدرجة العظمى: {ex.totalScore} درجة</span>
                       </div>
-                      <span className="text-[11px] text-slate-500">المدة: {ex.durationMinutes} دقيقة • الدرجة العظمى: {ex.totalScore} درجة</span>
+                      <span className="bg-emerald-100 text-emerald-800 font-bold px-3 py-1 rounded-xl text-[11px]">متاح ونشط للطلاب ✓</span>
                     </div>
-                    <span className="bg-emerald-100 text-emerald-800 font-bold px-3 py-1 rounded-xl text-[11px]">متاح ونشط للطلاب ✓</span>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -799,21 +699,25 @@ export default function ServantDashboard({ user }) {
               <Trophy className="w-5 h-5 text-amber-600" />
               لوحة الشرف والأوائل ({getGradeTitle(selectedGrade)}) 🏆
             </h4>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              {topStudents.map((st, rank) => (
-                <div key={st.id} className="bg-white border border-amber-200/80 p-3.5 rounded-xl flex items-center justify-between text-xs shadow-2xs">
-                  <div>
-                    <span className="font-extrabold text-slate-900 block text-xs">
-                      {rank === 0 ? '🥇' : rank === 1 ? '🥈' : '🥉'} {st.fullName}
-                    </span>
-                    <span className="text-[10px] text-slate-500 mt-0.5 block">
-                      حضور: {st.attendanceRate}% • امتحان: {st.examScore}/30
-                    </span>
+            {topStudents.length === 0 ? (
+              <p className="text-xs text-amber-800/80 font-bold">لا توجد سجلات مخدومين مسجلة حتى الآن لحساب لوحة الشرف.</p>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {topStudents.map((st, rank) => (
+                  <div key={st.id} className="bg-white border border-amber-200/80 p-3.5 rounded-xl flex items-center justify-between text-xs shadow-2xs">
+                    <div>
+                      <span className="font-extrabold text-slate-900 block text-xs">
+                        {rank === 0 ? '🥇' : rank === 1 ? '🥈' : '🥉'} {st.fullName}
+                      </span>
+                      <span className="text-[10px] text-slate-500 mt-0.5 block">
+                        حضور: {st.attendanceRate}% • امتحان: {st.examScore}/30
+                      </span>
+                    </div>
+                    <span className="text-amber-700 font-extrabold text-xs">{st.points} نقطة</span>
                   </div>
-                  <span className="text-amber-700 font-extrabold text-xs">{st.points} نقطة</span>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Student Evaluation Table with Servant Comments & Red Flags */}
@@ -823,20 +727,27 @@ export default function ServantDashboard({ user }) {
               سجل تقييمات وملاحظات الخدام لكل مخدوم
             </h4>
 
-            <div className="overflow-x-auto border border-slate-200 rounded-2xl">
-              <table className="w-full text-right text-xs">
-                <thead className="bg-slate-50 border-b border-slate-200 text-slate-600">
-                  <tr>
-                    <th className="py-3 px-3">المخدوم</th>
-                    <th className="py-3 px-2">الحضور</th>
-                    <th className="py-3 px-2">الدرجة</th>
-                    <th className="py-3 px-2">الحالة</th>
-                    <th className="py-3 px-4">ملاحظات وتقييم الخادم (هل ملتزم / يصلح لإعداد خدام)</th>
-                    <th className="py-3 px-3">حفظ</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {currentGradeStudents.map((st) => (
+            {currentGradeStudents.length === 0 ? (
+              <div className="text-center py-10 bg-slate-50 border border-dashed border-slate-200 rounded-2xl p-6">
+                <Users className="w-10 h-10 text-slate-300 mx-auto mb-2" />
+                <p className="text-xs font-bold text-slate-700">لم يتم تسجيل مخدومين في هذه المرحلة حتى الآن.</p>
+                <p className="text-[11px] text-slate-400 mt-1">عند تسجيل المخدومين لحساباتهم أو تسجيل الحضور ستظهر بياناتهم وتقييماتهم هنا تلقائياً.</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto border border-slate-200 rounded-2xl">
+                <table className="w-full text-right text-xs">
+                  <thead className="bg-slate-50 border-b border-slate-200 text-slate-600">
+                    <tr>
+                      <th className="py-3 px-3">المخدوم</th>
+                      <th className="py-3 px-2">الحضور</th>
+                      <th className="py-3 px-2">الدرجة</th>
+                      <th className="py-3 px-2">الحالة</th>
+                      <th className="py-3 px-4">ملاحظات وتقييم الخادم (هل ملتزم / يصلح لإعداد خدام)</th>
+                      <th className="py-3 px-3">حفظ</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {currentGradeStudents.map((st) => (
                     <tr key={st.id} className={`hover:bg-slate-50/80 transition-colors ${st.isRedFlag ? 'bg-red-50/30' : ''}`}>
                       <td className="py-3 px-3 font-bold text-slate-900">
                         {st.fullName}
@@ -882,6 +793,7 @@ export default function ServantDashboard({ user }) {
                 </tbody>
               </table>
             </div>
+            )}
           </div>
         </div>
       )}
