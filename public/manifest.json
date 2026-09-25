@@ -1,0 +1,26 @@
+{
+  "name": "خدمة أليشع النبي وإعداد الخدام",
+  "short_name": "خدمة أليشع",
+  "description": "منظومة خدمة أليشع النبي وإعداد الخدام - كنيسة القديس ماريوحنا المعمدان بالمعراج",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#581c24",
+  "orientation": "portrait",
+  "dir": "rtl",
+  "lang": "ar",
+  "icons": [
+    {
+      "src": "/church_logo.jpg",
+      "sizes": "192x192",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/church_logo.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    }
+  ]
+}
