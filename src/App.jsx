@@ -274,11 +274,11 @@ export default function App() {
                     <div className="text-[10px] text-maroon-800 font-semibold">
                       {servantPreviewMode 
                         ? 'وضع التجربة (كمخدوم)' 
-                        : currentUser.role === 'admin' 
-                        ? 'مدير المنظومة (مسؤول عام)' 
+                        : (currentUser.role === 'admin' || currentUser.phone === '01275571569' || (currentUser.email && currentUser.email.includes('nader.kamel')))
+                        ? 'مشرف التطبيق 👑' 
                         : currentUser.role === 'student' 
                         ? getGradeName(currentUser.grade) 
-                        : 'خادم'}
+                        : 'خادم عام'}
                     </div>
                   </div>
                   <button
