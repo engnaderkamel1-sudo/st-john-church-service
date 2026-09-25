@@ -11,7 +11,10 @@ import { db } from '../firebase';
 import { collection, getDocs, doc, updateDoc, setDoc, addDoc, query, orderBy, serverTimestamp, limit } from 'firebase/firestore';
 
 export default function ServantDashboard({ user }) {
-  const [mainTab, setMainTab] = useState('users_hub'); // Default to users & role approvals
+  // Check if current user is App Administrator (Nader Reda)
+  const isAppAdmin = user && (user.role === 'admin' || user.phone === '01275571569' || (user.email && user.email.includes('nader.kamel')));
+
+  const [mainTab, setMainTab] = useState(isAppAdmin ? 'users_hub' : 'subjects_hub');
   const [selectedGrade, setSelectedGrade] = useState('first');
 
   // Registered Users Management & Approval State
@@ -56,9 +59,11 @@ export default function ServantDashboard({ user }) {
   };
 
   useEffect(() => {
-    fetchAllUsers();
-    fetchLoginLogs();
-  }, []);
+    if (isAppAdmin) {
+      fetchAllUsers();
+      fetchLoginLogs();
+    }
+  }, [isAppAdmin]);
 
   // Update User Role & Stage in Firestore
   const handleUpdateUserRole = async (userId, newRole, newGrade = null) => {
@@ -552,20 +557,41 @@ export default function ServantDashboard({ user }) {
 
       {/* Main Navigation Tabs */}
       <div className="bg-white border border-slate-200 rounded-2xl p-1.5 flex items-center justify-around text-xs font-bold sticky top-16 z-30 shadow-xs overflow-x-auto">
-        <button
-          onClick={() => { setMainTab('users_hub'); setActiveSubject(null); }}
-          className={`py-2 px-3 rounded-xl flex items-center gap-1.5 transition-all shrink-0 ${
-            mainTab === 'users_hub' ? 'bg-maroon-800 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'
-          }`}
-        >
-          <UserCog className="w-4 h-4" />
-          <span>المستخدمين والأدوار</span>
-          {allUsers.length > 0 && (
-            <span className="text-[10px] bg-gold-400 text-maroon-950 px-1.5 py-0.2 rounded-full font-bold">
-              {allUsers.length}
-            </span>
-          )}
-        </button>
+        {/* Only App Administrator (Nader Reda) can view and access Users & Roles */}
+        {isAppAdmin && (
+          <button
+            onClick={() => { setMainTab('users_hub'); setUserHubSubTab('accounts'); setActiveSubject(null); }}
+            className={`py-2 px-3 rounded-xl flex items-center gap-1.5 transition-all shrink-0 ${
+              mainTab === 'users_hub' && userHubSubTab === 'accounts' ? 'bg-maroon-800 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <UserCog className="w-4 h-4" />
+            <span>المستخدمين والأدوار</span>
+            {allUsers.length > 0 && (
+              <span className="text-[10px] bg-gold-400 text-maroon-950 px-1.5 py-0.2 rounded-full font-bold">
+                {allUsers.length}
+              </span>
+            )}
+          </button>
+        )}
+
+        {/* Dedicated Activity/Login Log Tab for App Administrator */}
+        {isAppAdmin && (
+          <button
+            onClick={() => { setMainTab('users_hub'); setUserHubSubTab('login_history'); fetchLoginLogs(); setActiveSubject(null); }}
+            className={`py-2 px-3 rounded-xl flex items-center gap-1.5 transition-all shrink-0 ${
+              mainTab === 'users_hub' && userHubSubTab === 'login_history' ? 'bg-maroon-800 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <History className="w-4 h-4 text-gold-400" />
+            <span>سجل النشاط والدخول</span>
+            {loginLogs.length > 0 && (
+              <span className="text-[10px] bg-slate-200 text-slate-800 px-1.5 py-0.2 rounded-full font-bold">
+                {loginLogs.length}
+              </span>
+            )}
+          </button>
+        )}
 
         <button
           onClick={() => { setMainTab('subjects_hub'); setActiveSubject(null); }}
@@ -621,8 +647,8 @@ export default function ServantDashboard({ user }) {
         </button>
       </div>
 
-      {/* 0. Users & Roles Management Hub (Admin/Servant Approvals & Login Logs) */}
-      {mainTab === 'users_hub' && (
+      {/* 0. Users & Roles Management Hub (Admin Only: Admin Approvals & Activity Logs) */}
+      {isAppAdmin && mainTab === 'users_hub' && (
         <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-6">
           {/* Subtabs Switcher: الحسابات والأدوار vs سجل دخول المستخدمين */}
           <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
@@ -649,7 +675,7 @@ export default function ServantDashboard({ user }) {
               }`}
             >
               <History className="w-4 h-4 text-gold-400" />
-              <span>سجل دخول المستخدمين ({loginLogs.length})</span>
+              <span>سجل النشاط والدخول ({loginLogs.length})</span>
             </button>
           </div>
 
@@ -887,13 +913,13 @@ export default function ServantDashboard({ user }) {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
               <div>
                 <div className="flex items-center gap-2">
-                  <h3 className="font-extrabold text-slate-900 text-base">سجل عمليات دخول وتسجيل المستخدمين</h3>
+                  <h3 className="font-extrabold text-slate-900 text-base">سجل النشاط وعمليات دخول المستخدمين</h3>
                   <span className="text-[11px] bg-amber-100 text-amber-900 font-bold px-2 py-0.5 rounded-full">
                     متابعة حية
                   </span>
                 </div>
                 <p className="text-xs text-slate-500 mt-1">
-                  رصد كامل لكافة عمليات الدخول وإنشاء الحسابات الجديدة بالوقت والتاريخ والصفة.
+                  رصد كامل لكافة عمليات الدخول وإنشاء الحسابات الجديدة بالوقت والتاريخ والصفة للمنظومة.
                 </p>
               </div>
 
