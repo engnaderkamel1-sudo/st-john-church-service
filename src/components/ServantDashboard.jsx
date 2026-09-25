@@ -4,10 +4,11 @@ import {
   Printer, UserCheck, Search, Award, FileCheck, Edit3, Save, Check, 
   FileText, Plus, Download, UploadCloud, ChevronLeft, Trash2, FolderPlus,
   HelpCircle, Filter, Send, Layers, AlertCircle, MessageSquare, TrendingUp, Trophy, UserCog, RefreshCw,
-  BellRing, Unlock, Lock, UserPlus, UserX, KeyRound, Copy, Sun, Sunset, Moon, Sparkles, Heart
+  BellRing, Unlock, Lock, UserPlus, UserX, KeyRound, Copy, Sun, Sunset, Moon, Sparkles, Heart,
+  History, Activity
 } from 'lucide-react';
 import { db } from '../firebase';
-import { collection, getDocs, doc, updateDoc, setDoc, addDoc, query, orderBy, serverTimestamp } from 'firebase/firestore';
+import { collection, getDocs, doc, updateDoc, setDoc, addDoc, query, orderBy, serverTimestamp, limit } from 'firebase/firestore';
 
 export default function ServantDashboard({ user }) {
   const [mainTab, setMainTab] = useState('users_hub'); // Default to users & role approvals
@@ -18,6 +19,11 @@ export default function ServantDashboard({ user }) {
   const [usersLoading, setUsersLoading] = useState(false);
   const [userRoleFilter, setUserRoleFilter] = useState('all');
   const [roleUpdatingId, setRoleUpdatingId] = useState(null);
+  const [userHubSubTab, setUserHubSubTab] = useState('accounts'); // 'accounts' | 'login_history'
+
+  // User Login Logs History State (سجل دخول المستخدمين)
+  const [loginLogs, setLoginLogs] = useState([]);
+  const [logsLoading, setLogsLoading] = useState(false);
 
   // Fetch registered users from Firestore
   const fetchAllUsers = async () => {
@@ -34,8 +40,24 @@ export default function ServantDashboard({ user }) {
     }
   };
 
+  // Fetch Login Logs History
+  const fetchLoginLogs = async () => {
+    setLogsLoading(true);
+    try {
+      const q = query(collection(db, 'login_logs'), orderBy('timestamp', 'desc'), limit(50));
+      const snap = await getDocs(q);
+      const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      setLoginLogs(list);
+    } catch (err) {
+      console.error('Error fetching login logs:', err);
+    } finally {
+      setLogsLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchAllUsers();
+    fetchLoginLogs();
   }, []);
 
   // Update User Role & Stage in Firestore
@@ -589,43 +611,74 @@ export default function ServantDashboard({ user }) {
         </button>
       </div>
 
-      {/* 0. Users & Roles Management Hub (Admin/Servant Approvals) */}
+      {/* 0. Users & Roles Management Hub (Admin/Servant Approvals & Login Logs) */}
       {mainTab === 'users_hub' && (
         <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="font-extrabold text-slate-900 text-base">إدارة حسابات المستخدمين والموافقة على الأدوار</h3>
-                <span className="text-[11px] bg-maroon-100 text-maroon-900 font-bold px-2 py-0.5 rounded-full">
-                  صلاحيات مدير المنظومة
-                </span>
-              </div>
-              <p className="text-xs text-slate-500 mt-1">
-                التحكم الكامل في حسابات المنظومة: الموافقة على رتبة المستخدم أو تعديلها (تحويل من خادم إلى مخدوم أو العكس، وتغيير المرحلة الدراسية).
-              </p>
-            </div>
+          {/* Subtabs Switcher: الحسابات والأدوار vs سجل دخول المستخدمين */}
+          <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
+            <button
+              type="button"
+              onClick={() => setUserHubSubTab('accounts')}
+              className={`py-2 px-4 rounded-xl font-bold text-xs transition-all flex items-center gap-1.5 ${
+                userHubSubTab === 'accounts'
+                  ? 'bg-maroon-800 text-white shadow-xs'
+                  : 'bg-slate-100 text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <Users className="w-4 h-4" />
+              <span>الحسابات والأدوار ({allUsers.length})</span>
+            </button>
 
-            <div className="flex items-center gap-2">
-              <select
-                value={userRoleFilter}
-                onChange={(e) => setUserRoleFilter(e.target.value)}
-                className="bg-slate-50 border border-slate-200 text-xs font-bold rounded-xl px-3 py-2 text-slate-700"
-              >
-                <option value="all">عرض الكل ({allUsers.length})</option>
-                <option value="student">المخدومين فقط ({allUsers.filter(u => u.role === 'student').length})</option>
-                <option value="servant">الخدام فقط ({allUsers.filter(u => u.role === 'servant').length})</option>
-              </select>
-
-              <button
-                onClick={fetchAllUsers}
-                disabled={usersLoading}
-                className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition-colors"
-                title="تحديث القائمة"
-              >
-                <RefreshCw className={`w-4 h-4 ${usersLoading ? 'animate-spin text-maroon-800' : ''}`} />
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={() => { setUserHubSubTab('login_history'); fetchLoginLogs(); }}
+              className={`py-2 px-4 rounded-xl font-bold text-xs transition-all flex items-center gap-1.5 ${
+                userHubSubTab === 'login_history'
+                  ? 'bg-maroon-800 text-white shadow-xs'
+                  : 'bg-slate-100 text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <History className="w-4 h-4 text-gold-400" />
+              <span>سجل دخول المستخدمين ({loginLogs.length})</span>
+            </button>
           </div>
+
+          {userHubSubTab === 'accounts' ? (
+            <>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-extrabold text-slate-900 text-base">إدارة حسابات المستخدمين والموافقة على الأدوار</h3>
+                    <span className="text-[11px] bg-maroon-100 text-maroon-900 font-bold px-2 py-0.5 rounded-full">
+                      صلاحيات مدير المنظومة
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-1">
+                    التحكم الكامل في حسابات المنظومة: الموافقة على رتبة المستخدم أو تعديلها (تحويل من خادم إلى مخدوم أو العكس، وتغيير المرحلة الدراسية).
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <select
+                    value={userRoleFilter}
+                    onChange={(e) => setUserRoleFilter(e.target.value)}
+                    className="bg-slate-50 border border-slate-200 text-xs font-bold rounded-xl px-3 py-2 text-slate-700"
+                  >
+                    <option value="all">عرض الكل ({allUsers.length})</option>
+                    <option value="student">المخدومين فقط ({allUsers.filter(u => u.role === 'student').length})</option>
+                    <option value="servant">الخدام فقط ({allUsers.filter(u => u.role === 'servant').length})</option>
+                  </select>
+
+                  <button
+                    onClick={fetchAllUsers}
+                    disabled={usersLoading}
+                    className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition-colors"
+                    title="تحديث القائمة"
+                  >
+                    <RefreshCw className={`w-4 h-4 ${usersLoading ? 'animate-spin text-maroon-800' : ''}`} />
+                  </button>
+                </div>
+              </div>
 
           {/* Quick Metrics */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -814,8 +867,104 @@ export default function ServantDashboard({ user }) {
               </table>
             </div>
           )}
-        </div>
-      )}
+          </>
+        ) : (
+          /* Login History View (سجل دخول المستخدمين) */
+          <div className="space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-extrabold text-slate-900 text-base">سجل عمليات دخول وتسجيل المستخدمين</h3>
+                  <span className="text-[11px] bg-amber-100 text-amber-900 font-bold px-2 py-0.5 rounded-full">
+                    متابعة حية
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 mt-1">
+                  رصد كامل لكافة عمليات الدخول وإنشاء الحسابات الجديدة بالوقت والتاريخ والصفة.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={fetchLoginLogs}
+                disabled={logsLoading}
+                className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition-colors flex items-center gap-1.5 text-xs font-bold"
+                title="تحديث السجل"
+              >
+                <RefreshCw className={`w-4 h-4 ${logsLoading ? 'animate-spin text-maroon-800' : ''}`} />
+                <span>تحديث السجل</span>
+              </button>
+            </div>
+
+            {logsLoading ? (
+              <div className="py-12 text-center text-slate-400 text-xs flex items-center justify-center gap-2">
+                <RefreshCw className="w-5 h-5 animate-spin text-maroon-800" />
+                <span>جاري تحميل سجل الدخول من قاعدة البيانات...</span>
+              </div>
+            ) : loginLogs.length === 0 ? (
+              <div className="text-center py-12 bg-slate-50 border border-dashed border-slate-200 rounded-2xl p-6">
+                <History className="w-10 h-10 text-slate-300 mx-auto mb-2" />
+                <p className="text-xs font-bold text-slate-700">لا توجد عمليات دخول مسجلة بعد في السجل.</p>
+                <p className="text-[11px] text-slate-400 mt-1">عند تسجيل دخول أي مستخدم أو إنشاء حساب جديد سيتم تدوينها هنا فوراً.</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto border border-slate-200 rounded-2xl">
+                <table className="w-full text-right text-xs">
+                  <thead className="bg-slate-50 border-b border-slate-200 text-slate-600">
+                    <tr>
+                      <th className="py-3 px-3">المستخدم</th>
+                      <th className="py-3 px-3">رقم الهاتف</th>
+                      <th className="py-3 px-3">الصفة</th>
+                      <th className="py-3 px-3">العملية</th>
+                      <th className="py-3 px-3">الوقت</th>
+                      <th className="py-3 px-3">التاريخ</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {loginLogs.map((log) => (
+                      <tr key={log.id} className="hover:bg-slate-50/80 transition-colors">
+                        <td className="py-3 px-3 font-bold text-slate-900">
+                          <div className="flex items-center gap-2">
+                            <div className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs ${
+                              log.role === 'servant' ? 'bg-maroon-800 text-white' : 'bg-slate-100 text-slate-700'
+                            }`}>
+                              {log.userName ? log.userName[0] : '؟'}
+                            </div>
+                            <span>{log.userName}</span>
+                          </div>
+                        </td>
+                        <td className="py-3 px-3 font-mono text-slate-600" dir="ltr">{log.phone}</td>
+                        <td className="py-3 px-3">
+                          <span className={`inline-flex items-center text-[10px] font-extrabold px-2 py-0.5 rounded-full ${
+                            log.role === 'servant'
+                              ? 'bg-maroon-100 text-maroon-900'
+                              : 'bg-emerald-100 text-emerald-800'
+                          }`}>
+                            {log.role === 'servant' ? 'خادم' : 'مخدوم'}
+                          </span>
+                        </td>
+                        <td className="py-3 px-3">
+                          <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                            log.action === 'register'
+                              ? 'bg-purple-100 text-purple-800 border border-purple-200'
+                              : 'bg-blue-100 text-blue-800 border border-blue-200'
+                          }`}>
+                            <Activity className="w-3 h-3" />
+                            <span>{log.action === 'register' ? 'إنشاء حساب جديد' : 'تسجيل دخول'}</span>
+                          </span>
+                        </td>
+                        <td className="py-3 px-3 font-mono font-bold text-slate-700" dir="ltr">{log.timeStr || 'الآن'}</td>
+                        <td className="py-3 px-3 text-slate-500">{log.dateStr || 'اليوم'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    )}
 
       {/* 1. Subjects & Curriculum Management Hub */}
       {mainTab === 'subjects_hub' && (
