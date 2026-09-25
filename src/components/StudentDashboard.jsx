@@ -6,7 +6,7 @@ import {
   Lock, AlertCircle, CheckSquare, Layers
 } from 'lucide-react';
 import { db } from '../firebase';
-import { collection, addDoc, query, where, getDocs, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, query, where, getDocs, doc, getDoc, onSnapshot, serverTimestamp } from 'firebase/firestore';
 
 export default function StudentDashboard({ user }) {
   // 6 Specified Tabs: 'attendance', 'spiritual_diary', 'curriculum', 'exams', 'tasks', 'announcements'
@@ -14,48 +14,9 @@ export default function StudentDashboard({ user }) {
   const [isWithinTime, setIsWithinTime] = useState(false);
   const [currentTimeStr, setCurrentTimeStr] = useState('');
   const [bypassTime, setBypassTime] = useState(false);
+  const [servantOpenedAccess, setServantOpenedAccess] = useState(null);
 
-  // Attendance
-  const [scanning, setScanning] = useState(false);
-  const [attendanceStatus, setAttendanceStatus] = useState(null);
-  const [attendanceRecords, setAttendanceRecords] = useState([]);
-
-  // Points & Profile
-  const [points, setPoints] = useState(user.points || 0);
-
-  // Spiritual Diary: Allowed editing ONLY for TODAY and YESTERDAY
-  const todayDateStr = new Date().toISOString().split('T')[0];
-  const yesterday = new Date();
-  yesterday.setDate(yesterday.getDate() - 1);
-  const yesterdayDateStr = yesterday.toISOString().split('T')[0];
-
-  const [selectedDiaryDate, setSelectedDiaryDate] = useState(todayDateStr);
-  const isEditableDate = selectedDiaryDate === todayDateStr || selectedDiaryDate === yesterdayDateStr;
-
-  // Stored diary by date
-  const [diaryRecords, setDiaryRecords] = useState({
-    [todayDateStr]: { baker: false, ghoroub: false, nowm: false, bible: false, communion: false, confession: false },
-    [yesterdayDateStr]: { baker: false, ghoroub: false, nowm: false, bible: false, communion: false, confession: false }
-  });
-
-  // Curriculum by Subjects
-  const [selectedSubject, setSelectedSubject] = useState(null);
-  const [subjectsData, setSubjectsData] = useState([]);
-
-  // Exams
-  const [activeExam, setActiveExam] = useState(null);
-  const [examAnswers, setExamAnswers] = useState({});
-  const [examResult, setExamResult] = useState(null);
-  const [completedExams, setCompletedExams] = useState({});
-  const [availableExams, setAvailableExams] = useState([]);
-
-  // Tasks (Daily / Weekly Questions)
-  const [tasks, setTasks] = useState([]);
-
-  // Announcements
-  const [announcements, setAnnouncements] = useState([]);
-
-  // Check 10:30 AM to 02:00 PM
+  // Check 10:30 AM to 02:00 PM OR remote permission opened by servant
   useEffect(() => {
     const checkTimeWindow = () => {
       const now = new Date();
@@ -70,8 +31,34 @@ export default function StudentDashboard({ user }) {
 
     checkTimeWindow();
     const interval = setInterval(checkTimeWindow, 30000);
-    return () => clearInterval(interval);
-  }, []);
+
+    // Listen to Remote Access Settings in Firestore (للجميع أو لهذا المخدوم)
+    const unsubAll = onSnapshot(doc(db, 'service_settings', 'attendance_window'), (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        if (data.isOpenForAll && new Date(data.validUntil) > new Date()) {
+          setBypassTime(true);
+          setServantOpenedAccess({ openedBy: data.openedBy, type: 'all' });
+        }
+      }
+    });
+
+    const unsubSpecific = onSnapshot(doc(db, 'remote_access', user.id), (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        if (data.isOpen && new Date(data.validUntil) > new Date()) {
+          setBypassTime(true);
+          setServantOpenedAccess({ openedBy: data.openedBy, type: 'specific' });
+        }
+      }
+    });
+
+    return () => {
+      clearInterval(interval);
+      unsubAll();
+      unsubSpecific();
+    };
+  }, [user.id]);
 
   const handleSimulateScan = () => {
     setScanning(true);
@@ -244,11 +231,17 @@ export default function StudentDashboard({ user }) {
                   : 'bg-amber-50 border-amber-200 text-amber-800'
               }`}>
                 {isWithinTime || bypassTime ? <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> : <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />}
-                <span className="font-medium">
-                  {isWithinTime || bypassTime
-                    ? 'نافذة الحضور مفتوحة الآن (10:30 ص إلى 02:00 م)'
-                    : 'التسجيل متاح أثناء فترة الخدمة (الجمعة 10:30 ص إلى 02:00 م فقط)'}
-                </span>
+                <div className="font-medium">
+                  {servantOpenedAccess ? (
+                    <span>
+                      🎯 تم فتح تسجيل الحضور استثنائياً لك بواسطة الخادم ({servantOpenedAccess.openedBy}). يمكنك تسجيل حضورك الآن!
+                    </span>
+                  ) : isWithinTime || bypassTime ? (
+                    <span>نافذة الحضور مفتوحة الآن (10:30 ص إلى 02:00 م)</span>
+                  ) : (
+                    <span>التسجيل متاح أثناء فترة الخدمة (الجمعة 10:30 ص إلى 02:00 م فقط)</span>
+                  )}
+                </div>
               </div>
 
               <div className="relative bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl h-60 flex flex-col items-center justify-center overflow-hidden">
