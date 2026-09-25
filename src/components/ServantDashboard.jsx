@@ -3,10 +3,11 @@ import {
   ShieldCheck, Users, QrCode, BookOpen, CheckCircle, Clock, 
   Printer, UserCheck, Search, Award, FileCheck, Edit3, Save, Check, 
   FileText, Plus, Download, UploadCloud, ChevronLeft, Trash2, FolderPlus,
-  HelpCircle, Filter, Send, Layers, AlertCircle, MessageSquare, TrendingUp, Trophy, UserCog, RefreshCw
+  HelpCircle, Filter, Send, Layers, AlertCircle, MessageSquare, TrendingUp, Trophy, UserCog, RefreshCw,
+  BellRing, Unlock, Lock, UserPlus
 } from 'lucide-react';
 import { db } from '../firebase';
-import { collection, getDocs, doc, updateDoc, query, orderBy } from 'firebase/firestore';
+import { collection, getDocs, doc, updateDoc, setDoc, addDoc, query, orderBy, serverTimestamp } from 'firebase/firestore';
 
 export default function ServantDashboard({ user }) {
   const [mainTab, setMainTab] = useState('users_hub'); // Default to users & role approvals
@@ -60,6 +61,132 @@ export default function ServantDashboard({ user }) {
   // Dynamic QR
   const todayStr = new Date().toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
   const [qrCodeData, setQrCodeData] = useState(`STJOHN-ATTENDANCE-${new Date().toISOString().split('T')[0]}`);
+
+  // Manual Attendance & Remote Code Access Control
+  const [manualAttendLoadingId, setManualAttendLoadingId] = useState(null);
+  const [manualAttendSuccessId, setManualAttendSuccessId] = useState(null);
+  const [remoteAccessTarget, setRemoteAccessTarget] = useState('all');
+  const [remoteAccessLoading, setRemoteAccessLoading] = useState(false);
+  const [remoteAccessMessage, setRemoteAccessMessage] = useState('');
+  const [selectedStudentForAccess, setSelectedStudentForAccess] = useState('');
+
+  // 1. Manual Attendance (لو نسي التليفون)
+  const handleManualAttendance = async (targetUser) => {
+    setManualAttendLoadingId(targetUser.id);
+    try {
+      const todayDateOnly = new Date().toISOString().split('T')[0];
+      // Record attendance in Firestore
+      await addDoc(collection(db, 'attendance'), {
+        userId: targetUser.id,
+        userName: targetUser.fullName,
+        phone: targetUser.phone,
+        grade: targetUser.grade || 'first',
+        date: todayDateOnly,
+        dateFormatted: todayStr,
+        time: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }),
+        type: 'manual_by_servant',
+        servantName: user.fullName || 'الخادم المسؤول',
+        pointsAwarded: 10,
+        createdAt: serverTimestamp()
+      });
+
+      // Update user points in users collection
+      const userRef = doc(db, 'users', targetUser.id);
+      await updateDoc(userRef, {
+        points: (targetUser.points || 0) + 10
+      });
+
+      // Send in-app notification to the student
+      await addDoc(collection(db, 'notifications'), {
+        targetUserId: targetUser.id,
+        title: 'تسجيل حضور يدوي في الخدمة ✓',
+        desc: `قام الخادم (${user.fullName || 'المسؤول'}) بتسجيل حضورك يدوياً لليوم وتمت إضافة 10 نقاط لرصيدك.`,
+        time: 'الآن',
+        createdAt: serverTimestamp()
+      });
+
+      setManualAttendSuccessId(targetUser.id);
+      setTimeout(() => setManualAttendSuccessId(null), 3000);
+      fetchAllUsers();
+    } catch (err) {
+      console.error('Error recording manual attendance:', err);
+      alert('حدث خطأ أثناء تسجيل الحضور يدوياً.');
+    } finally {
+      setManualAttendLoadingId(null);
+    }
+  };
+
+  // 2. Open Registration / Remote Code Access (للجميع أو لشخص محدد مع إرسال إشعار فوري)
+  const handleOpenCodeAccess = async () => {
+    setRemoteAccessLoading(true);
+    setRemoteAccessMessage('');
+    try {
+      const todayDateOnly = new Date().toISOString().split('T')[0];
+      const expiryTime = new Date(Date.now() + 60 * 60 * 1000); // 1 hour from now
+
+      if (remoteAccessTarget === 'all') {
+        // Open for all students
+        await setDoc(doc(db, 'service_settings', 'attendance_window'), {
+          isOpenForAll: true,
+          openedBy: user.fullName || 'أمين الخدمة',
+          date: todayDateOnly,
+          validUntil: expiryTime.toISOString(),
+          activeCode: qrCodeData,
+          updatedAt: serverTimestamp()
+        });
+
+        // Broadcast notification to ALL students
+        await addDoc(collection(db, 'notifications'), {
+          targetUserId: 'ALL',
+          title: '📢 تم فتح تسجيل الحضور الآن لجميع المخدومين!',
+          desc: `أتاح الخادم (${user.fullName || 'المسؤول'}) تسجيل الحضور بالكود لجميع الفصول. سارع بتسجيل حضورك الآن.`,
+          time: 'الآن',
+          createdAt: serverTimestamp()
+        });
+
+        setRemoteAccessMessage('تم فتح التسجيل لجميع المخدومين بنجاح وإرسال إشعار عام للكل! 📢');
+      } else {
+        // Open for specific student
+        if (!selectedStudentForAccess) {
+          alert('يرجى اختيار مخدوم أولاً من القائمة');
+          setRemoteAccessLoading(false);
+          return;
+        }
+
+        const targetSt = allUsers.find(u => u.id === selectedStudentForAccess);
+        const stName = targetSt ? targetSt.fullName : 'المخدوم';
+
+        await setDoc(doc(db, 'remote_access', selectedStudentForAccess), {
+          studentId: selectedStudentForAccess,
+          studentName: stName,
+          isOpen: true,
+          openedBy: user.fullName || 'الخادم المسؤول',
+          date: todayDateOnly,
+          validUntil: expiryTime.toISOString(),
+          activeCode: qrCodeData,
+          updatedAt: serverTimestamp()
+        });
+
+        // Send direct notification to this student
+        await addDoc(collection(db, 'notifications'), {
+          targetUserId: selectedStudentForAccess,
+          title: '🎯 تم فتح تسجيل الحضور الاستثنائي لحسابك!',
+          desc: `أتاح لك الخادم (${user.fullName || 'المسؤول'}) إمكانية تسجيل الحضور بالكود استثنائياً الآن. افتح صفحة الحضور للتسجيل فوراً.`,
+          time: 'الآن',
+          createdAt: serverTimestamp()
+        });
+
+        setRemoteAccessMessage(`تم فتح التسجيل الاستثنائي وإرسال إشعار مباشر لـ (${stName}) بنجاح! 🎯`);
+      }
+
+      setTimeout(() => setRemoteAccessMessage(''), 5000);
+    } catch (err) {
+      console.error('Error opening code access:', err);
+      alert('حدث خطأ أثناء فتح التسجيل بالكود.');
+    } finally {
+      setRemoteAccessLoading(false);
+    }
+  };
 
   // Subjects Managed by Grade
   const [subjectsByGrade, setSubjectsByGrade] = useState({
@@ -412,6 +539,7 @@ export default function ServantDashboard({ user }) {
                     <th className="py-3 px-3">رقم الهاتف</th>
                     <th className="py-3 px-3">الصفة الحالية</th>
                     <th className="py-3 px-3">المرحلة / النطاق</th>
+                    <th className="py-3 px-3">تسجيل حضور يدوي (نسي التليفون)</th>
                     <th className="py-3 px-3">تعديل الصفة (خادم / مخدوم)</th>
                     <th className="py-3 px-3">تعديل المرحلة</th>
                   </tr>
@@ -455,6 +583,34 @@ export default function ServantDashboard({ user }) {
                           {item.role === 'servant' 
                             ? (item.servantScope === 'all' ? 'أمين خدمة عام' : getGradeTitle(item.servantScope || 'all'))
                             : getGradeTitle(item.grade || 'first')}
+                        </td>
+                        <td className="py-3 px-3">
+                          {item.role === 'student' ? (
+                            <button
+                              onClick={() => handleManualAttendance(item)}
+                              disabled={manualAttendLoadingId === item.id}
+                              className={`font-bold text-[11px] px-3 py-1.5 rounded-xl transition-all shadow-2xs flex items-center gap-1 ${
+                                manualAttendSuccessId === item.id
+                                  ? 'bg-emerald-600 text-white'
+                                  : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300'
+                              }`}
+                              title="تسجيل حضور هذا المخدوم فوراً وإضافة 10 نقاط لحسابه مع إرسال إشعار"
+                            >
+                              {manualAttendSuccessId === item.id ? (
+                                <>
+                                  <Check className="w-3.5 h-3.5" />
+                                  <span>تم التسجيل ✓</span>
+                                </>
+                              ) : (
+                                <>
+                                  <UserPlus className="w-3.5 h-3.5 text-emerald-700" />
+                                  <span>{manualAttendLoadingId === item.id ? 'جاري...' : 'تسجيل حضور الآن'}</span>
+                                </>
+                              )}
+                            </button>
+                          ) : (
+                            <span className="text-slate-400 text-[10px]">—</span>
+                          )}
                         </td>
                         <td className="py-3 px-3">
                           <div className="flex items-center gap-1.5">
@@ -1072,9 +1228,9 @@ export default function ServantDashboard({ user }) {
             </div>
           </div>
 
-          <div className="bg-white border border-slate-200 rounded-3xl p-5 shadow-sm text-right flex flex-col justify-between text-xs">
+          <div className="bg-white border border-slate-200 rounded-3xl p-5 shadow-sm text-right flex flex-col justify-between text-xs space-y-4">
             <div>
-              <h4 className="font-extrabold text-slate-900 text-sm mb-3 flex items-center gap-2">
+              <h4 className="font-extrabold text-slate-900 text-sm mb-2 flex items-center gap-2">
                 <Clock className="w-4 h-4 text-maroon-800" />
                 دليل الحضور السريع
               </h4>
@@ -1082,8 +1238,91 @@ export default function ServantDashboard({ user }) {
                 اعرض هذا الكود عند مدخل قاعة الخدمة. يقوم المخدومون بمسحه عبر كاميرا هواتفهم المدمجة في حساباتهم وتسجيل الحضور وإضافة النقاط مباشرة.
               </p>
             </div>
-            <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200 text-slate-500 mt-4">
-              النافذة المعتمدة: 10:30 ص إلى 02:00 م.
+
+            {/* Remote Code Access Control (فتح التسجيل لشخص معين أو للجميع مع إرسال إشعار) */}
+            <div className="bg-gradient-to-br from-amber-50 to-orange-50/60 border border-amber-200/80 p-4 rounded-2xl space-y-3">
+              <div className="flex items-center gap-2">
+                <Unlock className="w-4 h-4 text-amber-700" />
+                <span className="font-extrabold text-slate-900 text-xs">فتح التسجيل بالكود الاستثنائي</span>
+              </div>
+              <p className="text-[11px] text-slate-600">
+                يمكنك كخادم فتح التسجيل بالكود الآن لشخص معين أو للجميع وإرسال تنبيه فوري له/لهم:
+              </p>
+
+              {remoteAccessMessage && (
+                <div className="bg-emerald-100/80 border border-emerald-300 text-emerald-800 text-[11px] p-2.5 rounded-xl font-bold flex items-center gap-1.5 animate-in fade-in">
+                  <CheckCircle className="w-4 h-4 text-emerald-700 shrink-0" />
+                  <span>{remoteAccessMessage}</span>
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <label className="block text-[11px] font-bold text-slate-700">لمن تريد فتح التسجيل؟</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setRemoteAccessTarget('all')}
+                    className={`py-2 px-3 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-1 ${
+                      remoteAccessTarget === 'all'
+                        ? 'bg-amber-600 text-white shadow-xs'
+                        : 'bg-white border border-slate-200 text-slate-700'
+                    }`}
+                  >
+                    <span>📢 للجميع</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRemoteAccessTarget('specific')}
+                    className={`py-2 px-3 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-1 ${
+                      remoteAccessTarget === 'specific'
+                        ? 'bg-amber-600 text-white shadow-xs'
+                        : 'bg-white border border-slate-200 text-slate-700'
+                    }`}
+                  >
+                    <span>🎯 لشخص معين</span>
+                  </button>
+                </div>
+
+                {remoteAccessTarget === 'specific' && (
+                  <div className="pt-1">
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">اختر المخدوم:</label>
+                    <select
+                      value={selectedStudentForAccess}
+                      onChange={(e) => setSelectedStudentForAccess(e.target.value)}
+                      className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-amber-600"
+                    >
+                      <option value="">-- اضغط لاختيار المخدوم --</option>
+                      {allUsers
+                        .filter(u => u.role === 'student')
+                        .map(st => (
+                          <option key={st.id} value={st.id}>
+                            {st.fullName} ({st.phone})
+                          </option>
+                        ))}
+                    </select>
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  onClick={handleOpenCodeAccess}
+                  disabled={remoteAccessLoading}
+                  className="w-full bg-maroon-800 hover:bg-maroon-700 text-white font-bold py-2 px-3 rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5 text-xs mt-2"
+                >
+                  <BellRing className="w-3.5 h-3.5" />
+                  <span>
+                    {remoteAccessLoading
+                      ? 'جاري الفتح والإشعار...'
+                      : remoteAccessTarget === 'all'
+                        ? 'فتح التسجيل للجميع وإرسال إشعار عام 📢'
+                        : 'فتح التسجيل وإرسال تنبيه للمخدوم 🎯'}
+                  </span>
+                </button>
+              </div>
+            </div>
+
+            <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200 text-slate-500">
+              النافذة المعتمدة العادية: 10:30 ص إلى 02:00 م.
             </div>
           </div>
         </div>
