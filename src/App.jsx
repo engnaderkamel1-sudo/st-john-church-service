@@ -5,6 +5,8 @@ import AuthModal from './components/AuthModal';
 import StudentDashboard from './components/StudentDashboard';
 import ServantDashboard from './components/ServantDashboard';
 
+import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore';
+
 export default function App() {
   const [currentUser, setCurrentUser] = useState(null);
   const [authModalOpen, setAuthModalOpen] = useState(false);
@@ -14,6 +16,29 @@ export default function App() {
   const notificationRef = useRef(null);
 
   const [notifications, setNotifications] = useState([]);
+
+  // Real-time Firestore Notifications for Current User
+  useEffect(() => {
+    if (!currentUser) {
+      setNotifications([]);
+      return;
+    }
+
+    const notifRef = collection(db, 'notifications');
+    const q = query(
+      notifRef,
+      where('targetUserId', 'in', ['ALL', currentUser.id])
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const list = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+      setNotifications(list);
+    }, (err) => {
+      console.log('Notifications listen error:', err);
+    });
+
+    return () => unsubscribe();
+  }, [currentUser]);
 
   // Close notifications dropdown when clicking outside
   useEffect(() => {
