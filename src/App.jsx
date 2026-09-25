@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Church, BookOpen, QrCode, ShieldCheck, HeartHandshake, LogOut, CheckCircle2, User, Bell, ChevronLeft, Sparkles, RefreshCw, AlertCircle } from 'lucide-react';
+import { Church, BookOpen, QrCode, ShieldCheck, HeartHandshake, LogOut, CheckCircle2, User, Bell, ChevronLeft, Sparkles, RefreshCw, AlertCircle, ArrowLeftRight, Eye } from 'lucide-react';
 import { db } from './firebase';
 import AuthModal from './components/AuthModal';
 import StudentDashboard from './components/StudentDashboard';
@@ -16,6 +16,7 @@ export default function App() {
   const notificationRef = useRef(null);
 
   const [notifications, setNotifications] = useState([]);
+  const [servantPreviewMode, setServantPreviewMode] = useState(false); // خادم يجرب كـ مخدوم بنفس حسابه في الفترة التجريبية
 
   // Real-time Firestore Notifications for Current User
   useEffect(() => {
@@ -247,33 +248,73 @@ export default function App() {
               )}
             </div>
 
-            {/* User Logged in badge + Logout */}
+            {/* User Logged in badge + Role Switcher (للخدام للتجربة) + Logout */}
             {currentUser && (
-              <div className="flex items-center gap-2 bg-slate-100 border border-slate-200 py-1 px-3 rounded-xl">
-                <div className="text-right hidden sm:block">
-                  <div className="text-xs font-bold text-slate-800">{currentUser.fullName}</div>
-                  <div className="text-[10px] text-maroon-800 font-semibold">
-                    {currentUser.role === 'admin' ? 'مدير المنظومة (مسؤول عام)' : currentUser.role === 'student' ? getGradeName(currentUser.grade) : 'خادم'}
+              <div className="flex items-center gap-2">
+                {/* Switcher Button for Servants to test Student Mode */}
+                {currentUser.role !== 'student' && (
+                  <button
+                    type="button"
+                    onClick={() => setServantPreviewMode(prev => !prev)}
+                    className={`text-xs font-bold py-1.5 px-3 rounded-xl transition-all shadow-xs flex items-center gap-1.5 border ${
+                      servantPreviewMode
+                        ? 'bg-amber-500 hover:bg-amber-600 text-maroon-950 border-amber-400 animate-pulse'
+                        : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200'
+                    }`}
+                    title="التبديل بين شاشة الخادم وتجربة شاشة المخدوم بنفس الحساب"
+                  >
+                    <ArrowLeftRight className="w-3.5 h-3.5" />
+                    <span>{servantPreviewMode ? 'العودة لحساب الخادم ↩' : 'تجربة كـ مخدوم 🎓'}</span>
+                  </button>
+                )}
+
+                <div className="flex items-center gap-2 bg-slate-100 border border-slate-200 py-1 px-3 rounded-xl">
+                  <div className="text-right hidden sm:block">
+                    <div className="text-xs font-bold text-slate-800">{currentUser.fullName}</div>
+                    <div className="text-[10px] text-maroon-800 font-semibold">
+                      {servantPreviewMode 
+                        ? 'وضع التجربة (كمخدوم)' 
+                        : currentUser.role === 'admin' 
+                        ? 'مدير المنظومة (مسؤول عام)' 
+                        : currentUser.role === 'student' 
+                        ? getGradeName(currentUser.grade) 
+                        : 'خادم'}
+                    </div>
                   </div>
+                  <button
+                    onClick={handleLogout}
+                    title="تسجيل الخروج"
+                    className="p-1.5 text-slate-500 hover:text-red-600 hover:bg-white rounded-lg transition-colors"
+                  >
+                    <LogOut className="w-4 h-4" />
+                  </button>
                 </div>
-                <button
-                  onClick={handleLogout}
-                  title="تسجيل الخروج"
-                  className="p-1.5 text-slate-500 hover:text-red-600 hover:bg-white rounded-lg transition-colors"
-                >
-                  <LogOut className="w-4 h-4" />
-                </button>
               </div>
             )}
           </div>
         </div>
       </header>
 
+      {/* Preview Mode Notification Banner */}
+      {currentUser && currentUser.role !== 'student' && servantPreviewMode && (
+        <div className="bg-amber-500 text-maroon-950 px-4 py-2 text-center text-xs font-bold border-b border-amber-600 shadow-sm flex items-center justify-center gap-2">
+          <Eye className="w-4 h-4" />
+          <span>أنت الآن في وضع تجربة شاشة المخدوم بنفس حسابك كخادم. يمكنك تجربة تسجيل الحضور والنوتة الروحية والامتحانات كأنك مخدوم تماماً.</span>
+          <button
+            type="button"
+            onClick={() => setServantPreviewMode(false)}
+            className="underline mr-2 hover:text-white"
+          >
+            إلغاء وضع التجربة
+          </button>
+        </div>
+      )}
+
       {/* Main Container */}
       <main className="flex-1 max-w-5xl mx-auto px-4 py-8 w-full flex flex-col justify-center">
         {currentUser ? (
-          currentUser.role === 'student' ? (
-            <StudentDashboard user={currentUser} />
+          currentUser.role === 'student' || servantPreviewMode ? (
+            <StudentDashboard user={{ ...currentUser, role: 'student', grade: currentUser.grade || 'first' }} />
           ) : (
             <ServantDashboard user={currentUser} />
           )
