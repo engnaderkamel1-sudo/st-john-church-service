@@ -114,7 +114,7 @@ export default function StudentDashboard({ user }) {
   const currentDayDiary = diaryRecords[selectedDiaryDate] || { baker: false, ghoroub: false, nowm: false, bible: false, communion: false, confession: false };
 
   const getGradeTitle = (g) => {
-    const titles = { first: 'سنة أولى ثانوي', second: 'سنة ثانية ثانوي', third: 'سنة ثالثة ثانوي', elisha: 'فصل أليشع (إعداد خدام)' };
+    const titles = { first: 'سنة أولى', second: 'سنة ثانية', third: 'سنة ثالثة', elisha: 'فصل أليشع (إعداد خدام)' };
     return titles[g] || g;
   };
 
