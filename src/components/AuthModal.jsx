@@ -374,24 +374,6 @@ export default function AuthModal({ isOpen, onClose, initialRole = 'student', in
               </div>
             )}
 
-            {/* Scope for servant */}
-            {!isLogin && role === 'servant' && (
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">الفصل المسؤول عنه</label>
-                <select
-                  value={servantScope}
-                  onChange={(e) => setServantScope(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:border-maroon-700 focus:bg-white transition-colors"
-                >
-                  <option value="all">أمين خدمة عام (جميع المراحل)</option>
-                  <option value="first">سنة أولى ثانوي</option>
-                  <option value="second">سنة ثانية ثانوي</option>
-                  <option value="third">سنة ثالثة ثانوي</option>
-                  <option value="elisha">فصل أليشع (إعداد خدام)</option>
-                </select>
-              </div>
-            )}
-
             <button
               type="submit"
               disabled={loading}
