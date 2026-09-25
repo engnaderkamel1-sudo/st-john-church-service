@@ -120,13 +120,13 @@ export default function App() {
     return map[grade] || grade || 'عام';
   };
 
-  // 3-Second Splash Screen State
+  // 5-Second Splash Screen State
   const [showSplash, setShowSplash] = useState(true);
   const [splashProgress, setSplashProgress] = useState(0);
 
   useEffect(() => {
     const startTime = Date.now();
-    const duration = 3000; // 3 seconds
+    const duration = 5000; // 5 seconds
 
     const timer = setInterval(() => {
       const elapsed = Date.now() - startTime;
@@ -144,12 +144,12 @@ export default function App() {
 
   return (
     <>
-      {/* 3-Second Full Screen Splash Screen */}
+      {/* 5-Second Full Screen Splash Screen */}
       {showSplash && (
         <div className="fixed inset-0 z-[9999] bg-gradient-to-b from-slate-900 via-maroon-950 to-slate-950 text-white flex flex-col items-center justify-between p-8 font-cairo select-none animate-in fade-in duration-300">
           <div className="w-full flex justify-center pt-4">
             <span className="text-xs tracking-wider text-gold-300/80 font-semibold border border-gold-500/20 bg-gold-500/10 px-4 py-1 rounded-full">
-              مطرانية المعادي وتوابعها
+              مطرانية المعادي
             </span>
           </div>
 
@@ -176,7 +176,7 @@ export default function App() {
           </div>
 
           {/* Bottom Progress Bar & Loading */}
-          <div className="w-full max-w-xs space-y-3 pb-6">
+          <div className="w-full max-w-sm space-y-3 pb-6">
             <div className="flex items-center justify-between text-xs text-gold-200/90 font-bold px-1">
               <span>جاري التحميل...</span>
               <span className="font-mono">{splashProgress}%</span>
@@ -187,8 +187,9 @@ export default function App() {
                 style={{ width: `${splashProgress}%` }}
               ></div>
             </div>
-            <p className="text-[11px] text-center text-slate-400">
-              «أَمِينٌ هُوَ الرَّبُّ الَّذِي سَيُثَبِّتُكُمْ وَيَحْفَظُكُمْ»
+            <p className="text-[11px] text-center text-gold-200/80 leading-relaxed font-medium">
+              «لَيْسَ أَنْتُمُ اخْتَرْتُمُونِي بَلْ أَنَا اخْتَرْتُكُمْ وَأَقَمْتُكُمْ لِتَذْهَبُوا وَتَأْتُوا بِثَمَرٍ»
+              <span className="block text-[10px] text-slate-400 mt-0.5">(يوحنا 15: 16)</span>
             </p>
           </div>
         </div>
