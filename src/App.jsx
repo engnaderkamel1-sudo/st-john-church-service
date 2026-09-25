@@ -95,8 +95,81 @@ export default function App() {
     return map[grade] || grade || 'عام';
   };
 
+  // 3-Second Splash Screen State
+  const [showSplash, setShowSplash] = useState(true);
+  const [splashProgress, setSplashProgress] = useState(0);
+
+  useEffect(() => {
+    const startTime = Date.now();
+    const duration = 3000; // 3 seconds
+
+    const timer = setInterval(() => {
+      const elapsed = Date.now() - startTime;
+      const progress = Math.min(Math.round((elapsed / duration) * 100), 100);
+      setSplashProgress(progress);
+
+      if (elapsed >= duration) {
+        clearInterval(timer);
+        setShowSplash(false);
+      }
+    }, 50);
+
+    return () => clearInterval(timer);
+  }, []);
+
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-800 flex flex-col justify-between selection:bg-gold-500 selection:text-maroon-950 font-cairo">
+    <>
+      {/* 3-Second Full Screen Splash Screen */}
+      {showSplash && (
+        <div className="fixed inset-0 z-[9999] bg-gradient-to-b from-slate-900 via-maroon-950 to-slate-950 text-white flex flex-col items-center justify-between p-8 font-cairo select-none animate-in fade-in duration-300">
+          <div className="w-full flex justify-center pt-4">
+            <span className="text-xs tracking-wider text-gold-300/80 font-semibold border border-gold-500/20 bg-gold-500/10 px-4 py-1 rounded-full">
+              مطرانية المعادي وتوابعها
+            </span>
+          </div>
+
+          {/* Center Logo & Titles */}
+          <div className="flex flex-col items-center text-center space-y-6 max-w-sm px-4">
+            <div className="relative group">
+              <div className="absolute -inset-4 bg-gradient-to-r from-gold-500/30 to-amber-600/30 rounded-full blur-xl animate-pulse"></div>
+              <img 
+                src="/church_logo.jpg" 
+                alt="شعار كنيسة القديس ماريوحنا المعمدان" 
+                className="w-40 h-40 sm:w-48 sm:h-48 rounded-full border-4 border-gold-400 object-cover shadow-2xl relative z-10 ring-4 ring-gold-400/20"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <h2 className="text-lg sm:text-xl font-bold text-slate-100">
+                كنيسة القديس ماريوحنا المعمدان بالمعراج
+              </h2>
+              <div className="h-0.5 w-16 bg-gold-400/60 mx-auto rounded-full"></div>
+              <h1 className="text-2xl sm:text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-gold-200 via-gold-400 to-amber-200">
+                فصل أليشع النبي وإعداد خدام
+              </h1>
+            </div>
+          </div>
+
+          {/* Bottom Progress Bar & Loading */}
+          <div className="w-full max-w-xs space-y-3 pb-6">
+            <div className="flex items-center justify-between text-xs text-gold-200/90 font-bold px-1">
+              <span>جاري التحميل...</span>
+              <span className="font-mono">{splashProgress}%</span>
+            </div>
+            <div className="w-full h-2 bg-slate-800/90 rounded-full overflow-hidden p-0.5 border border-gold-500/30 shadow-inner">
+              <div 
+                className="h-full bg-gradient-to-r from-gold-400 via-amber-400 to-gold-300 rounded-full transition-all duration-75 ease-out shadow-sm"
+                style={{ width: `${splashProgress}%` }}
+              ></div>
+            </div>
+            <p className="text-[11px] text-center text-slate-400">
+              «أَمِينٌ هُوَ الرَّبُّ الَّذِي سَيُثَبِّتُكُمْ وَيَحْفَظُكُمْ»
+            </p>
+          </div>
+        </div>
+      )}
+
+      <div className="min-h-screen bg-slate-50 text-slate-800 flex flex-col justify-between selection:bg-gold-500 selection:text-maroon-950 font-cairo">
       {/* Light Mode Royal Header */}
       <header className="py-3.5 px-4 border-b border-slate-200/80 bg-white shadow-sm sticky top-0 z-40 backdrop-blur-md">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
@@ -244,5 +317,6 @@ export default function App() {
         onLoginSuccess={handleLoginSuccess}
       />
     </div>
+    </>
   );
 }
