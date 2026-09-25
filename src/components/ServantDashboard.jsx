@@ -343,9 +343,9 @@ export default function ServantDashboard({ user }) {
 
   const getGradeTitle = (g) => {
     const titles = {
-      first: 'سنة أولى ثانوي',
-      second: 'سنة ثانية ثانوي',
-      third: 'سنة ثالثة ثانوي',
+      first: 'سنة أولى',
+      second: 'سنة ثانية',
+      third: 'سنة ثالثة',
       elisha: 'فصل أليشع (إعداد خدام)'
     };
     return titles[g] || g;
@@ -647,9 +647,9 @@ export default function ServantDashboard({ user }) {
                             disabled={roleUpdatingId === item.id}
                             className="bg-white border border-slate-200 rounded-xl px-2.5 py-1 text-xs focus:outline-none focus:border-maroon-800"
                           >
-                            <option value="first">سنة أولى ثانوي</option>
-                            <option value="second">سنة ثانية ثانوي</option>
-                            <option value="third">سنة ثالثة ثانوي</option>
+                            <option value="first">سنة أولى</option>
+                            <option value="second">سنة ثانية</option>
+                            <option value="third">سنة ثالثة</option>
                             <option value="elisha">فصل أليشع (إعداد خدام)</option>
                             {item.role === 'servant' && <option value="all">أمين عام (كافة المراحل)</option>}
                           </select>
