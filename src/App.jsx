@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Church, BookOpen, QrCode, ShieldCheck, HeartHandshake, LogOut, CheckCircle2, User, Sparkles, Bell } from 'lucide-react';
+import { Church, BookOpen, QrCode, ShieldCheck, HeartHandshake, LogOut, CheckCircle2, User, Bell, ChevronLeft } from 'lucide-react';
 import { db } from './firebase';
 import AuthModal from './components/AuthModal';
 import StudentDashboard from './components/StudentDashboard';
@@ -16,7 +16,7 @@ export default function App() {
     { id: 2, title: 'امتحان جديد متاح', desc: 'تم فتح امتحان منتصف الفصل لمرحلتك', time: 'أمس' }
   ];
 
-  // Check saved session in localStorage
+  // Load saved session
   useEffect(() => {
     const saved = localStorage.getItem('church_user');
     if (saved) {
@@ -55,28 +55,29 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-between selection:bg-gold-500 selection:text-maroon-950 font-cairo">
-      {/* Header */}
-      <header className="py-4 px-4 border-b border-slate-800 bg-maroon-950 sticky top-0 z-40">
-        <div className="max-w-6xl mx-auto flex items-center justify-between">
+      {/* Clean Pro Max Header (No duplicate buttons) */}
+      <header className="py-3 px-4 border-b border-slate-800/80 bg-maroon-950/90 backdrop-blur-md sticky top-0 z-40">
+        <div className="max-w-5xl mx-auto flex items-center justify-between">
+          {/* Logo & Identity */}
           <div className="flex items-center gap-3">
             <img 
               src="/church_logo.jpg" 
-              alt="كنيسة القديس ماريوحنا المعمدان" 
-              className="w-12 h-12 rounded-full border-2 border-gold-400 object-cover shadow"
+              alt="شعار كنيسة القديس ماريوحنا المعمدان" 
+              className="w-11 h-11 rounded-full border-2 border-gold-400 object-cover shadow"
             />
             <div>
-              <h1 className="text-lg md:text-xl font-bold text-gold-300">كنيسة ماريوحنا المعمدان بالمعراج</h1>
-              <p className="text-xs text-slate-300">مطرانية المعادي - منصة الخدمة</p>
+              <h1 className="text-base md:text-lg font-bold text-gold-300 leading-tight">كنيسة ماريوحنا المعمدان بالمعراج</h1>
+              <p className="text-[11px] text-slate-300">مطرانية الأقباط الأرثوذكس بالمعادي</p>
             </div>
           </div>
 
-          {/* User Status / Login Buttons / Notifications */}
-          <div className="flex items-center gap-3">
+          {/* Right Action Icons (Notifications & Profile/Logout) */}
+          <div className="flex items-center gap-2">
             {/* Notification Bell */}
             <div className="relative">
               <button
                 onClick={() => setShowNotifications(!showNotifications)}
-                className="p-2 text-slate-300 hover:text-gold-300 hover:bg-slate-800/80 rounded-xl transition-colors relative"
+                className="p-2 text-slate-300 hover:text-gold-300 hover:bg-slate-800/60 rounded-xl transition-colors relative"
                 title="التنبيهات"
               >
                 <Bell className="w-5 h-5" />
@@ -84,7 +85,7 @@ export default function App() {
               </button>
 
               {showNotifications && (
-                <div className="absolute left-0 sm:right-0 sm:left-auto mt-2 w-72 bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl p-4 z-50 text-right space-y-3">
+                <div className="absolute left-0 mt-2 w-72 bg-slate-900 border border-slate-700/80 rounded-2xl shadow-2xl p-4 z-50 text-right space-y-3">
                   <div className="font-bold text-xs text-gold-300 border-b border-slate-800 pb-2">
                     التنبيهات والإشعارات
                   </div>
@@ -99,16 +100,14 @@ export default function App() {
               )}
             </div>
 
-            {currentUser ? (
-              <div className="flex items-center gap-3 bg-slate-900 border border-slate-700 py-1.5 px-3 rounded-xl">
-                <div className="text-right">
-                  <div className="text-xs font-bold text-white flex items-center gap-1">
-                    <span>{currentUser.fullName}</span>
-                    <span className="text-[10px] bg-gold-500/20 text-gold-300 px-1.5 py-0.5 rounded">
-                      {currentUser.role === 'student' ? getGradeName(currentUser.grade) : 'خادم'}
-                    </span>
+            {/* User Logged in badge + Logout */}
+            {currentUser && (
+              <div className="flex items-center gap-2 bg-slate-900 border border-slate-800 py-1 px-2.5 rounded-xl">
+                <div className="text-right hidden sm:block">
+                  <div className="text-xs font-bold text-white">{currentUser.fullName}</div>
+                  <div className="text-[10px] text-gold-400">
+                    {currentUser.role === 'student' ? getGradeName(currentUser.grade) : 'خادم'}
                   </div>
-                  <div className="text-[11px] text-slate-400">{currentUser.phone}</div>
                 </div>
                 <button
                   onClick={handleLogout}
@@ -118,28 +117,13 @@ export default function App() {
                   <LogOut className="w-4 h-4" />
                 </button>
               </div>
-            ) : (
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => openAuth('student')}
-                  className="bg-gold-500 hover:bg-gold-400 text-maroon-950 font-bold text-xs md:text-sm px-3.5 py-2 rounded-xl transition-all shadow"
-                >
-                  دخول المخدومين
-                </button>
-                <button
-                  onClick={() => openAuth('servant')}
-                  className="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-medium text-xs md:text-sm px-3.5 py-2 rounded-xl transition-all"
-                >
-                  دخول الخدام
-                </button>
-              </div>
             )}
           </div>
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="flex-1 max-w-6xl mx-auto px-4 py-8 w-full flex flex-col items-center justify-center">
+      {/* Main Container */}
+      <main className="flex-1 max-w-5xl mx-auto px-4 py-8 w-full flex flex-col justify-center">
         {currentUser ? (
           currentUser.role === 'student' ? (
             <StudentDashboard user={currentUser} />
@@ -147,43 +131,71 @@ export default function App() {
             <ServantDashboard user={currentUser} />
           )
         ) : (
-          // Landing View
-          <div className="w-full max-w-3xl text-center">
-            <h2 className="text-2xl md:text-4xl font-extrabold text-white mb-4">
-              منصة خدمة كنيسة ماريوحنا المعمدان بالمعراج
-            </h2>
-            <p className="text-slate-400 text-sm md:text-base mb-8 max-w-xl mx-auto">
-              تسجيل الحضور الذكي بالـ QR، متابعة الإنجاز الروحي والصلوات، وإدارة المناهج والامتحانات.
-            </p>
+          /* Landing Screen: Single, focused entry point without redundancy */
+          <div className="w-full max-w-2xl mx-auto text-center space-y-8 py-6">
+            <div>
+              <span className="inline-block bg-maroon-900/60 border border-gold-400/30 text-gold-300 px-3.5 py-1 rounded-full text-xs font-semibold mb-3">
+                منصة خدمة الشباب ومدارس الأحد
+              </span>
+              <h2 className="text-2xl sm:text-4xl font-extrabold text-white tracking-tight leading-snug">
+                كنيسة القديس ماريوحنا المعمدان
+              </h2>
+              <p className="text-slate-400 text-xs sm:text-sm mt-2 max-w-md mx-auto">
+                تسجيل الحضور بالكيو آر، ومتابعة الإنجاز الروحي اليومي، والامتحانات والمناهج.
+              </p>
+            </div>
 
-            {/* Entry Cards */}
+            {/* The ONLY Two Clear Entry Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-right">
+              {/* Youth / Student */}
               <div 
                 onClick={() => openAuth('student')}
-                className="bg-slate-900 border border-slate-800 hover:border-gold-500/50 p-6 rounded-2xl cursor-pointer transition-all hover:shadow-lg group"
+                className="bg-slate-900/90 border border-slate-800 hover:border-gold-500/60 p-6 rounded-2xl cursor-pointer transition-all hover:shadow-xl group flex flex-col justify-between"
               >
-                <div className="w-10 h-10 bg-gold-500 text-maroon-950 rounded-xl flex items-center justify-center font-bold mb-4">
-                  <QrCode className="w-5 h-5" />
+                <div>
+                  <div className="w-12 h-12 bg-gold-500 text-maroon-950 rounded-xl flex items-center justify-center font-bold mb-4 group-hover:scale-105 transition-transform shadow-md">
+                    <QrCode className="w-6 h-6" />
+                  </div>
+                  <h3 className="text-lg font-bold text-white mb-1 group-hover:text-gold-300 transition-colors">بوابة المخدومين</h3>
+                  <p className="text-xs text-slate-400 leading-relaxed mb-4">
+                    حضور الخدمة، دفتر الأجبية والإنجيل، والامتحانات والدرجات.
+                  </p>
+                  <div className="flex flex-wrap gap-1.5 mb-4">
+                    <span className="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded">سنة أولى</span>
+                    <span className="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded">سنة ثانية</span>
+                    <span className="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded">سنة ثالثة</span>
+                    <span className="text-[10px] bg-maroon-900 text-gold-300 px-2 py-0.5 rounded font-semibold">فصل أليشع</span>
+                  </div>
                 </div>
-                <h3 className="text-lg font-bold text-white mb-1 group-hover:text-gold-300">بوابة المخدومين</h3>
-                <p className="text-xs text-slate-400 mb-4">
-                  (سنة أولى - سنة ثانية - سنة ثالثة - فصل أليشع)
-                </p>
-                <span className="text-xs font-semibold text-gold-400">تسجيل الدخول / فتح الحساب ←</span>
+                <div className="flex items-center justify-between text-xs font-bold text-gold-400 pt-3 border-t border-slate-800">
+                  <span>الدخول / إنشاء حساب</span>
+                  <ChevronLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+                </div>
               </div>
 
+              {/* Servants */}
               <div 
                 onClick={() => openAuth('servant')}
-                className="bg-slate-900 border border-slate-800 hover:border-maroon-600/70 p-6 rounded-2xl cursor-pointer transition-all hover:shadow-lg group"
+                className="bg-slate-900/90 border border-slate-800 hover:border-maroon-600/70 p-6 rounded-2xl cursor-pointer transition-all hover:shadow-xl group flex flex-col justify-between"
               >
-                <div className="w-10 h-10 bg-maroon-800 text-gold-300 rounded-xl flex items-center justify-center font-bold mb-4 border border-gold-400/30">
-                  <ShieldCheck className="w-5 h-5" />
+                <div>
+                  <div className="w-12 h-12 bg-maroon-800 text-gold-300 border border-gold-400/30 rounded-xl flex items-center justify-center font-bold mb-4 group-hover:scale-105 transition-transform shadow-md">
+                    <ShieldCheck className="w-6 h-6" />
+                  </div>
+                  <h3 className="text-lg font-bold text-white mb-1 group-hover:text-gold-300 transition-colors">بوابة الخدام</h3>
+                  <p className="text-xs text-slate-400 leading-relaxed mb-4">
+                    إدارة الفصول، استخراج كود الحضور، وتصحيح ورصد الامتحانات.
+                  </p>
+                  <div className="flex flex-wrap gap-1.5 mb-4">
+                    <span className="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded">كود الحضور</span>
+                    <span className="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded">تصحيح المقالي</span>
+                    <span className="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded">رصد ورقي</span>
+                  </div>
                 </div>
-                <h3 className="text-lg font-bold text-white mb-1 group-hover:text-gold-300">بوابة الخدام</h3>
-                <p className="text-xs text-slate-400 mb-4">
-                  إدارة بيانات المخدومين، كود الحضور، والامتحانات.
-                </p>
-                <span className="text-xs font-semibold text-gold-400">دخول الخدام وأمناء الخدمة ←</span>
+                <div className="flex items-center justify-between text-xs font-bold text-gold-400 pt-3 border-t border-slate-800">
+                  <span>دخول الخدام وأمناء الفصول</span>
+                  <ChevronLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+                </div>
               </div>
             </div>
           </div>
