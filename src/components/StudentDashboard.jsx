@@ -18,13 +18,10 @@ export default function StudentDashboard({ user }) {
   // Attendance
   const [scanning, setScanning] = useState(false);
   const [attendanceStatus, setAttendanceStatus] = useState(null);
-  const [attendanceRecords, setAttendanceRecords] = useState([
-    { id: '1', date: 'الجمعة الماضية', status: 'حاضر', time: '11:15 ص', points: 10 },
-    { id: '2', date: 'الجمعة قبل الماضية', status: 'حاضر', time: '10:45 ص', points: 10 }
-  ]);
+  const [attendanceRecords, setAttendanceRecords] = useState([]);
 
   // Points & Profile
-  const [points, setPoints] = useState(user.points || 120);
+  const [points, setPoints] = useState(user.points || 0);
 
   // Spiritual Diary: Allowed editing ONLY for TODAY and YESTERDAY
   const todayDateStr = new Date().toISOString().split('T')[0];
@@ -38,126 +35,25 @@ export default function StudentDashboard({ user }) {
   // Stored diary by date
   const [diaryRecords, setDiaryRecords] = useState({
     [todayDateStr]: { baker: false, ghoroub: false, nowm: false, bible: false, communion: false, confession: false },
-    [yesterdayDateStr]: { baker: true, ghoroub: false, nowm: true, bible: true, communion: false, confession: false },
-    '2026-09-23': { baker: true, ghoroub: true, nowm: true, bible: true, communion: false, confession: false },
-    '2026-09-22': { baker: false, ghoroub: false, nowm: true, bible: true, communion: false, confession: false },
+    [yesterdayDateStr]: { baker: false, ghoroub: false, nowm: false, bible: false, communion: false, confession: false }
   });
 
   // Curriculum by Subjects
   const [selectedSubject, setSelectedSubject] = useState(null);
-  const subjectsData = [
-    {
-      id: 'sub-1',
-      name: 'العقيدة المسيحية',
-      code: 'DOGMA',
-      description: 'دراسة أسرار الكنيسة وطبيعة السيد المسيح',
-      materialsCount: 3,
-      materials: [
-        { id: 'm1', title: 'مذكرة سر التجسد الإلهي والفداء', size: '2.4 MB', type: 'PDF', date: '2026-09-10' },
-        { id: 'm2', title: 'ملخص الرد على البدع والهرطقات الحديثة', size: '1.8 MB', type: 'PDF', date: '2026-09-17' },
-        { id: 'm3', title: 'أسئلة تدريبية وتأملات في قانون الإيمان', size: '1.2 MB', type: 'PDF', date: '2026-09-22' }
-      ]
-    },
-    {
-      id: 'sub-2',
-      name: 'تاريخ الكنيسة',
-      code: 'CH_HIST',
-      description: 'تاريخ المجامع المسكونية وآباء الكنيسة والشهداء',
-      materialsCount: 2,
-      materials: [
-        { id: 'm4', title: 'مجمع نيقية وسيرة القديس أثناسيوس الرسولي', size: '3.1 MB', type: 'PDF', date: '2026-09-12' },
-        { id: 'm5', title: 'عصر الاستشهاد وتاريخ البطاركة العظام', size: '2.7 MB', type: 'PDF', date: '2026-09-19' }
-      ]
-    },
-    {
-      id: 'sub-3',
-      name: 'طقوس الكنيسة القبطية',
-      code: 'RITUALS',
-      description: 'ألحان وطقوس القداس الإلهي وصلوات التسبحة',
-      materialsCount: 2,
-      materials: [
-        { id: 'm6', title: 'مذكرة طقس القداس الباسيلي خطوة بخطوة', size: '4.0 MB', type: 'PDF', date: '2026-09-08' },
-        { id: 'm7', title: 'رموز الهيكل وأواني الخدمة المقدسة', size: '1.9 MB', type: 'PDF', date: '2026-09-15' }
-      ]
-    },
-    {
-      id: 'sub-4',
-      name: user.grade === 'elisha' ? 'مهارات إعداد الخادم' : 'دراسات العهد القديم',
-      code: user.grade === 'elisha' ? 'SERVANT_SKILLS' : 'OT_STUDIES',
-      description: user.grade === 'elisha' ? 'سيكولوجية المخدومين والتحضير العملي للدرس' : 'النبوات والرموز في أسفار العهد القديم',
-      materialsCount: 2,
-      materials: [
-        { id: 'm8', title: user.grade === 'elisha' ? 'مذكرة فن إلقاء الدروس وسيكولوجية سن المراهقة' : 'سفر التكوين والبدايات الأولى', size: '3.5 MB', type: 'PDF', date: '2026-09-14' },
-        { id: 'm9', title: user.grade === 'elisha' ? 'مهام الافتقاد والعمل الرعوي الميداني' : 'سفر الخروج ورموز الفصح المسيحي', size: '2.2 MB', type: 'PDF', date: '2026-09-21' }
-      ]
-    }
-  ];
+  const [subjectsData, setSubjectsData] = useState([]);
 
   // Exams
   const [activeExam, setActiveExam] = useState(null);
   const [examAnswers, setExamAnswers] = useState({});
   const [examResult, setExamResult] = useState(null);
   const [completedExams, setCompletedExams] = useState({});
-
-  const availableExams = [
-    {
-      id: 'ex-1',
-      title: 'امتحان منتصف الفصل في العقيدة وتاريخ الكنيسة',
-      subject: 'العقيدة المسيحية',
-      durationMinutes: 20,
-      totalScore: 30,
-      questions: [
-        {
-          id: 'q1',
-          type: 'mcq',
-          questionText: 'ما هو سر الأسرار وينبوع كل النعم الكنسية؟',
-          options: ['سر المعمودية', 'سر الإفخارستيا (التناول)', 'سر التوبة والاعتراف', 'سر الزيجة'],
-          correctAnswer: 'سر الإفخارستيا (التناول)',
-          points: 10
-        },
-        {
-          id: 'q2',
-          type: 'true_false',
-          questionText: 'صلاة باكر في الأجبية تُصلى تذكاراً لقيامة السيد المسيح من بين الأموات.',
-          options: ['صح', 'خطأ'],
-          correctAnswer: 'صح',
-          points: 10
-        },
-        {
-          id: 'q3',
-          type: 'essay',
-          questionText: 'اكتب باختصار عن أهمية قراءة الكتاب المقدس يومياً في حياة الشاب المسيحي.',
-          points: 10
-        }
-      ]
-    }
-  ];
+  const [availableExams, setAvailableExams] = useState([]);
 
   // Tasks (Daily / Weekly Questions)
-  const [tasks, setTasks] = useState([
-    {
-      id: 't1',
-      title: 'سؤال اليوم الروحي: آية الحفظ اليومية',
-      description: 'احفظ آية: "تَوَكَّلْ عَلَى الرَّبِّ بِكُلِّ قَلْبِكَ، وَعَلَى فَهْمِكَ لاَ تَعْتَمِدْ" (أم 3: 5)',
-      deadline: 'اليوم حتى 11:59 م',
-      points: 10,
-      completed: false
-    },
-    {
-      id: 't2',
-      title: 'تاسك الأسبوع: قراءة الأصحاح 15 من إنجيل لوقا',
-      description: 'اقرأ مثل الابن الضال واكتب فكرة واحدة لمست قلبك في تأمل شخصي.',
-      deadline: 'قبل الجمعة القادمة',
-      points: 20,
-      completed: true
-    }
-  ]);
+  const [tasks, setTasks] = useState([]);
 
   // Announcements
-  const announcements = [
-    { id: 1, title: 'موعد الخدمة الأسبوعية', text: 'نلتقي الجمعة القادمة في موعدنا المعتاد. يرجى الحضور والتسجيل من 10:30 صباحاً.', date: 'اليوم', sender: 'أمين الخدمة' },
-    { id: 2, title: 'امتحان العقيدة الإلكتروني', text: 'تم فتح الامتحان الإلكتروني لطلاب سنة ثانية وفصل أليشع.', date: 'أمس', sender: 'خادم مادة العقيدة' }
-  ];
+  const [announcements, setAnnouncements] = useState([]);
 
   // Check 10:30 AM to 02:00 PM
   useEffect(() => {
@@ -412,18 +308,25 @@ export default function StudentDashboard({ user }) {
             </h3>
 
             <div className="space-y-2 flex-1 overflow-y-auto">
-              {attendanceRecords.map((item) => (
-                <div key={item.id} className="bg-slate-50 border border-slate-100 p-3 rounded-2xl flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                    <div>
-                      <span className="font-bold text-slate-800 block text-xs">{item.date}</span>
-                      <span className="text-[10px] text-slate-400">{item.time}</span>
-                    </div>
-                  </div>
-                  <span className="text-maroon-800 font-bold text-[11px]">+{item.points} نقاط</span>
+              {attendanceRecords.length === 0 ? (
+                <div className="text-center py-8 text-slate-400 text-xs">
+                  <p className="font-bold">لا يوجد حضور مسجل بعد.</p>
+                  <p className="text-[10px] mt-1">امسح رمز الـ QR خلال موعد الخدمة لتسجيل حضورك.</p>
                 </div>
-              ))}
+              ) : (
+                attendanceRecords.map((item) => (
+                  <div key={item.id} className="bg-slate-50 border border-slate-100 p-3 rounded-2xl flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                      <div>
+                        <span className="font-bold text-slate-800 block text-xs">{item.date}</span>
+                        <span className="text-[10px] text-slate-400">{item.time}</span>
+                      </div>
+                    </div>
+                    <span className="text-maroon-800 font-bold text-[11px]">+{item.points} نقاط</span>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>
@@ -453,8 +356,6 @@ export default function StudentDashboard({ user }) {
               >
                 <option value={todayDateStr}>اليوم ({todayDateStr})</option>
                 <option value={yesterdayDateStr}>أمس ({yesterdayDateStr})</option>
-                <option value="2026-09-23">الأربعاء (2026-09-23)</option>
-                <option value="2026-09-22">الثلاثاء (2026-09-22)</option>
               </select>
             </div>
           </div>
@@ -563,32 +464,40 @@ export default function StudentDashboard({ user }) {
           </div>
 
           {!selectedSubject ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {subjectsData.map((sub) => (
-                <div
-                  key={sub.id}
-                  onClick={() => setSelectedSubject(sub)}
-                  className="bg-slate-50 border border-slate-200 hover:border-maroon-700 p-5 rounded-2xl cursor-pointer transition-all hover:shadow-md group flex flex-col justify-between"
-                >
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-[10px] bg-maroon-100 text-maroon-900 font-extrabold px-2.5 py-0.5 rounded-full">
-                        {sub.code}
-                      </span>
-                      <span className="text-xs text-slate-400 font-bold">{sub.materialsCount} مراجع</span>
+            subjectsData.length === 0 ? (
+              <div className="text-center py-12 bg-slate-50 border border-dashed border-slate-200 rounded-2xl p-6">
+                <BookOpen className="w-10 h-10 text-slate-300 mx-auto mb-2" />
+                <p className="text-xs font-bold text-slate-700">لم يتم رفع مواد أو مراجع دراسية لهذه المرحلة حتى الآن.</p>
+                <p className="text-[11px] text-slate-400 mt-1">سيقوم الخدام بإضافة المواد والمراجع والمذكرات تباعاً.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {subjectsData.map((sub) => (
+                  <div
+                    key={sub.id}
+                    onClick={() => setSelectedSubject(sub)}
+                    className="bg-slate-50 border border-slate-200 hover:border-maroon-700 p-5 rounded-2xl cursor-pointer transition-all hover:shadow-md group flex flex-col justify-between"
+                  >
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-[10px] bg-maroon-100 text-maroon-900 font-extrabold px-2.5 py-0.5 rounded-full">
+                          {sub.code}
+                        </span>
+                        <span className="text-xs text-slate-400 font-bold">{sub.materialsCount} مراجع</span>
+                      </div>
+                      <h4 className="font-extrabold text-slate-900 text-base group-hover:text-maroon-800 transition-colors mb-1">
+                        {sub.name}
+                      </h4>
+                      <p className="text-xs text-slate-500 leading-relaxed mb-4">{sub.description}</p>
                     </div>
-                    <h4 className="font-extrabold text-slate-900 text-base group-hover:text-maroon-800 transition-colors mb-1">
-                      {sub.name}
-                    </h4>
-                    <p className="text-xs text-slate-500 leading-relaxed mb-4">{sub.description}</p>
+                    <div className="flex items-center justify-between text-xs font-bold text-maroon-800 pt-3 border-t border-slate-200/60">
+                      <span>فتح مراجع المادة</span>
+                      <ChevronLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+                    </div>
                   </div>
-                  <div className="flex items-center justify-between text-xs font-bold text-maroon-800 pt-3 border-t border-slate-200/60">
-                    <span>فتح مراجع المادة</span>
-                    <ChevronLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )
           ) : (
             // Inside Subject View
             <div className="space-y-4">
@@ -644,44 +553,52 @@ export default function StudentDashboard({ user }) {
           </div>
 
           {!activeExam ? (
-            <div className="space-y-3">
-              {availableExams.map((exam) => {
-                const isCompleted = completedExams[exam.id];
-                return (
-                  <div
-                    key={exam.id}
-                    className="bg-slate-50 border border-slate-200 p-5 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
-                  >
-                    <div>
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="bg-maroon-800 text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full">
-                          {exam.subject}
-                        </span>
-                        <span className="text-xs text-slate-500">{exam.durationMinutes} دقيقة • {exam.totalScore} درجة</span>
+            availableExams.length === 0 ? (
+              <div className="text-center py-12 bg-slate-50 border border-dashed border-slate-200 rounded-2xl p-6">
+                <FileText className="w-10 h-10 text-slate-300 mx-auto mb-2" />
+                <p className="text-xs font-bold text-slate-700">لا توجد أي امتحانات مجدولة لمرحلتك حالياً.</p>
+                <p className="text-[11px] text-slate-400 mt-1">عند نشر الخدام لأي اختبار ستظهر تفاصيله هنا مباشرة.</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {availableExams.map((exam) => {
+                  const isCompleted = completedExams[exam.id];
+                  return (
+                    <div
+                      key={exam.id}
+                      className="bg-slate-50 border border-slate-200 p-5 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
+                    >
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="bg-maroon-800 text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full">
+                            {exam.subject}
+                          </span>
+                          <span className="text-xs text-slate-500">{exam.durationMinutes} دقيقة • {exam.totalScore} درجة</span>
+                        </div>
+                        <h4 className="font-extrabold text-slate-900 text-sm sm:text-base">{exam.title}</h4>
                       </div>
-                      <h4 className="font-extrabold text-slate-900 text-sm sm:text-base">{exam.title}</h4>
-                    </div>
 
-                    {isCompleted ? (
-                      <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs px-3.5 py-2 rounded-xl font-bold">
-                        تم التسليم (الموضوعي: {isCompleted.autoScore}/20)
-                      </div>
-                    ) : (
-                      <button
-                        onClick={() => {
-                          setActiveExam(exam);
-                          setExamAnswers({});
-                          setExamResult(null);
-                        }}
-                        className="bg-maroon-800 hover:bg-maroon-700 text-white font-bold text-xs py-2.5 px-5 rounded-xl transition-all shadow"
-                      >
-                        بدء الامتحان
-                      </button>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+                      {isCompleted ? (
+                        <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs px-3.5 py-2 rounded-xl font-bold">
+                          تم التسليم (الموضوعي: {isCompleted.autoScore}/20)
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => {
+                            setActiveExam(exam);
+                            setExamAnswers({});
+                            setExamResult(null);
+                          }}
+                          className="bg-maroon-800 hover:bg-maroon-700 text-white font-bold text-xs py-2.5 px-5 rounded-xl transition-all shadow"
+                        >
+                          بدء الامتحان
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )
           ) : (
             // Taking Exam Screen
             <div className="space-y-5">
@@ -773,41 +690,49 @@ export default function StudentDashboard({ user }) {
             <p className="text-xs text-slate-500 mt-0.5">أسئلة وتكليفات الخدمة اليومية والأسبوعية لكسب نقاط إضافية.</p>
           </div>
 
-          <div className="space-y-3">
-            {tasks.map((task) => (
-              <div
-                key={task.id}
-                className="bg-slate-50 border border-slate-200 p-4.5 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs"
-              >
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="font-extrabold text-slate-900 text-sm">{task.title}</span>
-                    <span className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full font-bold">
-                      +{task.points} نقطة
-                    </span>
+          {tasks.length === 0 ? (
+            <div className="text-center py-12 bg-slate-50 border border-dashed border-slate-200 rounded-2xl p-6">
+              <CheckSquare className="w-10 h-10 text-slate-300 mx-auto mb-2" />
+              <p className="text-xs font-bold text-slate-700">لا توجد تاسكات أو تكليفات مطلوبة حالياً.</p>
+              <p className="text-[11px] text-slate-400 mt-1">ستصلك التكليفات والأسئلة الأسبوعية من الخدام هنا.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {tasks.map((task) => (
+                <div
+                  key={task.id}
+                  className="bg-slate-50 border border-slate-200 p-4.5 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs"
+                >
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="font-extrabold text-slate-900 text-sm">{task.title}</span>
+                      <span className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full font-bold">
+                        +{task.points} نقطة
+                      </span>
+                    </div>
+                    <p className="text-slate-600 leading-relaxed">{task.description}</p>
+                    <span className="text-[10px] text-slate-400 mt-1 block">الموعد النهائي: {task.deadline}</span>
                   </div>
-                  <p className="text-slate-600 leading-relaxed">{task.description}</p>
-                  <span className="text-[10px] text-slate-400 mt-1 block">الموعد النهائي: {task.deadline}</span>
-                </div>
 
-                <div>
-                  {task.completed ? (
-                    <span className="bg-emerald-100 text-emerald-800 px-3 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1">
-                      <Check className="w-3.5 h-3.5" />
-                      مكتمل
-                    </span>
-                  ) : (
-                    <button
-                      onClick={() => handleCompleteTask(task.id, task.points)}
-                      className="bg-maroon-800 hover:bg-maroon-700 text-white font-bold px-4 py-2 rounded-xl text-xs transition-colors shadow-xs"
-                    >
-                      تأكيد إنجاز التاسك
-                    </button>
-                  )}
+                  <div>
+                    {task.completed ? (
+                      <span className="bg-emerald-100 text-emerald-800 px-3 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1">
+                        <Check className="w-3.5 h-3.5" />
+                        مكتمل
+                      </span>
+                    ) : (
+                      <button
+                        onClick={() => handleCompleteTask(task.id, task.points)}
+                        className="bg-maroon-800 hover:bg-maroon-700 text-white font-bold px-4 py-2 rounded-xl text-xs transition-colors shadow-xs"
+                      >
+                        تأكيد إنجاز التاسك
+                      </button>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -822,18 +747,26 @@ export default function StudentDashboard({ user }) {
             <p className="text-xs text-slate-500 mt-0.5">التنبيهات المباشرة الصادرة من خدام وأمناء المرحلة.</p>
           </div>
 
-          <div className="space-y-3">
-            {announcements.map((item) => (
-              <div key={item.id} className="bg-slate-50 border border-slate-200 p-4 rounded-2xl space-y-1.5 text-xs">
-                <div className="flex items-center justify-between">
-                  <span className="font-extrabold text-slate-900 text-sm">{item.title}</span>
-                  <span className="text-[10px] text-slate-400">{item.date}</span>
+          {announcements.length === 0 ? (
+            <div className="text-center py-12 bg-slate-50 border border-dashed border-slate-200 rounded-2xl p-6">
+              <Bell className="w-10 h-10 text-slate-300 mx-auto mb-2" />
+              <p className="text-xs font-bold text-slate-700">لا توجد تنبيهات جديدة في الوقت الحالي.</p>
+              <p className="text-[11px] text-slate-400 mt-1">تنبيهات الخدمة والتعليمات الهامة ستظهر لك هنا.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {announcements.map((item) => (
+                <div key={item.id} className="bg-slate-50 border border-slate-200 p-4 rounded-2xl space-y-1.5 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="font-extrabold text-slate-900 text-sm">{item.title}</span>
+                    <span className="text-[10px] text-slate-400">{item.date}</span>
+                  </div>
+                  <p className="text-slate-600 leading-relaxed">{item.text}</p>
+                  <div className="text-[10px] text-maroon-800 font-bold pt-1">المرسل: {item.sender}</div>
                 </div>
-                <p className="text-slate-600 leading-relaxed">{item.text}</p>
-                <div className="text-[10px] text-maroon-800 font-bold pt-1">المرسل: {item.sender}</div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>
