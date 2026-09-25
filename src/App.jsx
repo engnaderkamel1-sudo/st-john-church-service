@@ -112,9 +112,9 @@ export default function App() {
 
   const getGradeName = (grade) => {
     const map = {
-      first: 'سنة أولى ثانوي',
-      second: 'سنة ثانية ثانوي',
-      third: 'سنة ثالثة ثانوي',
+      first: 'سنة أولى',
+      second: 'سنة ثانية',
+      third: 'سنة ثالثة',
       elisha: 'فصل أليشع (إعداد خدام)'
     };
     return map[grade] || grade || 'عام';
