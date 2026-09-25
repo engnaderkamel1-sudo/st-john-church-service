@@ -96,35 +96,38 @@ export default function AuthModal({ isOpen, onClose, initialRole = 'student', on
           </button>
         </div>
 
-        {/* Role Toggle */}
-        <div className="p-4 bg-slate-50 border-b border-slate-100">
-          <div className="grid grid-cols-2 gap-2 bg-slate-200/70 p-1 rounded-2xl">
-            <button
-              type="button"
-              onClick={() => setRole('student')}
-              className={`py-2 px-4 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-1.5 ${
-                role === 'student'
-                  ? 'bg-white text-maroon-900 shadow-sm'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <GraduationCap className="w-4 h-4" />
-              <span>مخدوم</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setRole('servant')}
-              className={`py-2 px-4 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-1.5 ${
-                role === 'servant'
-                  ? 'bg-maroon-800 text-white shadow-sm'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <BookOpen className="w-4 h-4" />
-              <span>خادم</span>
-            </button>
+        {/* Role Toggle shown during New Registration */}
+        {!isLogin && (
+          <div className="p-4 bg-slate-50 border-b border-slate-100">
+            <label className="block text-[11px] font-bold text-slate-500 mb-2">اختر صفتك في الخدمة للتسجيل:</label>
+            <div className="grid grid-cols-2 gap-2 bg-slate-200/70 p-1 rounded-2xl">
+              <button
+                type="button"
+                onClick={() => setRole('student')}
+                className={`py-2 px-4 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-1.5 ${
+                  role === 'student'
+                    ? 'bg-white text-maroon-900 shadow-sm'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <GraduationCap className="w-4 h-4" />
+                <span>مخدوم</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setRole('servant')}
+                className={`py-2 px-4 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-1.5 ${
+                  role === 'servant'
+                    ? 'bg-maroon-800 text-white shadow-sm'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <BookOpen className="w-4 h-4" />
+                <span>خادم</span>
+              </button>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
