@@ -9,13 +9,14 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState(null);
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [targetRole, setTargetRole] = useState('student');
+  const [targetMode, setTargetMode] = useState('login');
   const [showNotifications, setShowNotifications] = useState(false);
 
   const [notifications, setNotifications] = useState([]);
 
   // Auto-Update Detection State
   const [hasUpdate, setHasUpdate] = useState(false);
-  const [appVersion, setAppVersion] = useState('1.0.1');
+  const [appVersion, setAppVersion] = useState('1.0.2');
 
   useEffect(() => {
     // Check for new version from /version.json
@@ -70,8 +71,9 @@ export default function App() {
     localStorage.removeItem('church_user');
   };
 
-  const openAuth = (role) => {
+  const openAuth = (role = 'student', mode = 'login') => {
     setTargetRole(role);
+    setTargetMode(mode);
     setAuthModalOpen(true);
   };
 
@@ -188,72 +190,48 @@ export default function App() {
             <ServantDashboard user={currentUser} />
           )
         ) : (
-          /* Landing Screen: Clean Light Mode with single-entry focus */
-          <div className="w-full max-w-2xl mx-auto text-center space-y-8 py-6">
+          /* Landing Screen: Clean, Direct Entry */
+          <div className="w-full max-w-xl mx-auto text-center space-y-8 py-8">
             <div>
-              <span className="inline-block bg-maroon-50 border border-maroon-200 text-maroon-900 px-3.5 py-1 rounded-full text-xs font-bold mb-3 shadow-xs">
+              <span className="inline-block bg-maroon-50 border border-maroon-200 text-maroon-900 px-4 py-1 rounded-full text-xs font-bold mb-3 shadow-xs">
                 كنيسة القديس ماريوحنا المعمدان بالمعراج
               </span>
               <h2 className="text-2xl sm:text-4xl font-extrabold text-slate-900 tracking-tight leading-snug">
                 خدمة أليشع النبي وإعداد خدام
               </h2>
-              <p className="text-slate-500 text-xs sm:text-sm mt-2 max-w-md mx-auto">
-                تسجيل الحضور بالكيو آر، ومتابعة النوتة الروحية، والمناهج والامتحانات والتاسكات.
-              </p>
             </div>
 
-            {/* Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-right">
-              {/* Login / Register Card */}
-              <div 
-                onClick={() => openAuth('student')}
-                className="bg-white border border-slate-200 hover:border-gold-500 p-6 rounded-3xl cursor-pointer transition-all hover:shadow-lg group flex flex-col justify-between"
+            {/* Direct 2 Action Cards: تسجيل الدخول & مستخدم جديد */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-center">
+              {/* Login Card */}
+              <button
+                type="button"
+                onClick={() => openAuth('student', 'login')}
+                className="bg-maroon-800 hover:bg-maroon-900 text-white p-6 rounded-3xl transition-all hover:shadow-xl group flex flex-col items-center justify-center gap-3 border border-maroon-700"
               >
+                <div className="w-14 h-14 bg-white/10 rounded-2xl flex items-center justify-center font-bold group-hover:scale-110 transition-transform">
+                  <User className="w-7 h-7 text-gold-300" />
+                </div>
                 <div>
-                  <div className="w-12 h-12 bg-amber-50 text-maroon-900 rounded-2xl flex items-center justify-center font-bold mb-4 group-hover:scale-105 transition-transform border border-amber-200 shadow-xs">
-                    <QrCode className="w-6 h-6 text-maroon-800" />
-                  </div>
-                  <h3 className="text-base sm:text-lg font-bold text-slate-900 mb-1 group-hover:text-maroon-800 transition-colors">تسجيل الدخول / مستخدم جديد</h3>
-                  <p className="text-xs text-slate-500 leading-relaxed mb-4">
-                    ادخل برقم هاتفك ليتم توجيهك فورياً لصفحتك المخصصة (كخادم أو مخدوم) حسب رتبتك المعتمدة.
-                  </p>
-                  <div className="flex flex-wrap gap-1.5 mb-4">
-                    <span className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md font-medium">سنة أولى</span>
-                    <span className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md font-medium">سنة ثانية</span>
-                    <span className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md font-medium">سنة ثالثة</span>
-                    <span className="text-[10px] bg-maroon-50 text-maroon-900 px-2 py-0.5 rounded-md font-bold border border-maroon-200">فصل أليشع</span>
-                  </div>
+                  <h3 className="text-lg font-extrabold">تسجيل الدخول</h3>
+                  <p className="text-xs text-slate-200 mt-1">لديك حساب مسجل بالفعل؟ ادخل برقم هاتفك</p>
                 </div>
-                <div className="flex items-center justify-between text-xs font-bold text-maroon-800 pt-3 border-t border-slate-100">
-                  <span>الدخول المباشر إلى المنظومة</span>
-                  <ChevronLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
-                </div>
-              </div>
+              </button>
 
-              {/* Servants Portal Entry */}
-              <div 
-                onClick={() => openAuth('servant')}
-                className="bg-white border border-slate-200 hover:border-maroon-700 p-6 rounded-3xl cursor-pointer transition-all hover:shadow-lg group flex flex-col justify-between"
+              {/* Register Card */}
+              <button
+                type="button"
+                onClick={() => openAuth('student', 'register')}
+                className="bg-white hover:bg-slate-50 text-slate-800 p-6 rounded-3xl border-2 border-slate-200 hover:border-maroon-800 transition-all hover:shadow-xl group flex flex-col items-center justify-center gap-3"
               >
+                <div className="w-14 h-14 bg-amber-50 rounded-2xl flex items-center justify-center font-bold group-hover:scale-110 transition-transform border border-amber-200">
+                  <Sparkles className="w-7 h-7 text-maroon-800" />
+                </div>
                 <div>
-                  <div className="w-12 h-12 bg-maroon-800 text-white rounded-2xl flex items-center justify-center font-bold mb-4 group-hover:scale-105 transition-transform shadow-xs">
-                    <ShieldCheck className="w-6 h-6 text-gold-300" />
-                  </div>
-                  <h3 className="text-base sm:text-lg font-bold text-slate-900 mb-1 group-hover:text-maroon-800 transition-colors">بوابة الخدام والإدارة</h3>
-                  <p className="text-xs text-slate-500 leading-relaxed mb-4">
-                    إدارة المستخدمين والأدوار، بنك الأسئلة والمناهج، كود الحضور اليومي، والإحصائيات ورصد الدرجات.
-                  </p>
-                  <div className="flex flex-wrap gap-1.5 mb-4">
-                    <span className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md font-medium">إدارة الأدوار</span>
-                    <span className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md font-medium">بنك الأسئلة</span>
-                    <span className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md font-medium">الإحصائيات</span>
-                  </div>
+                  <h3 className="text-lg font-extrabold text-slate-900 group-hover:text-maroon-800 transition-colors">مستخدم جديد</h3>
+                  <p className="text-xs text-slate-500 mt-1">إنشاء حساب جديد كخادم أو مخدوم</p>
                 </div>
-                <div className="flex items-center justify-between text-xs font-bold text-maroon-800 pt-3 border-t border-slate-100">
-                  <span>دخول الخدام والإدارة</span>
-                  <ChevronLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
-                </div>
-              </div>
+              </button>
             </div>
           </div>
         )}
@@ -269,6 +247,7 @@ export default function App() {
         isOpen={authModalOpen}
         onClose={() => setAuthModalOpen(false)}
         initialRole={targetRole}
+        initialMode={targetMode}
         onLoginSuccess={handleLoginSuccess}
       />
     </div>
