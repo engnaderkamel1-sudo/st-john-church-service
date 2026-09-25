@@ -429,9 +429,14 @@ export default function ServantDashboard({ user }) {
                               {item.fullName ? item.fullName[0] : '؟'}
                             </div>
                             <div>
-                              <span>{item.fullName || 'بدون اسم'}</span>
-                              {item.id === user.id && (
-                                <span className="text-[10px] bg-slate-200 text-slate-700 px-1.5 py-0.2 rounded mr-1.5">حسابك</span>
+                              <div className="flex items-center gap-1.5">
+                                <span>{item.fullName || 'بدون اسم'}</span>
+                                {item.id === user.id && (
+                                  <span className="text-[10px] bg-slate-200 text-slate-700 px-1.5 py-0.2 rounded mr-1.5">حسابك</span>
+                                )}
+                              </div>
+                              {item.email && (
+                                <span className="text-[10px] text-slate-400 block font-normal font-mono" dir="ltr">{item.email}</span>
                               )}
                             </div>
                           </div>
