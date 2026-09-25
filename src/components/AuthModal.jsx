@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
-import { X, User, Phone, Lock, BookOpen, GraduationCap, CheckCircle, ShieldAlert } from 'lucide-react';
+import { X, User, Phone, Lock, BookOpen, GraduationCap, ShieldAlert } from 'lucide-react';
 import { db } from '../firebase';
 import { collection, addDoc, getDocs, query, where, serverTimestamp } from 'firebase/firestore';
 
 export default function AuthModal({ isOpen, onClose, initialRole = 'student', onLoginSuccess }) {
   const [isLogin, setIsLogin] = useState(true);
-  const [role, setRole] = useState(initialRole); // 'student' or 'servant'
-  const [grade, setGrade] = useState('first'); // first, second, third, elisha
-  const [servantScope, setServantScope] = useState('all'); // all, first, second, third, elisha
+  const [role, setRole] = useState(initialRole);
+  const [grade, setGrade] = useState('first');
+  const [servantScope, setServantScope] = useState('all');
 
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
@@ -27,7 +27,6 @@ export default function AuthModal({ isOpen, onClose, initialRole = 'student', on
       const usersRef = collection(db, 'users');
 
       if (isLogin) {
-        // Login query by phone and password
         const q = query(
           usersRef,
           where('phone', '==', phone.trim()),
@@ -45,7 +44,6 @@ export default function AuthModal({ isOpen, onClose, initialRole = 'student', on
         onLoginSuccess(userData);
         onClose();
       } else {
-        // Register: Check if phone already registered
         const checkQ = query(usersRef, where('phone', '==', phone.trim()));
         const checkSnap = await getDocs(checkQ);
 
@@ -62,7 +60,7 @@ export default function AuthModal({ isOpen, onClose, initialRole = 'student', on
           role: role,
           grade: role === 'student' ? grade : null,
           servantScope: role === 'servant' ? servantScope : null,
-          status: role === 'student' ? 'active' : 'pending', // Servants need approval by admin
+          status: role === 'student' ? 'active' : 'pending',
           points: 0,
           createdAt: serverTimestamp()
         };
@@ -103,34 +101,34 @@ export default function AuthModal({ isOpen, onClose, initialRole = 'student', on
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-slate-900 border border-maroon-700/60 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl text-slate-100 flex flex-col">
+    <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+      <div className="bg-white border border-slate-200 rounded-3xl w-full max-w-md overflow-hidden shadow-2xl text-slate-800 flex flex-col animate-in fade-in zoom-in-95 duration-200">
         {/* Header */}
-        <div className="bg-maroon-900/90 px-6 py-4 border-b border-maroon-700/50 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <img src="/church_logo.jpg" alt="Logo" className="w-8 h-8 rounded-full border border-gold-400 object-cover" />
-            <span className="font-bold text-gold-300">
-              {isLogin ? 'تسجيل الدخول' : 'حساب جديد'}
+        <div className="bg-gradient-to-r from-maroon-800 to-maroon-900 px-6 py-4.5 text-white flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <img src="/church_logo.jpg" alt="Logo" className="w-8 h-8 rounded-full border border-gold-300 object-cover shadow-sm" />
+            <span className="font-bold text-sm text-gold-200">
+              {isLogin ? 'تسجيل الدخول إلى الخدمة' : 'إنشاء حساب جديد'}
             </span>
           </div>
           <button 
             onClick={onClose}
-            className="text-slate-400 hover:text-white p-1 rounded-lg transition-colors"
+            className="text-slate-300 hover:text-white p-1 rounded-lg transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Role Toggle */}
-        <div className="p-4 bg-slate-950/60 border-b border-slate-800">
-          <div className="grid grid-cols-2 gap-2 bg-slate-800/80 p-1 rounded-xl">
+        <div className="p-4 bg-slate-50 border-b border-slate-100">
+          <div className="grid grid-cols-2 gap-2 bg-slate-200/70 p-1 rounded-2xl">
             <button
               type="button"
               onClick={() => setRole('student')}
-              className={`py-2 px-4 rounded-lg font-bold text-sm transition-all flex items-center justify-center gap-2 ${
+              className={`py-2 px-4 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-1.5 ${
                 role === 'student'
-                  ? 'bg-gold-500 text-maroon-950 shadow-md'
-                  : 'text-slate-300 hover:text-white'
+                  ? 'bg-white text-maroon-900 shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               <GraduationCap className="w-4 h-4" />
@@ -139,10 +137,10 @@ export default function AuthModal({ isOpen, onClose, initialRole = 'student', on
             <button
               type="button"
               onClick={() => setRole('servant')}
-              className={`py-2 px-4 rounded-lg font-bold text-sm transition-all flex items-center justify-center gap-2 ${
+              className={`py-2 px-4 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-1.5 ${
                 role === 'servant'
-                  ? 'bg-maroon-700 text-gold-200 shadow-md border border-gold-400/30'
-                  : 'text-slate-300 hover:text-white'
+                  ? 'bg-maroon-800 text-white shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               <BookOpen className="w-4 h-4" />
@@ -154,15 +152,15 @@ export default function AuthModal({ isOpen, onClose, initialRole = 'student', on
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           {error && (
-            <div className="bg-red-950/60 border border-red-500/40 text-red-200 text-xs p-3 rounded-lg flex items-center gap-2">
-              <ShieldAlert className="w-4 h-4 shrink-0 text-red-400" />
+            <div className="bg-red-50 border border-red-200 text-red-700 text-xs p-3 rounded-xl flex items-center gap-2">
+              <ShieldAlert className="w-4 h-4 shrink-0 text-red-500" />
               <span>{error}</span>
             </div>
           )}
 
           {!isLogin && (
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">الاسم ثلاثي</label>
+              <label className="block text-xs font-bold text-slate-700 mb-1">الاسم ثلاثي</label>
               <div className="relative">
                 <input
                   type="text"
@@ -170,7 +168,7 @@ export default function AuthModal({ isOpen, onClose, initialRole = 'student', on
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   placeholder="مثال: جورج سمير حنا"
-                  className="w-full bg-slate-800/80 border border-slate-700 rounded-xl px-4 py-2.5 pl-10 text-sm focus:outline-none focus:border-gold-400 transition-colors"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 pl-10 text-xs focus:outline-none focus:border-maroon-700 focus:bg-white transition-colors"
                 />
                 <User className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
               </div>
@@ -178,7 +176,7 @@ export default function AuthModal({ isOpen, onClose, initialRole = 'student', on
           )}
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">رقم الهاتف</label>
+            <label className="block text-xs font-bold text-slate-700 mb-1">رقم الهاتف</label>
             <div className="relative">
               <input
                 type="tel"
@@ -187,14 +185,14 @@ export default function AuthModal({ isOpen, onClose, initialRole = 'student', on
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="01XXXXXXXXX"
                 dir="ltr"
-                className="w-full bg-slate-800/80 border border-slate-700 rounded-xl px-4 py-2.5 pl-10 text-sm text-right focus:outline-none focus:border-gold-400 transition-colors"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 pl-10 text-xs text-right focus:outline-none focus:border-maroon-700 focus:bg-white transition-colors"
               />
               <Phone className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">كلمة المرور</label>
+            <label className="block text-xs font-bold text-slate-700 mb-1">كلمة المرور</label>
             <div className="relative">
               <input
                 type="password"
@@ -202,42 +200,42 @@ export default function AuthModal({ isOpen, onClose, initialRole = 'student', on
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full bg-slate-800/80 border border-slate-700 rounded-xl px-4 py-2.5 pl-10 text-sm focus:outline-none focus:border-gold-400 transition-colors"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 pl-10 text-xs focus:outline-none focus:border-maroon-700 focus:bg-white transition-colors"
               />
               <Lock className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
             </div>
           </div>
 
-          {/* Grade selection for student (only during register) */}
+          {/* Grade selection */}
           {!isLogin && role === 'student' && (
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">المرحلة الدراسية</label>
+              <label className="block text-xs font-bold text-slate-700 mb-1">المرحلة الدراسية</label>
               <select
                 value={grade}
                 onChange={(e) => setGrade(e.target.value)}
-                className="w-full bg-slate-800/80 border border-slate-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-gold-400 transition-colors"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:border-maroon-700 focus:bg-white transition-colors"
               >
-                <option value="first">سنة أولى</option>
-                <option value="second">سنة ثانية</option>
-                <option value="third">سنة ثالثة</option>
+                <option value="first">سنة أولى ثانوي</option>
+                <option value="second">سنة ثانية ثانوي</option>
+                <option value="third">سنة ثالثة ثانوي</option>
                 <option value="elisha">فصل أليشع (إعداد خدام)</option>
               </select>
             </div>
           )}
 
-          {/* Scope for servant (only during register) */}
+          {/* Scope for servant */}
           {!isLogin && role === 'servant' && (
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">الفصل المسؤول عنه</label>
+              <label className="block text-xs font-bold text-slate-700 mb-1">الفصل المسؤول عنه</label>
               <select
                 value={servantScope}
                 onChange={(e) => setServantScope(e.target.value)}
-                className="w-full bg-slate-800/80 border border-slate-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-gold-400 transition-colors"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:border-maroon-700 focus:bg-white transition-colors"
               >
                 <option value="all">أمين خدمة عام (جميع المراحل)</option>
-                <option value="first">سنة أولى</option>
-                <option value="second">سنة ثانية</option>
-                <option value="third">سنة ثالثة</option>
+                <option value="first">سنة أولى ثانوي</option>
+                <option value="second">سنة ثانية ثانوي</option>
+                <option value="third">سنة ثالثة ثانوي</option>
                 <option value="elisha">فصل أليشع (إعداد خدام)</option>
               </select>
             </div>
@@ -246,13 +244,9 @@ export default function AuthModal({ isOpen, onClose, initialRole = 'student', on
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-gradient-to-r from-gold-500 to-amber-500 hover:from-gold-400 hover:to-amber-400 text-maroon-950 font-bold py-3 px-4 rounded-xl shadow-md transition-all flex items-center justify-center gap-2 mt-4"
+            className="w-full bg-maroon-800 hover:bg-maroon-700 text-white font-bold py-3 px-4 rounded-xl shadow-md transition-all flex items-center justify-center gap-2 mt-4 text-xs"
           >
-            {loading ? (
-              <span className="text-sm">جاري التحقق...</span>
-            ) : (
-              <span>{isLogin ? 'دخول' : 'إنشاء الحساب'}</span>
-            )}
+            {loading ? <span>جاري التحقق...</span> : <span>{isLogin ? 'تسجيل الدخول' : 'تأكيد إنشاء الحساب'}</span>}
           </button>
 
           {/* Toggle Login / Register */}
@@ -260,27 +254,27 @@ export default function AuthModal({ isOpen, onClose, initialRole = 'student', on
             <button
               type="button"
               onClick={() => { setIsLogin(!isLogin); setError(''); }}
-              className="text-xs text-gold-300 hover:text-gold-200 underline"
+              className="text-xs text-maroon-800 hover:text-maroon-900 font-semibold underline"
             >
               {isLogin ? 'ليس لديك حساب؟ إنشاء حساب جديد' : 'لديك حساب بالفعل؟ تسجيل الدخول'}
             </button>
           </div>
 
-          {/* Quick Demo Buttons for fast test */}
-          <div className="pt-3 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400">
+          {/* Quick Demo */}
+          <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
             <span>تجربة فورية:</span>
             <div className="flex gap-2">
               <button
                 type="button"
                 onClick={() => handleQuickDemo('student')}
-                className="bg-slate-800 hover:bg-slate-700 px-2.5 py-1 rounded text-gold-300"
+                className="bg-slate-100 hover:bg-slate-200 text-maroon-900 font-bold px-2.5 py-1 rounded-lg"
               >
                 مخدوم تجريبي
               </button>
               <button
                 type="button"
                 onClick={() => handleQuickDemo('servant')}
-                className="bg-slate-800 hover:bg-slate-700 px-2.5 py-1 rounded text-slate-200"
+                className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-2.5 py-1 rounded-lg"
               >
                 خادم تجريبي
               </button>
