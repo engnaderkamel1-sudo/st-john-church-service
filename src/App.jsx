@@ -147,11 +147,7 @@ export default function App() {
       {/* 5-Second Full Screen Splash Screen */}
       {showSplash && (
         <div className="fixed inset-0 z-[9999] bg-gradient-to-b from-slate-900 via-maroon-950 to-slate-950 text-white flex flex-col items-center justify-between p-8 font-cairo select-none animate-in fade-in duration-300">
-          <div className="w-full flex justify-center pt-4">
-            <span className="text-xs tracking-wider text-gold-300/80 font-semibold border border-gold-500/20 bg-gold-500/10 px-4 py-1 rounded-full">
-              مطرانية المعادي
-            </span>
-          </div>
+          <div className="w-full flex justify-center pt-2"></div>
 
           {/* Center Logo & Titles */}
           <div className="flex flex-col items-center text-center space-y-6 max-w-sm px-4">
@@ -165,12 +161,12 @@ export default function App() {
             </div>
 
             <div className="space-y-2">
-              <h2 className="text-lg sm:text-xl font-bold text-slate-100">
-                كنيسة القديس ماريوحنا المعمدان بالمعراج
+              <h2 className="text-base sm:text-lg font-bold text-slate-100">
+                كنيسة القديس ماريوحنا المعمدان بالمعراج - مطرانية المعادي
               </h2>
               <div className="h-0.5 w-16 bg-gold-400/60 mx-auto rounded-full"></div>
               <h1 className="text-2xl sm:text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-gold-200 via-gold-400 to-amber-200">
-                فصل أليشع النبي وإعداد خدام
+                خدمة أليشع النبي وإعداد خدام
               </h1>
             </div>
           </div>
