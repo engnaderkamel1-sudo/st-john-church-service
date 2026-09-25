@@ -1,0 +1,293 @@
+import React, { useState } from 'react';
+import { X, User, Phone, Lock, BookOpen, GraduationCap, CheckCircle, ShieldAlert } from 'lucide-react';
+import { db } from '../firebase';
+import { collection, addDoc, getDocs, query, where, serverTimestamp } from 'firebase/firestore';
+
+export default function AuthModal({ isOpen, onClose, initialRole = 'student', onLoginSuccess }) {
+  const [isLogin, setIsLogin] = useState(true);
+  const [role, setRole] = useState(initialRole); // 'student' or 'servant'
+  const [grade, setGrade] = useState('first'); // first, second, third, elisha
+  const [servantScope, setServantScope] = useState('all'); // all, first, second, third, elisha
+
+  const [fullName, setFullName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [password, setPassword] = useState('');
+
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  if (!isOpen) return null;
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+
+    try {
+      const usersRef = collection(db, 'users');
+
+      if (isLogin) {
+        // Login query by phone and password
+        const q = query(
+          usersRef,
+          where('phone', '==', phone.trim()),
+          where('password', '==', password.trim())
+        );
+        const snapshot = await getDocs(q);
+
+        if (snapshot.empty) {
+          setError('رقم الهاتف أو كلمة المرور غير صحيحة');
+          setLoading(false);
+          return;
+        }
+
+        const userData = { id: snapshot.docs[0].id, ...snapshot.docs[0].data() };
+        onLoginSuccess(userData);
+        onClose();
+      } else {
+        // Register: Check if phone already registered
+        const checkQ = query(usersRef, where('phone', '==', phone.trim()));
+        const checkSnap = await getDocs(checkQ);
+
+        if (!checkSnap.empty) {
+          setError('رقم الهاتف مسجل بالفعل مسبقاً');
+          setLoading(false);
+          return;
+        }
+
+        const newUser = {
+          fullName: fullName.trim(),
+          phone: phone.trim(),
+          password: password.trim(),
+          role: role,
+          grade: role === 'student' ? grade : null,
+          servantScope: role === 'servant' ? servantScope : null,
+          status: role === 'student' ? 'active' : 'pending', // Servants need approval by admin
+          points: 0,
+          createdAt: serverTimestamp()
+        };
+
+        const docRef = await addDoc(usersRef, newUser);
+        onLoginSuccess({ id: docRef.id, ...newUser });
+        onClose();
+      }
+    } catch (err) {
+      console.error(err);
+      setError('حدث خطأ أثناء معالجة الطلب. يرجى المحاولة لاحقاً');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleQuickDemo = (demoType) => {
+    if (demoType === 'student') {
+      onLoginSuccess({
+        id: 'demo-student-id',
+        fullName: 'مينا كمال عزيز',
+        phone: '01200000001',
+        role: 'student',
+        grade: 'second',
+        points: 120
+      });
+    } else {
+      onLoginSuccess({
+        id: 'demo-servant-id',
+        fullName: 'أ. بيشوي نعيم',
+        phone: '01200000002',
+        role: 'servant',
+        servantScope: 'all',
+        status: 'active'
+      });
+    }
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+      <div className="bg-slate-900 border border-maroon-700/60 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl text-slate-100 flex flex-col">
+        {/* Header */}
+        <div className="bg-maroon-900/90 px-6 py-4 border-b border-maroon-700/50 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <img src="/church_logo.jpg" alt="Logo" className="w-8 h-8 rounded-full border border-gold-400 object-cover" />
+            <span className="font-bold text-gold-300">
+              {isLogin ? 'تسجيل الدخول' : 'حساب جديد'}
+            </span>
+          </div>
+          <button 
+            onClick={onClose}
+            className="text-slate-400 hover:text-white p-1 rounded-lg transition-colors"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Role Toggle */}
+        <div className="p-4 bg-slate-950/60 border-b border-slate-800">
+          <div className="grid grid-cols-2 gap-2 bg-slate-800/80 p-1 rounded-xl">
+            <button
+              type="button"
+              onClick={() => setRole('student')}
+              className={`py-2 px-4 rounded-lg font-bold text-sm transition-all flex items-center justify-center gap-2 ${
+                role === 'student'
+                  ? 'bg-gold-500 text-maroon-950 shadow-md'
+                  : 'text-slate-300 hover:text-white'
+              }`}
+            >
+              <GraduationCap className="w-4 h-4" />
+              <span>مخدوم</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setRole('servant')}
+              className={`py-2 px-4 rounded-lg font-bold text-sm transition-all flex items-center justify-center gap-2 ${
+                role === 'servant'
+                  ? 'bg-maroon-700 text-gold-200 shadow-md border border-gold-400/30'
+                  : 'text-slate-300 hover:text-white'
+              }`}
+            >
+              <BookOpen className="w-4 h-4" />
+              <span>خادم</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Form Body */}
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          {error && (
+            <div className="bg-red-950/60 border border-red-500/40 text-red-200 text-xs p-3 rounded-lg flex items-center gap-2">
+              <ShieldAlert className="w-4 h-4 shrink-0 text-red-400" />
+              <span>{error}</span>
+            </div>
+          )}
+
+          {!isLogin && (
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">الاسم ثلاثي</label>
+              <div className="relative">
+                <input
+                  type="text"
+                  required
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  placeholder="مثال: جورج سمير حنا"
+                  className="w-full bg-slate-800/80 border border-slate-700 rounded-xl px-4 py-2.5 pl-10 text-sm focus:outline-none focus:border-gold-400 transition-colors"
+                />
+                <User className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
+              </div>
+            </div>
+          )}
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-300 mb-1">رقم الهاتف</label>
+            <div className="relative">
+              <input
+                type="tel"
+                required
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="01XXXXXXXXX"
+                dir="ltr"
+                className="w-full bg-slate-800/80 border border-slate-700 rounded-xl px-4 py-2.5 pl-10 text-sm text-right focus:outline-none focus:border-gold-400 transition-colors"
+              />
+              <Phone className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-300 mb-1">كلمة المرور</label>
+            <div className="relative">
+              <input
+                type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                className="w-full bg-slate-800/80 border border-slate-700 rounded-xl px-4 py-2.5 pl-10 text-sm focus:outline-none focus:border-gold-400 transition-colors"
+              />
+              <Lock className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
+            </div>
+          </div>
+
+          {/* Grade selection for student (only during register) */}
+          {!isLogin && role === 'student' && (
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">المرحلة الدراسية</label>
+              <select
+                value={grade}
+                onChange={(e) => setGrade(e.target.value)}
+                className="w-full bg-slate-800/80 border border-slate-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-gold-400 transition-colors"
+              >
+                <option value="first">سنة أولى</option>
+                <option value="second">سنة ثانية</option>
+                <option value="third">سنة ثالثة</option>
+                <option value="elisha">فصل أليشع (إعداد خدام)</option>
+              </select>
+            </div>
+          )}
+
+          {/* Scope for servant (only during register) */}
+          {!isLogin && role === 'servant' && (
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">الفصل المسؤول عنه</label>
+              <select
+                value={servantScope}
+                onChange={(e) => setServantScope(e.target.value)}
+                className="w-full bg-slate-800/80 border border-slate-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-gold-400 transition-colors"
+              >
+                <option value="all">أمين خدمة عام (جميع المراحل)</option>
+                <option value="first">سنة أولى</option>
+                <option value="second">سنة ثانية</option>
+                <option value="third">سنة ثالثة</option>
+                <option value="elisha">فصل أليشع (إعداد خدام)</option>
+              </select>
+            </div>
+          )}
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-gradient-to-r from-gold-500 to-amber-500 hover:from-gold-400 hover:to-amber-400 text-maroon-950 font-bold py-3 px-4 rounded-xl shadow-md transition-all flex items-center justify-center gap-2 mt-4"
+          >
+            {loading ? (
+              <span className="text-sm">جاري التحقق...</span>
+            ) : (
+              <span>{isLogin ? 'دخول' : 'إنشاء الحساب'}</span>
+            )}
+          </button>
+
+          {/* Toggle Login / Register */}
+          <div className="text-center pt-2">
+            <button
+              type="button"
+              onClick={() => { setIsLogin(!isLogin); setError(''); }}
+              className="text-xs text-gold-300 hover:text-gold-200 underline"
+            >
+              {isLogin ? 'ليس لديك حساب؟ إنشاء حساب جديد' : 'لديك حساب بالفعل؟ تسجيل الدخول'}
+            </button>
+          </div>
+
+          {/* Quick Demo Buttons for fast test */}
+          <div className="pt-3 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400">
+            <span>تجربة فورية:</span>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => handleQuickDemo('student')}
+                className="bg-slate-800 hover:bg-slate-700 px-2.5 py-1 rounded text-gold-300"
+              >
+                مخدوم تجريبي
+              </button>
+              <button
+                type="button"
+                onClick={() => handleQuickDemo('servant')}
+                className="bg-slate-800 hover:bg-slate-700 px-2.5 py-1 rounded text-slate-200"
+              >
+                خادم تجريبي
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
