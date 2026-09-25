@@ -3,6 +3,7 @@ import { Church, BookOpen, QrCode, ShieldCheck, HeartHandshake, LogOut, CheckCir
 import { db } from './firebase';
 import AuthModal from './components/AuthModal';
 import StudentDashboard from './components/StudentDashboard';
+import ServantDashboard from './components/ServantDashboard';
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState(null);
@@ -110,24 +111,7 @@ export default function App() {
           currentUser.role === 'student' ? (
             <StudentDashboard user={currentUser} />
           ) : (
-            // Active Servant Placeholder for Stage 4
-            <div className="w-full max-w-4xl bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl text-right">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-800">
-                <div>
-                  <span className="text-xs text-gold-400 font-semibold">مرحباً بك</span>
-                  <h2 className="text-2xl font-bold text-white">{currentUser.fullName}</h2>
-                  <p className="text-sm text-slate-400 mt-1">خادم / أمين خدمة</p>
-                </div>
-                <span className="bg-maroon-900/80 border border-maroon-700/60 text-gold-300 text-xs px-3 py-1.5 rounded-full font-medium">
-                  لوحة الخدام
-                </span>
-              </div>
-              <div className="mt-8 bg-slate-950/50 border border-dashed border-slate-800 rounded-xl p-8 text-center">
-                <ShieldCheck className="w-10 h-10 text-gold-400 mx-auto mb-2" />
-                <h3 className="text-base font-bold text-white mb-1">لوحة الخدام جاهزة للتفعيل في المرحلة 4</h3>
-                <p className="text-xs text-slate-400">إدارة الفصول، توليد كود الحضور، وتصحيح الامتحانات.</p>
-              </div>
-            </div>
+            <ServantDashboard user={currentUser} />
           )
         ) : (
           // Landing View
