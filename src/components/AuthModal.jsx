@@ -86,8 +86,14 @@ export default function AuthModal({ isOpen, onClose, initialRole = 'student', in
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-white border border-slate-200 rounded-3xl w-full max-w-md overflow-hidden shadow-2xl text-slate-800 flex flex-col animate-in fade-in zoom-in-95 duration-200">
+    <div 
+      className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <div 
+        className="bg-white border border-slate-200 rounded-3xl w-full max-w-md overflow-hidden shadow-2xl text-slate-800 flex flex-col animate-in fade-in zoom-in-95 duration-200"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header */}
         <div className="bg-gradient-to-r from-maroon-800 to-maroon-900 px-6 py-4.5 text-white flex items-center justify-between">
           <div className="flex items-center gap-2.5">
@@ -97,6 +103,7 @@ export default function AuthModal({ isOpen, onClose, initialRole = 'student', in
             </span>
           </div>
           <button 
+            type="button"
             onClick={onClose}
             className="text-slate-300 hover:text-white p-1 rounded-lg transition-colors"
           >
@@ -104,45 +111,44 @@ export default function AuthModal({ isOpen, onClose, initialRole = 'student', in
           </button>
         </div>
 
-        {/* Role Toggle shown during New Registration */}
-        {!isLogin && (
-          <div className="p-4 bg-slate-50 border-b border-slate-100">
-            <label className="block text-[11px] font-bold text-slate-500 mb-2">اختر صفتك في الخدمة للتسجيل:</label>
-            <div className="grid grid-cols-2 gap-2 bg-slate-200/70 p-1 rounded-2xl">
-              <button
-                type="button"
-                onClick={() => setRole('student')}
-                className={`py-2 px-4 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-1.5 ${
-                  role === 'student'
-                    ? 'bg-white text-maroon-900 shadow-sm'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <GraduationCap className="w-4 h-4" />
-                <span>مخدوم</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setRole('servant')}
-                className={`py-2 px-4 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-1.5 ${
-                  role === 'servant'
-                    ? 'bg-maroon-800 text-white shadow-sm'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <BookOpen className="w-4 h-4" />
-                <span>خادم</span>
-              </button>
-            </div>
-          </div>
-        )}
-
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 text-xs p-3 rounded-xl flex items-center gap-2">
               <ShieldAlert className="w-4 h-4 shrink-0 text-red-500" />
               <span>{error}</span>
+            </div>
+          )}
+
+          {!isLogin && (
+            <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-3">
+              <label className="block text-xs font-bold text-slate-700 mb-2">اختر صفتك في الخدمة:</label>
+              <div className="grid grid-cols-2 gap-2 bg-slate-200/70 p-1 rounded-xl">
+                <button
+                  type="button"
+                  onClick={() => setRole('student')}
+                  className={`py-2 px-3 rounded-lg font-bold text-xs transition-all flex items-center justify-center gap-1.5 ${
+                    role === 'student'
+                      ? 'bg-white text-maroon-900 shadow-sm'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <GraduationCap className="w-4 h-4" />
+                  <span>مخدوم</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRole('servant')}
+                  className={`py-2 px-3 rounded-lg font-bold text-xs transition-all flex items-center justify-center gap-1.5 ${
+                    role === 'servant'
+                      ? 'bg-maroon-800 text-white shadow-sm'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <BookOpen className="w-4 h-4" />
+                  <span>خادم</span>
+                </button>
+              </div>
             </div>
           )}
 
