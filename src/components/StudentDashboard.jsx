@@ -1,18 +1,32 @@
 import React, { useState, useEffect } from 'react';
-import { QrCode, Calendar, Award, CheckCircle2, Clock, AlertTriangle, BookOpen, User, Flame, Camera, ChevronRight } from 'lucide-react';
+import { 
+  QrCode, Calendar, Award, CheckCircle2, Clock, AlertTriangle, BookOpen, 
+  User, Flame, Camera, Heart, Check, Sun, Sunset, Moon, Sparkles, ShieldCheck
+} from 'lucide-react';
 import { db } from '../firebase';
-import { collection, addDoc, query, where, getDocs, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, query, where, getDocs, updateDoc, doc, serverTimestamp } from 'firebase/firestore';
 
 export default function StudentDashboard({ user }) {
   const [activeTab, setActiveTab] = useState('attendance'); // attendance, tracker, exams
   const [isWithinTime, setIsWithinTime] = useState(false);
   const [currentTimeStr, setCurrentTimeStr] = useState('');
-  const [bypassTime, setBypassTime] = useState(false); // For testing outside Friday 10:30 - 14:00
+  const [bypassTime, setBypassTime] = useState(false);
 
   const [scanning, setScanning] = useState(false);
-  const [attendanceStatus, setAttendanceStatus] = useState(null); // success, already, error
+  const [attendanceStatus, setAttendanceStatus] = useState(null);
   const [attendanceRecords, setAttendanceRecords] = useState([]);
-  const [loadingHistory, setLoadingHistory] = useState(true);
+  
+  // Spiritual Tracker State
+  const [points, setPoints] = useState(user.points || 120);
+  const [prayers, setPrayers] = useState({
+    baker: false,
+    ghoroub: false,
+    nowm: false,
+    bible: false
+  });
+  const [lastConfessionDate, setLastConfessionDate] = useState('2026-09-01');
+  const [lastCommunionDate, setLastCommunionDate] = useState('2026-09-18');
+  const [streakDays, setStreakDays] = useState(5);
 
   // Check 10:30 AM to 02:00 PM window
   useEffect(() => {
@@ -22,11 +36,8 @@ export default function StudentDashboard({ user }) {
       const minutes = now.getMinutes();
       const totalMinutes = hours * 60 + minutes;
 
-      // 10:30 AM = 10 * 60 + 30 = 630
-      // 02:00 PM (14:00) = 14 * 60 = 840
       const inWindow = totalMinutes >= 630 && totalMinutes <= 840;
       setIsWithinTime(inWindow);
-
       setCurrentTimeStr(now.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }));
     };
 
@@ -35,17 +46,15 @@ export default function StudentDashboard({ user }) {
     return () => clearInterval(interval);
   }, []);
 
-  // Fetch Attendance History from Firestore
+  // Fetch Attendance History
   useEffect(() => {
     async function fetchAttendance() {
       try {
-        setLoadingHistory(true);
         const attRef = collection(db, 'attendance');
         const q = query(attRef, where('userId', '==', user.id));
         const snap = await getDocs(q);
 
-        const list = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        // Add sample fallback history if empty for demo
+        const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
         if (list.length === 0) {
           setAttendanceRecords([
             { id: '1', date: 'الجمعة الماضية', status: 'حاضر', time: '11:15 ص', points: 10 },
@@ -55,9 +64,7 @@ export default function StudentDashboard({ user }) {
           setAttendanceRecords(list);
         }
       } catch (e) {
-        console.error('Error fetching attendance history:', e);
-      } finally {
-        setLoadingHistory(false);
+        console.error(e);
       }
     }
     fetchAttendance();
@@ -70,8 +77,6 @@ export default function StudentDashboard({ user }) {
     setTimeout(async () => {
       try {
         const todayStr = new Date().toISOString().split('T')[0];
-        
-        // Save to Firebase
         await addDoc(collection(db, 'attendance'), {
           userId: user.id,
           userName: user.fullName,
@@ -84,6 +89,7 @@ export default function StudentDashboard({ user }) {
         });
 
         setAttendanceStatus('success');
+        setPoints(p => p + 10);
         setAttendanceRecords(prev => [
           {
             id: Date.now().toString(),
@@ -95,12 +101,33 @@ export default function StudentDashboard({ user }) {
           ...prev
         ]);
       } catch (err) {
-        console.error(err);
-        setAttendanceStatus('success'); // allow optimistic demo update
+        setAttendanceStatus('success');
+        setPoints(p => p + 10);
       } finally {
         setScanning(false);
       }
     }, 1500);
+  };
+
+  const toggleDailyItem = (key, pts) => {
+    setPrayers(prev => {
+      const current = prev[key];
+      const next = !current;
+      setPoints(p => next ? p + pts : Math.max(0, p - pts));
+      return { ...prev, [key]: next };
+    });
+  };
+
+  const handleRecordCommunion = () => {
+    const today = new Date().toLocaleDateString('ar-EG');
+    setLastCommunionDate(today);
+    setPoints(p => p + 15);
+  };
+
+  const handleRecordConfession = () => {
+    const today = new Date().toLocaleDateString('ar-EG');
+    setLastConfessionDate(today);
+    setPoints(p => p + 20);
   };
 
   const getGradeTitle = (g) => {
@@ -115,7 +142,7 @@ export default function StudentDashboard({ user }) {
 
   return (
     <div className="w-full max-w-4xl mx-auto space-y-6">
-      {/* Student Profile Summary Card */}
+      {/* Student Profile Header */}
       <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-lg flex flex-col sm:flex-row items-center justify-between gap-4">
         <div className="flex items-center gap-3 text-right w-full sm:w-auto">
           <div className="w-12 h-12 rounded-xl bg-gold-500/20 border border-gold-400/40 text-gold-300 flex items-center justify-center font-bold text-lg shrink-0">
@@ -127,25 +154,32 @@ export default function StudentDashboard({ user }) {
               <span className="bg-maroon-900/80 border border-maroon-700/60 text-gold-300 px-2 py-0.5 rounded font-semibold">
                 {getGradeTitle(user.grade)}
               </span>
-              <span>رقم الهاتف: {user.phone}</span>
+              <span>الهاتف: {user.phone}</span>
             </div>
           </div>
         </div>
 
         {/* Quick Stats */}
         <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end border-t sm:border-t-0 pt-3 sm:pt-0 border-slate-800">
-          <div className="bg-slate-950/60 border border-slate-800 px-3 py-2 rounded-xl text-center min-w-[80px]">
+          <div className="bg-slate-950/60 border border-slate-800 px-3 py-2 rounded-xl text-center min-w-[75px]">
             <span className="text-[11px] text-slate-400 block">الحضور</span>
             <span className="text-sm font-bold text-emerald-400">92%</span>
           </div>
-          <div className="bg-slate-950/60 border border-slate-800 px-3 py-2 rounded-xl text-center min-w-[80px]">
-            <span className="text-[11px] text-slate-400 block">النقاط</span>
-            <span className="text-sm font-bold text-gold-400">{user.points || 120} نقطة</span>
+          <div className="bg-slate-950/60 border border-slate-800 px-3 py-2 rounded-xl text-center min-w-[75px]">
+            <span className="text-[11px] text-slate-400 block">أيام التوالي</span>
+            <span className="text-sm font-bold text-amber-400 flex items-center justify-center gap-1">
+              <Flame className="w-3.5 h-3.5 text-amber-500" />
+              {streakDays} يوم
+            </span>
+          </div>
+          <div className="bg-slate-950/60 border border-slate-800 px-3 py-2 rounded-xl text-center min-w-[85px]">
+            <span className="text-[11px] text-slate-400 block">النقاط الروحية</span>
+            <span className="text-sm font-bold text-gold-400">{points} نقطة</span>
           </div>
         </div>
       </div>
 
-      {/* Main Tabs */}
+      {/* Tabs */}
       <div className="flex border-b border-slate-800 text-sm font-semibold">
         <button
           onClick={() => setActiveTab('attendance')}
@@ -156,20 +190,31 @@ export default function StudentDashboard({ user }) {
           }`}
         >
           <QrCode className="w-4 h-4" />
-          <span>تسجيل الحضور بالكيو آر</span>
+          <span>حضور الخدمة بالكيو آر</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('tracker')}
+          className={`pb-3 px-4 border-b-2 flex items-center gap-2 transition-colors ${
+            activeTab === 'tracker'
+              ? 'border-gold-400 text-gold-300'
+              : 'border-transparent text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <BookOpen className="w-4 h-4" />
+          <span>دفتر الإنجاز الروحي</span>
         </button>
       </div>
 
-      {/* Attendance Tab Content */}
+      {/* 1. Attendance Tab */}
       {activeTab === 'attendance' && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Scanner Box */}
           <div className="md:col-span-2 bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl flex flex-col justify-between">
             <div>
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-bold text-white text-base flex items-center gap-2">
                   <Camera className="w-5 h-5 text-gold-400" />
-                  ماسح كود الخدمة (QR Code)
+                  تسجيل الحضور بكود الخدمة (QR)
                 </h3>
                 <span className="text-xs bg-slate-800 text-slate-300 px-2.5 py-1 rounded-full flex items-center gap-1">
                   <Clock className="w-3.5 h-3.5 text-gold-400" />
@@ -195,44 +240,36 @@ export default function StudentDashboard({ user }) {
                       : 'نافذة تسجيل الحضور مغلقة حالياً'}
                   </span>
                   <span className="text-slate-400 mt-0.5 block">
-                    مواعيد التسجيل المعتمدة: يوم الخدمة من 10:30 صباحاً حتى 02:00 ظهراً فقط.
+                    مواعيد التسجيل: يوم الخدمة من 10:30 صباحاً حتى 02:00 ظهراً فقط.
                   </span>
                 </div>
               </div>
 
-              {/* Camera Scanner Viewport */}
-              <div className="relative bg-slate-950 border-2 border-dashed border-slate-700 rounded-2xl h-64 flex flex-col items-center justify-center overflow-hidden group">
+              {/* Scanner Box */}
+              <div className="relative bg-slate-950 border-2 border-dashed border-slate-700 rounded-2xl h-60 flex flex-col items-center justify-center overflow-hidden">
                 {scanning ? (
                   <div className="flex flex-col items-center gap-3">
                     <div className="w-12 h-12 border-4 border-gold-400 border-t-transparent rounded-full animate-spin"></div>
-                    <span className="text-sm font-semibold text-gold-300">جاري قراءة الكود وتسجيل الحضور...</span>
+                    <span className="text-sm font-semibold text-gold-300">جاري قراءة الكود...</span>
                   </div>
                 ) : attendanceStatus === 'success' ? (
                   <div className="flex flex-col items-center gap-2 p-6 text-center">
-                    <CheckCircle2 className="w-16 h-16 text-emerald-400 animate-bounce" />
+                    <CheckCircle2 className="w-14 h-14 text-emerald-400 animate-bounce" />
                     <span className="text-base font-bold text-emerald-300">تم تسجيل حضورك اليوم بنجاح!</span>
                     <span className="text-xs text-slate-400">+10 نقاط إنجاز أضيفت لرصيدك</span>
                   </div>
                 ) : (
-                  <div className="flex flex-col items-center gap-3 text-center px-4">
-                    <div className="w-16 h-16 bg-slate-900 rounded-2xl flex items-center justify-center text-slate-400 border border-slate-800 shadow-inner group-hover:border-gold-400/50 transition-colors">
+                  <div className="flex flex-col items-center gap-2 text-center px-4">
+                    <div className="w-14 h-14 bg-slate-900 rounded-2xl flex items-center justify-center text-slate-400 border border-slate-800">
                       <QrCode className="w-8 h-8 text-gold-400" />
                     </div>
-                    <div>
-                      <p className="text-sm font-bold text-white mb-1">وجّه الكاميرا نحو كود الخدمة</p>
-                      <p className="text-xs text-slate-400">امسح الكود المعروض على هاتف الخادم أو المطبوع في القاعة</p>
-                    </div>
+                    <p className="text-sm font-bold text-white">وجّه الكاميرا نحو كود الخدمة</p>
+                    <p className="text-xs text-slate-400">على شاشة هاتف الخادم أو المطبوع بالقاعة</p>
                   </div>
-                )}
-
-                {/* Laser scan animation when idle and active */}
-                {(isWithinTime || bypassTime) && !attendanceStatus && !scanning && (
-                  <div className="absolute inset-x-8 top-1/2 h-0.5 bg-gradient-to-r from-transparent via-gold-400 to-transparent animate-pulse pointer-events-none"></div>
                 )}
               </div>
             </div>
 
-            {/* Action Bar */}
             <div className="mt-5 space-y-3">
               <button
                 onClick={handleSimulateScan}
@@ -241,7 +278,7 @@ export default function StudentDashboard({ user }) {
                   attendanceStatus === 'success'
                     ? 'bg-emerald-900/60 border border-emerald-500/40 text-emerald-300 cursor-not-allowed'
                     : (isWithinTime || bypassTime)
-                    ? 'bg-gradient-to-r from-gold-500 to-amber-500 hover:from-gold-400 hover:to-amber-400 text-maroon-950 cursor-pointer shadow-gold-500/10'
+                    ? 'bg-gradient-to-r from-gold-500 to-amber-500 hover:from-gold-400 text-maroon-950 cursor-pointer'
                     : 'bg-slate-800 text-slate-500 cursor-not-allowed'
                 }`}
               >
@@ -257,9 +294,8 @@ export default function StudentDashboard({ user }) {
                 </span>
               </button>
 
-              {/* Developer / Demo Testing Toggle */}
               <div className="flex items-center justify-between text-[11px] text-slate-400 pt-2 border-t border-slate-800/80">
-                <span>اختبار النظام خارج أوقات الخدمة:</span>
+                <span>تجربة خارج ميعاد الخدمة:</span>
                 <button
                   type="button"
                   onClick={() => setBypassTime(!bypassTime)}
@@ -273,7 +309,7 @@ export default function StudentDashboard({ user }) {
             </div>
           </div>
 
-          {/* Attendance History Sidebar */}
+          {/* History */}
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col">
             <h3 className="font-bold text-white text-sm mb-4 flex items-center gap-2">
               <Calendar className="w-4 h-4 text-gold-400" />
@@ -298,6 +334,167 @@ export default function StudentDashboard({ user }) {
                   <span className="text-gold-400 font-bold">+{item.points || 10} نقطة</span>
                 </div>
               ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 2. Spiritual Tracker Tab */}
+      {activeTab === 'tracker' && (
+        <div className="space-y-6">
+          {/* Daily Prayers & Bible */}
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl text-right">
+            <div className="flex items-center justify-between mb-5">
+              <h3 className="font-bold text-white text-base flex items-center gap-2">
+                <Sun className="w-5 h-5 text-gold-400" />
+                الالتزام اليومي (الأجبية والكتاب المقدس)
+              </h3>
+              <span className="text-xs text-slate-400">اليوم: {new Date().toLocaleDateString('ar-EG')}</span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* Baker */}
+              <div 
+                onClick={() => toggleDailyItem('baker', 5)}
+                className={`p-4 rounded-xl border cursor-pointer transition-all ${
+                  prayers.baker
+                    ? 'bg-gold-500/15 border-gold-400 text-gold-200'
+                    : 'bg-slate-950/60 border-slate-800 hover:border-slate-700 text-slate-300'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <Sun className={`w-5 h-5 ${prayers.baker ? 'text-gold-400' : 'text-slate-500'}`} />
+                  <div className={`w-6 h-6 rounded-lg flex items-center justify-center border ${
+                    prayers.baker ? 'bg-gold-500 border-gold-400 text-maroon-950 font-bold' : 'border-slate-700'
+                  }`}>
+                    {prayers.baker && <Check className="w-4 h-4 stroke-[3]" />}
+                  </div>
+                </div>
+                <div className="font-bold text-sm">صلاة باكر</div>
+                <div className="text-[11px] text-slate-400 mt-1">+5 نقاط</div>
+              </div>
+
+              {/* Ghoroub */}
+              <div 
+                onClick={() => toggleDailyItem('ghoroub', 5)}
+                className={`p-4 rounded-xl border cursor-pointer transition-all ${
+                  prayers.ghoroub
+                    ? 'bg-gold-500/15 border-gold-400 text-gold-200'
+                    : 'bg-slate-950/60 border-slate-800 hover:border-slate-700 text-slate-300'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <Sunset className={`w-5 h-5 ${prayers.ghoroub ? 'text-gold-400' : 'text-slate-500'}`} />
+                  <div className={`w-6 h-6 rounded-lg flex items-center justify-center border ${
+                    prayers.ghoroub ? 'bg-gold-500 border-gold-400 text-maroon-950 font-bold' : 'border-slate-700'
+                  }`}>
+                    {prayers.ghoroub && <Check className="w-4 h-4 stroke-[3]" />}
+                  </div>
+                </div>
+                <div className="font-bold text-sm">صلاة الغروب</div>
+                <div className="text-[11px] text-slate-400 mt-1">+5 نقاط</div>
+              </div>
+
+              {/* Nowm */}
+              <div 
+                onClick={() => toggleDailyItem('nowm', 5)}
+                className={`p-4 rounded-xl border cursor-pointer transition-all ${
+                  prayers.nowm
+                    ? 'bg-gold-500/15 border-gold-400 text-gold-200'
+                    : 'bg-slate-950/60 border-slate-800 hover:border-slate-700 text-slate-300'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <Moon className={`w-5 h-5 ${prayers.nowm ? 'text-gold-400' : 'text-slate-500'}`} />
+                  <div className={`w-6 h-6 rounded-lg flex items-center justify-center border ${
+                    prayers.nowm ? 'bg-gold-500 border-gold-400 text-maroon-950 font-bold' : 'border-slate-700'
+                  }`}>
+                    {prayers.nowm && <Check className="w-4 h-4 stroke-[3]" />}
+                  </div>
+                </div>
+                <div className="font-bold text-sm">صلاة النوم</div>
+                <div className="text-[11px] text-slate-400 mt-1">+5 نقاط</div>
+              </div>
+
+              {/* Bible Reading */}
+              <div 
+                onClick={() => toggleDailyItem('bible', 5)}
+                className={`p-4 rounded-xl border cursor-pointer transition-all ${
+                  prayers.bible
+                    ? 'bg-gold-500/15 border-gold-400 text-gold-200'
+                    : 'bg-slate-950/60 border-slate-800 hover:border-slate-700 text-slate-300'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <BookOpen className={`w-5 h-5 ${prayers.bible ? 'text-gold-400' : 'text-slate-500'}`} />
+                  <div className={`w-6 h-6 rounded-lg flex items-center justify-center border ${
+                    prayers.bible ? 'bg-gold-500 border-gold-400 text-maroon-950 font-bold' : 'border-slate-700'
+                  }`}>
+                    {prayers.bible && <Check className="w-4 h-4 stroke-[3]" />}
+                  </div>
+                </div>
+                <div className="font-bold text-sm">أصحاح الإنجيل</div>
+                <div className="text-[11px] text-slate-400 mt-1">+5 نقاط</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Sacraments Tracker (Confession & Communion) */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-right">
+            {/* Confession */}
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="font-bold text-white text-base flex items-center gap-2">
+                    <ShieldCheck className="w-5 h-5 text-gold-400" />
+                    سر الاعتراف
+                  </h4>
+                  <span className="text-xs bg-maroon-950 text-gold-300 px-2 py-0.5 rounded border border-maroon-800">
+                    دوري
+                  </span>
+                </div>
+                <p className="text-xs text-slate-400 mb-4">
+                  آخر اعتراف مسجل: <span className="text-slate-200 font-semibold">{lastConfessionDate}</span>
+                </p>
+                <div className="bg-slate-950/60 p-3 rounded-xl border border-slate-800 text-xs text-slate-300 mb-4">
+                  تذكير روحي: يفضل الجلوس مع أب الاعتراف كل 3 إلى 4 أسابيع بانتظام.
+                </div>
+              </div>
+              <button
+                onClick={handleRecordConfession}
+                className="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 text-gold-300 font-bold py-2.5 px-4 rounded-xl text-xs transition-colors flex items-center justify-center gap-1.5"
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                <span>تسجيل اعتراف جديد (+20 نقطة)</span>
+              </button>
+            </div>
+
+            {/* Communion */}
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="font-bold text-white text-base flex items-center gap-2">
+                    <Heart className="w-5 h-5 text-red-400" />
+                    سر التناول المقدس
+                  </h4>
+                  <span className="text-xs bg-emerald-950 text-emerald-300 px-2 py-0.5 rounded border border-emerald-800">
+                    أسبوعي
+                  </span>
+                </div>
+                <p className="text-xs text-slate-400 mb-4">
+                  آخر تناول مسجل: <span className="text-slate-200 font-semibold">{lastCommunionDate}</span>
+                </p>
+                <div className="bg-slate-950/60 p-3 rounded-xl border border-slate-800 text-xs text-slate-300 mb-4">
+                  بركة الأسرار الإلهية والتناول من جسد الرب ودمه الأقدسين.
+                </div>
+              </div>
+              <button
+                onClick={handleRecordCommunion}
+                className="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 text-emerald-300 font-bold py-2.5 px-4 rounded-xl text-xs transition-colors flex items-center justify-center gap-1.5"
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                <span>تسجيل تناول القداس (+15 نقطة)</span>
+              </button>
             </div>
           </div>
         </div>
