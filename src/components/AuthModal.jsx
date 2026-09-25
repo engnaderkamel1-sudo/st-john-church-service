@@ -126,7 +126,7 @@ export default function AuthModal({ isOpen, onClose, initialRole = 'student', in
           role: role,
           grade: role === 'student' ? grade : null,
           servantScope: role === 'servant' ? servantScope : null,
-          status: role === 'student' ? 'active' : 'pending',
+          status: 'active', // تفعيل فوري ومباشر (للخدام والمخدومين) لتسهيل تجربة الخدام بدون انتظار موافقة
           points: 0,
           createdAt: serverTimestamp()
         };
@@ -357,7 +357,7 @@ export default function AuthModal({ isOpen, onClose, initialRole = 'student', in
               </div>
             </div>
 
-            {/* Grade selection */}
+            {/* Grade selection for student */}
             {!isLogin && role === 'student' && (
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">المرحلة الدراسية</label>
@@ -371,6 +371,30 @@ export default function AuthModal({ isOpen, onClose, initialRole = 'student', in
                   <option value="third">سنة ثالثة</option>
                   <option value="elisha">فصل أليشع (إعداد خدام)</option>
                 </select>
+              </div>
+            )}
+
+            {/* Servant Scope selection */}
+            {!isLogin && role === 'servant' && (
+              <div className="space-y-2">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">نطاق الخدمة المسئول عنه</label>
+                  <select
+                    value={servantScope}
+                    onChange={(e) => setServantScope(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:border-maroon-700 focus:bg-white transition-colors"
+                  >
+                    <option value="all">أمين خدمة عام (جميع المراحل)</option>
+                    <option value="first">خادم سنة أولى</option>
+                    <option value="second">خادم سنة ثانية</option>
+                    <option value="third">خادم سنة ثالثة</option>
+                    <option value="elisha">خادم فصل أليشع (إعداد خدام)</option>
+                  </select>
+                </div>
+                <div className="bg-amber-50 border border-amber-200 text-amber-800 text-[11px] p-2.5 rounded-xl font-bold flex items-center gap-1.5">
+                  <CheckCircle2 className="w-4 h-4 text-amber-600 shrink-0" />
+                  <span>دخول فوري مباشر: حسابك كخادم سيفعل تلقائياً لتجربة المنظومة فوراً.</span>
+                </div>
               </div>
             )}
 
