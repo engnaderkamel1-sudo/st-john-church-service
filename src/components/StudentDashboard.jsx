@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { 
   QrCode, Calendar, Award, CheckCircle2, Clock, AlertTriangle, BookOpen, 
-  User, Flame, Camera, Heart, Check, Sun, Sunset, Moon, Sparkles, ShieldCheck
+  User, Flame, Camera, Heart, Check, Sun, Sunset, Moon, Sparkles, ShieldCheck,
+  FileText, Send, HelpCircle
 } from 'lucide-react';
 import { db } from '../firebase';
 import { collection, addDoc, query, where, getDocs, updateDoc, doc, serverTimestamp } from 'firebase/firestore';
@@ -27,6 +28,49 @@ export default function StudentDashboard({ user }) {
   const [lastConfessionDate, setLastConfessionDate] = useState('2026-09-01');
   const [lastCommunionDate, setLastCommunionDate] = useState('2026-09-18');
   const [streakDays, setStreakDays] = useState(5);
+
+  // Exams State
+  const [activeExam, setActiveExam] = useState(null);
+  const [examAnswers, setExamAnswers] = useState({});
+  const [examResult, setExamResult] = useState(null);
+  const [completedExams, setCompletedExams] = useState({});
+
+  // Mock Available Exams for the Student's Grade
+  const availableExams = [
+    {
+      id: 'ex-1',
+      title: user.grade === 'elisha' ? 'اختبار مهارات إعداد الخادم والخدمة الكنسية' : 'امتحان منتصف الفصل في العقيدة والطقس',
+      grade: user.grade,
+      durationMinutes: 20,
+      totalScore: 30,
+      questions: [
+        {
+          id: 'q1',
+          type: 'mcq',
+          questionText: 'ما هو سر الأسرار وينبوع كل النعم الكنسية؟',
+          options: ['سر المعمودية', 'سر الإفخارستيا (التناول)', 'سر التوبة والاعتراف', 'سر الزيجة'],
+          correctAnswer: 'سر الإفخارستيا (التناول)',
+          points: 10
+        },
+        {
+          id: 'q2',
+          type: 'true_false',
+          questionText: 'صلاة باكر في الأجبية تُصلى تذكاراً لقيامة السيد المسيح من بين الأموات.',
+          options: ['صح', 'خطأ'],
+          correctAnswer: 'صح',
+          points: 10
+        },
+        {
+          id: 'q3',
+          type: 'essay',
+          questionText: user.grade === 'elisha' 
+            ? 'اذكر باختصار ثلاث صفات روحية وسلوكية يجب أن يتحلى بها خادم المسيح في التعامل مع المخدومين.'
+            : 'اكتب باختصار عن أهمية قراءة الكتاب المقدس يومياً في حياة الشاب المسيحي.',
+          points: 10
+        }
+      ]
+    }
+  ];
 
   // Check 10:30 AM to 02:00 PM window
   useEffect(() => {
@@ -130,6 +174,51 @@ export default function StudentDashboard({ user }) {
     setPoints(p => p + 20);
   };
 
+  // Submit Exam
+  const handleSubmitExam = async (exam) => {
+    let autoScore = 0;
+    const questions = exam.questions;
+
+    questions.forEach(q => {
+      if (q.type === 'mcq' || q.type === 'true_false') {
+        if (examAnswers[q.id] === q.correctAnswer) {
+          autoScore += q.points;
+        }
+      }
+    });
+
+    const result = {
+      examId: exam.id,
+      autoScore: autoScore,
+      maxAutoScore: 20,
+      essayPending: true,
+      essayAnswer: examAnswers['q3'] || '',
+      submittedAt: new Date().toLocaleTimeString('ar-EG')
+    };
+
+    setExamResult(result);
+    setCompletedExams(prev => ({ ...prev, [exam.id]: result }));
+    setPoints(p => p + autoScore);
+
+    // Save to Firestore
+    try {
+      await addDoc(collection(db, 'exam_submissions'), {
+        userId: user.id,
+        userName: user.fullName,
+        grade: user.grade,
+        examId: exam.id,
+        examTitle: exam.title,
+        autoScore: autoScore,
+        essayAnswer: examAnswers['q3'] || '',
+        essayScore: null, // Pending servant manual grading
+        status: 'pending_essay',
+        timestamp: serverTimestamp()
+      });
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   const getGradeTitle = (g) => {
     const titles = {
       first: 'سنة أولى ثانوي',
@@ -173,7 +262,7 @@ export default function StudentDashboard({ user }) {
             </span>
           </div>
           <div className="bg-slate-950/60 border border-slate-800 px-3 py-2 rounded-xl text-center min-w-[85px]">
-            <span className="text-[11px] text-slate-400 block">النقاط الروحية</span>
+            <span className="text-[11px] text-slate-400 block">النقاط</span>
             <span className="text-sm font-bold text-gold-400">{points} نقطة</span>
           </div>
         </div>
@@ -190,7 +279,7 @@ export default function StudentDashboard({ user }) {
           }`}
         >
           <QrCode className="w-4 h-4" />
-          <span>حضور الخدمة بالكيو آر</span>
+          <span>حضور الخدمة</span>
         </button>
 
         <button
@@ -203,6 +292,18 @@ export default function StudentDashboard({ user }) {
         >
           <BookOpen className="w-4 h-4" />
           <span>دفتر الإنجاز الروحي</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('exams')}
+          className={`pb-3 px-4 border-b-2 flex items-center gap-2 transition-colors ${
+            activeTab === 'exams'
+              ? 'border-gold-400 text-gold-300'
+              : 'border-transparent text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <FileText className="w-4 h-4" />
+          <span>المناهج والامتحانات</span>
         </button>
       </div>
 
@@ -222,7 +323,6 @@ export default function StudentDashboard({ user }) {
                 </span>
               </div>
 
-              {/* Time Window Notice */}
               <div className={`p-3.5 rounded-xl border text-xs mb-5 flex items-start gap-2.5 ${
                 isWithinTime || bypassTime
                   ? 'bg-emerald-950/40 border-emerald-600/40 text-emerald-200'
@@ -245,7 +345,6 @@ export default function StudentDashboard({ user }) {
                 </div>
               </div>
 
-              {/* Scanner Box */}
               <div className="relative bg-slate-950 border-2 border-dashed border-slate-700 rounded-2xl h-60 flex flex-col items-center justify-center overflow-hidden">
                 {scanning ? (
                   <div className="flex flex-col items-center gap-3">
@@ -309,7 +408,6 @@ export default function StudentDashboard({ user }) {
             </div>
           </div>
 
-          {/* History */}
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col">
             <h3 className="font-bold text-white text-sm mb-4 flex items-center gap-2">
               <Calendar className="w-4 h-4 text-gold-400" />
@@ -342,7 +440,6 @@ export default function StudentDashboard({ user }) {
       {/* 2. Spiritual Tracker Tab */}
       {activeTab === 'tracker' && (
         <div className="space-y-6">
-          {/* Daily Prayers & Bible */}
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl text-right">
             <div className="flex items-center justify-between mb-5">
               <h3 className="font-bold text-white text-base flex items-center gap-2">
@@ -353,13 +450,10 @@ export default function StudentDashboard({ user }) {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {/* Baker */}
               <div 
                 onClick={() => toggleDailyItem('baker', 5)}
                 className={`p-4 rounded-xl border cursor-pointer transition-all ${
-                  prayers.baker
-                    ? 'bg-gold-500/15 border-gold-400 text-gold-200'
-                    : 'bg-slate-950/60 border-slate-800 hover:border-slate-700 text-slate-300'
+                  prayers.baker ? 'bg-gold-500/15 border-gold-400 text-gold-200' : 'bg-slate-950/60 border-slate-800 text-slate-300'
                 }`}
               >
                 <div className="flex items-center justify-between mb-2">
@@ -374,13 +468,10 @@ export default function StudentDashboard({ user }) {
                 <div className="text-[11px] text-slate-400 mt-1">+5 نقاط</div>
               </div>
 
-              {/* Ghoroub */}
               <div 
                 onClick={() => toggleDailyItem('ghoroub', 5)}
                 className={`p-4 rounded-xl border cursor-pointer transition-all ${
-                  prayers.ghoroub
-                    ? 'bg-gold-500/15 border-gold-400 text-gold-200'
-                    : 'bg-slate-950/60 border-slate-800 hover:border-slate-700 text-slate-300'
+                  prayers.ghoroub ? 'bg-gold-500/15 border-gold-400 text-gold-200' : 'bg-slate-950/60 border-slate-800 text-slate-300'
                 }`}
               >
                 <div className="flex items-center justify-between mb-2">
@@ -395,13 +486,10 @@ export default function StudentDashboard({ user }) {
                 <div className="text-[11px] text-slate-400 mt-1">+5 نقاط</div>
               </div>
 
-              {/* Nowm */}
               <div 
                 onClick={() => toggleDailyItem('nowm', 5)}
                 className={`p-4 rounded-xl border cursor-pointer transition-all ${
-                  prayers.nowm
-                    ? 'bg-gold-500/15 border-gold-400 text-gold-200'
-                    : 'bg-slate-950/60 border-slate-800 hover:border-slate-700 text-slate-300'
+                  prayers.nowm ? 'bg-gold-500/15 border-gold-400 text-gold-200' : 'bg-slate-950/60 border-slate-800 text-slate-300'
                 }`}
               >
                 <div className="flex items-center justify-between mb-2">
@@ -416,13 +504,10 @@ export default function StudentDashboard({ user }) {
                 <div className="text-[11px] text-slate-400 mt-1">+5 نقاط</div>
               </div>
 
-              {/* Bible Reading */}
               <div 
                 onClick={() => toggleDailyItem('bible', 5)}
                 className={`p-4 rounded-xl border cursor-pointer transition-all ${
-                  prayers.bible
-                    ? 'bg-gold-500/15 border-gold-400 text-gold-200'
-                    : 'bg-slate-950/60 border-slate-800 hover:border-slate-700 text-slate-300'
+                  prayers.bible ? 'bg-gold-500/15 border-gold-400 text-gold-200' : 'bg-slate-950/60 border-slate-800 text-slate-300'
                 }`}
               >
                 <div className="flex items-center justify-between mb-2">
@@ -439,9 +524,7 @@ export default function StudentDashboard({ user }) {
             </div>
           </div>
 
-          {/* Sacraments Tracker (Confession & Communion) */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-right">
-            {/* Confession */}
             <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl flex flex-col justify-between">
               <div>
                 <div className="flex items-center justify-between mb-3">
@@ -449,12 +532,10 @@ export default function StudentDashboard({ user }) {
                     <ShieldCheck className="w-5 h-5 text-gold-400" />
                     سر الاعتراف
                   </h4>
-                  <span className="text-xs bg-maroon-950 text-gold-300 px-2 py-0.5 rounded border border-maroon-800">
-                    دوري
-                  </span>
+                  <span className="text-xs bg-maroon-950 text-gold-300 px-2 py-0.5 rounded border border-maroon-800">دوري</span>
                 </div>
                 <p className="text-xs text-slate-400 mb-4">
-                  آخر اعتراف مسجل: <span className="text-slate-200 font-semibold">{lastConfessionDate}</span>
+                  آخر اعتراف: <span className="text-slate-200 font-semibold">{lastConfessionDate}</span>
                 </p>
                 <div className="bg-slate-950/60 p-3 rounded-xl border border-slate-800 text-xs text-slate-300 mb-4">
                   تذكير روحي: يفضل الجلوس مع أب الاعتراف كل 3 إلى 4 أسابيع بانتظام.
@@ -469,7 +550,6 @@ export default function StudentDashboard({ user }) {
               </button>
             </div>
 
-            {/* Communion */}
             <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl flex flex-col justify-between">
               <div>
                 <div className="flex items-center justify-between mb-3">
@@ -477,12 +557,10 @@ export default function StudentDashboard({ user }) {
                     <Heart className="w-5 h-5 text-red-400" />
                     سر التناول المقدس
                   </h4>
-                  <span className="text-xs bg-emerald-950 text-emerald-300 px-2 py-0.5 rounded border border-emerald-800">
-                    أسبوعي
-                  </span>
+                  <span className="text-xs bg-emerald-950 text-emerald-300 px-2 py-0.5 rounded border border-emerald-800">أسبوعي</span>
                 </div>
                 <p className="text-xs text-slate-400 mb-4">
-                  آخر تناول مسجل: <span className="text-slate-200 font-semibold">{lastCommunionDate}</span>
+                  آخر تناول: <span className="text-slate-200 font-semibold">{lastCommunionDate}</span>
                 </p>
                 <div className="bg-slate-950/60 p-3 rounded-xl border border-slate-800 text-xs text-slate-300 mb-4">
                   بركة الأسرار الإلهية والتناول من جسد الرب ودمه الأقدسين.
@@ -497,6 +575,164 @@ export default function StudentDashboard({ user }) {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* 3. Exams & Curriculum Tab */}
+      {activeTab === 'exams' && (
+        <div className="space-y-6 text-right">
+          {!activeExam ? (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="font-bold text-white text-base flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-gold-400" />
+                  الامتحانات المتاحة لمرحلتك ({getGradeTitle(user.grade)})
+                </h3>
+              </div>
+
+              {availableExams.map((exam) => {
+                const isCompleted = completedExams[exam.id];
+
+                return (
+                  <div
+                    key={exam.id}
+                    className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
+                  >
+                    <div>
+                      <div className="flex items-center gap-2 mb-1.5">
+                        <span className="bg-maroon-900/80 border border-maroon-700/60 text-gold-300 text-xs px-2.5 py-0.5 rounded font-semibold">
+                          إلكتروني
+                        </span>
+                        <span className="text-xs text-slate-400">المدة: {exam.durationMinutes} دقيقة</span>
+                        <span className="text-xs text-slate-400">• الدرجة: {exam.totalScore} درجة</span>
+                      </div>
+                      <h4 className="text-base font-bold text-white">{exam.title}</h4>
+                      <p className="text-xs text-slate-400 mt-1">
+                        يشمل أسئلة موضوعية (تصحيح فوري) وسؤالاً مقالياً يصححه الخادم.
+                      </p>
+                    </div>
+
+                    <div>
+                      {isCompleted ? (
+                        <div className="bg-emerald-950/70 border border-emerald-500/40 text-emerald-300 text-xs px-4 py-2 rounded-xl text-center">
+                          <span className="font-bold block">تم تسليم الاختبار</span>
+                          <span className="text-[11px] text-slate-300">
+                            درجة الموضوعي: {isCompleted.autoScore}/20 (المقالي قيد تقدير الخادم)
+                          </span>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => {
+                            setActiveExam(exam);
+                            setExamAnswers({});
+                            setExamResult(null);
+                          }}
+                          className="bg-gold-500 hover:bg-gold-400 text-maroon-950 font-bold text-xs py-2.5 px-5 rounded-xl transition-all shadow"
+                        >
+                          بدء أداء الامتحان
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            // Active Exam Taking Screen
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-6">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+                <div>
+                  <h3 className="font-bold text-white text-lg">{activeExam.title}</h3>
+                  <span className="text-xs text-slate-400">مرحلة: {getGradeTitle(user.grade)}</span>
+                </div>
+                <button
+                  onClick={() => setActiveExam(null)}
+                  className="text-xs text-slate-400 hover:text-white bg-slate-800 px-3 py-1.5 rounded-lg"
+                >
+                  إلغاء والعودة
+                </button>
+              </div>
+
+              {examResult ? (
+                // Exam Result Card
+                <div className="p-6 bg-slate-950/80 border border-emerald-500/40 rounded-2xl text-center space-y-3">
+                  <CheckCircle2 className="w-16 h-16 text-emerald-400 mx-auto" />
+                  <h4 className="text-xl font-bold text-white">تم تسليم إجاباتك بنجاح!</h4>
+                  <div className="text-sm text-slate-300">
+                    درجة الأسئلة الموضوعية المصححة آلياً:{' '}
+                    <span className="text-gold-400 font-bold text-lg">{examResult.autoScore} / 20</span>
+                  </div>
+                  <p className="text-xs text-slate-400 max-w-md mx-auto">
+                    تم إرسال إجابة السؤال المقالي إلى لوحة الخادم المسؤول لتقدير الدرجة المتبقية (10 درجات).
+                  </p>
+                  <button
+                    onClick={() => setActiveExam(null)}
+                    className="mt-4 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold py-2 px-6 rounded-xl"
+                  >
+                    العودة لصفحة الامتحانات
+                  </button>
+                </div>
+              ) : (
+                // Questions Form
+                <div className="space-y-6">
+                  {activeExam.questions.map((q, idx) => (
+                    <div key={q.id} className="bg-slate-950/60 border border-slate-800 p-5 rounded-xl space-y-3">
+                      <div className="flex items-center justify-between text-xs text-slate-400">
+                        <span className="font-bold text-gold-400">السؤال {idx + 1} ({q.points} درجات)</span>
+                        <span>{q.type === 'essay' ? 'سؤال مقالي' : 'تصحيح تلقائي'}</span>
+                      </div>
+                      <p className="text-sm font-semibold text-white leading-relaxed">{q.questionText}</p>
+
+                      {/* Options for MCQ / True-False */}
+                      {q.options && (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2">
+                          {q.options.map((opt) => (
+                            <label
+                              key={opt}
+                              className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer text-xs transition-colors ${
+                                examAnswers[q.id] === opt
+                                  ? 'bg-gold-500/20 border-gold-400 text-gold-200'
+                                  : 'bg-slate-900 border-slate-800 hover:border-slate-700 text-slate-300'
+                              }`}
+                            >
+                              <input
+                                type="radio"
+                                name={q.id}
+                                value={opt}
+                                checked={examAnswers[q.id] === opt}
+                                onChange={() => setExamAnswers({ ...examAnswers, [q.id]: opt })}
+                                className="accent-gold-500"
+                              />
+                              <span>{opt}</span>
+                            </label>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Essay text area */}
+                      {q.type === 'essay' && (
+                        <textarea
+                          rows={4}
+                          placeholder="اكتب إجابتك هنا بوضوح لتصحيحها من قبل الخادم..."
+                          value={examAnswers[q.id] || ''}
+                          onChange={(e) => setExamAnswers({ ...examAnswers, [q.id]: e.target.value })}
+                          className="w-full bg-slate-900 border border-slate-800 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-gold-400"
+                        />
+                      )}
+                    </div>
+                  ))}
+
+                  <button
+                    onClick={() => handleSubmitExam(activeExam)}
+                    className="w-full bg-gradient-to-r from-gold-500 to-amber-500 hover:from-gold-400 text-maroon-950 font-bold py-3.5 px-4 rounded-xl text-sm transition-all shadow-md flex items-center justify-center gap-2"
+                  >
+                    <Send className="w-4 h-4" />
+                    <span>تسليم الامتحان ورصد الدرجات</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>
