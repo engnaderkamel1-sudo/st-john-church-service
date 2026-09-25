@@ -11,10 +11,7 @@ export default function App() {
   const [targetRole, setTargetRole] = useState('student');
   const [showNotifications, setShowNotifications] = useState(false);
 
-  const notifications = [
-    { id: 1, title: 'تذكير بميعاد الخدمة', desc: 'نافذة تسجيل الحضور بالـ QR تفتح الجمعة 10:30 ص حتى 02:00 م', time: 'اليوم' },
-    { id: 2, title: 'امتحان جديد متاح', desc: 'تم فتح امتحان منتصف الفصل لمرحلتك', time: 'أمس' }
-  ];
+  const [notifications, setNotifications] = useState([]);
 
   useEffect(() => {
     const saved = localStorage.getItem('church_user');
@@ -88,13 +85,19 @@ export default function App() {
                   <div className="font-bold text-xs text-maroon-900 border-b border-slate-100 pb-2">
                     التنبيهات والإشعارات
                   </div>
-                  {notifications.map((n) => (
-                    <div key={n.id} className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 text-xs">
-                      <div className="font-bold text-slate-800">{n.title}</div>
-                      <div className="text-[11px] text-slate-500 mt-0.5">{n.desc}</div>
-                      <div className="text-[10px] text-slate-400 mt-1">{n.time}</div>
+                  {notifications.length === 0 ? (
+                    <div className="py-6 text-center text-slate-400 text-xs font-bold">
+                      لا توجد إشعارات جديدة حالياً
                     </div>
-                  ))}
+                  ) : (
+                    notifications.map((n) => (
+                      <div key={n.id} className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 text-xs">
+                        <div className="font-bold text-slate-800">{n.title}</div>
+                        <div className="text-[11px] text-slate-500 mt-0.5">{n.desc}</div>
+                        <div className="text-[10px] text-slate-400 mt-1">{n.time}</div>
+                      </div>
+                    ))
+                  )}
                 </div>
               )}
             </div>
