@@ -4,7 +4,7 @@ import {
   Printer, UserCheck, Search, Award, FileCheck, Edit3, Save, Check, 
   FileText, Plus, Download, UploadCloud, ChevronLeft, Trash2, FolderPlus,
   HelpCircle, Filter, Send, Layers, AlertCircle, MessageSquare, TrendingUp, Trophy, UserCog, RefreshCw,
-  BellRing, Unlock, Lock, UserPlus
+  BellRing, Unlock, Lock, UserPlus, UserX, KeyRound, Copy
 } from 'lucide-react';
 import { db } from '../firebase';
 import { collection, getDocs, doc, updateDoc, setDoc, addDoc, query, orderBy, serverTimestamp } from 'firebase/firestore';
@@ -58,19 +58,43 @@ export default function ServantDashboard({ user }) {
     }
   };
 
-  // Dynamic QR
+  // Dynamic QR & Numeric PIN Code
   const todayStr = new Date().toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
   const [qrCodeData, setQrCodeData] = useState(`STJOHN-ATTENDANCE-${new Date().toISOString().split('T')[0]}`);
+  const [numericPin, setNumericPin] = useState('4821');
 
-  // Manual Attendance & Remote Code Access Control
+  // Manual Attendance & Absence State
   const [manualAttendLoadingId, setManualAttendLoadingId] = useState(null);
   const [manualAttendSuccessId, setManualAttendSuccessId] = useState(null);
+  const [manualAbsenceLoadingId, setManualAbsenceLoadingId] = useState(null);
+  const [manualAbsenceSuccessId, setManualAbsenceSuccessId] = useState(null);
   const [remoteAccessTarget, setRemoteAccessTarget] = useState('all');
   const [remoteAccessLoading, setRemoteAccessLoading] = useState(false);
   const [remoteAccessMessage, setRemoteAccessMessage] = useState('');
   const [selectedStudentForAccess, setSelectedStudentForAccess] = useState('');
 
-  // 1. Manual Attendance (لو نسي التليفون)
+  // Generate and sync a new 4-digit PIN code
+  const handleGenerateNewPin = async () => {
+    const newPin = Math.floor(1000 + Math.random() * 9000).toString();
+    setNumericPin(newPin);
+    try {
+      const todayDateOnly = new Date().toISOString().split('T')[0];
+      const expiryTime = new Date(Date.now() + 2 * 60 * 60 * 1000); // 2 hours
+      await setDoc(doc(db, 'service_settings', 'attendance_window'), {
+        isOpenForAll: true,
+        openedBy: user.fullName || 'أمين الخدمة',
+        date: todayDateOnly,
+        validUntil: expiryTime.toISOString(),
+        activeCode: qrCodeData,
+        activePin: newPin,
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+    } catch (err) {
+      console.error('Error updating pin:', err);
+    }
+  };
+
+  // 1. Manual Attendance (لو نسي التليفون أو لتسجيله حاضراً)
   const handleManualAttendance = async (targetUser) => {
     setManualAttendLoadingId(targetUser.id);
     try {
@@ -85,6 +109,7 @@ export default function ServantDashboard({ user }) {
         dateFormatted: todayStr,
         time: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }),
         type: 'manual_by_servant',
+        status: 'حاضر',
         servantName: user.fullName || 'الخادم المسؤول',
         pointsAwarded: 10,
         createdAt: serverTimestamp()
@@ -116,6 +141,47 @@ export default function ServantDashboard({ user }) {
     }
   };
 
+  // 1.2 Manual Absence (تسجيل غياب المخدوم)
+  const handleManualAbsence = async (targetUser) => {
+    setManualAbsenceLoadingId(targetUser.id);
+    try {
+      const todayDateOnly = new Date().toISOString().split('T')[0];
+      // Record absence in Firestore
+      await addDoc(collection(db, 'attendance'), {
+        userId: targetUser.id,
+        userName: targetUser.fullName,
+        phone: targetUser.phone,
+        grade: targetUser.grade || 'first',
+        date: todayDateOnly,
+        dateFormatted: todayStr,
+        time: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }),
+        type: 'manual_absence_by_servant',
+        status: 'غائب',
+        servantName: user.fullName || 'الخادم المسؤول',
+        pointsAwarded: 0,
+        createdAt: serverTimestamp()
+      });
+
+      // Send in-app reminder / notification
+      await addDoc(collection(db, 'notifications'), {
+        targetUserId: targetUser.id,
+        title: 'تم تسجيل غياب لخدمة اليوم ⚠️',
+        desc: `تم تسجيلك غائباً لخدمة اليوم بواسطة الخادم (${user.fullName || 'المسؤول'}). نتمنى رؤيتك الجمعة القادمة ببركة ربنا!`,
+        time: 'الآن',
+        createdAt: serverTimestamp()
+      });
+
+      setManualAbsenceSuccessId(targetUser.id);
+      setTimeout(() => setManualAbsenceSuccessId(null), 3000);
+      fetchAllUsers();
+    } catch (err) {
+      console.error('Error recording manual absence:', err);
+      alert('حدث خطأ أثناء تسجيل الغياب.');
+    } finally {
+      setManualAbsenceLoadingId(null);
+    }
+  };
+
   // 2. Open Registration / Remote Code Access (للجميع أو لشخص محدد مع إرسال إشعار فوري)
   const handleOpenCodeAccess = async () => {
     setRemoteAccessLoading(true);
@@ -132,14 +198,15 @@ export default function ServantDashboard({ user }) {
           date: todayDateOnly,
           validUntil: expiryTime.toISOString(),
           activeCode: qrCodeData,
+          activePin: numericPin,
           updatedAt: serverTimestamp()
-        });
+        }, { merge: true });
 
         // Broadcast notification to ALL students
         await addDoc(collection(db, 'notifications'), {
           targetUserId: 'ALL',
           title: '📢 تم فتح تسجيل الحضور الآن لجميع المخدومين!',
-          desc: `أتاح الخادم (${user.fullName || 'المسؤول'}) تسجيل الحضور بالكود لجميع الفصول. سارع بتسجيل حضورك الآن.`,
+          desc: `أتاح الخادم (${user.fullName || 'المسؤول'}) تسجيل الحضور بالكود (${numericPin}) لجميع المراحل. سارع بتسجيل حضورك الآن.`,
           time: 'الآن',
           createdAt: serverTimestamp()
         });
@@ -164,14 +231,15 @@ export default function ServantDashboard({ user }) {
           date: todayDateOnly,
           validUntil: expiryTime.toISOString(),
           activeCode: qrCodeData,
+          activePin: numericPin,
           updatedAt: serverTimestamp()
-        });
+        }, { merge: true });
 
         // Send direct notification to this student
         await addDoc(collection(db, 'notifications'), {
           targetUserId: selectedStudentForAccess,
           title: '🎯 تم فتح تسجيل الحضور الاستثنائي لحسابك!',
-          desc: `أتاح لك الخادم (${user.fullName || 'المسؤول'}) إمكانية تسجيل الحضور بالكود استثنائياً الآن. افتح صفحة الحضور للتسجيل فوراً.`,
+          desc: `أتاح لك الخادم (${user.fullName || 'المسؤول'}) إمكانية تسجيل الحضور بالكود استثنائياً الآن. كود الحضور الرقمي هو: (${numericPin}). افتح صفحة الحضور للتسجيل فوراً.`,
           time: 'الآن',
           createdAt: serverTimestamp()
         });
@@ -539,7 +607,7 @@ export default function ServantDashboard({ user }) {
                     <th className="py-3 px-3">رقم الهاتف</th>
                     <th className="py-3 px-3">الصفة الحالية</th>
                     <th className="py-3 px-3">المرحلة / النطاق</th>
-                    <th className="py-3 px-3">تسجيل حضور يدوي (نسي التليفون)</th>
+                    <th className="py-3 px-3">تسجيل الحضور / الغياب اليدوي</th>
                     <th className="py-3 px-3">تعديل الصفة (خادم / مخدوم)</th>
                     <th className="py-3 px-3">تعديل المرحلة</th>
                   </tr>
@@ -586,28 +654,53 @@ export default function ServantDashboard({ user }) {
                         </td>
                         <td className="py-3 px-3">
                           {item.role === 'student' ? (
-                            <button
-                              onClick={() => handleManualAttendance(item)}
-                              disabled={manualAttendLoadingId === item.id}
-                              className={`font-bold text-[11px] px-3 py-1.5 rounded-xl transition-all shadow-2xs flex items-center gap-1 ${
-                                manualAttendSuccessId === item.id
-                                  ? 'bg-emerald-600 text-white'
-                                  : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300'
-                              }`}
-                              title="تسجيل حضور هذا المخدوم فوراً وإضافة 10 نقاط لحسابه مع إرسال إشعار"
-                            >
-                              {manualAttendSuccessId === item.id ? (
-                                <>
-                                  <Check className="w-3.5 h-3.5" />
-                                  <span>تم التسجيل ✓</span>
-                                </>
-                              ) : (
-                                <>
-                                  <UserPlus className="w-3.5 h-3.5 text-emerald-700" />
-                                  <span>{manualAttendLoadingId === item.id ? 'جاري...' : 'تسجيل حضور الآن'}</span>
-                                </>
-                              )}
-                            </button>
+                            <div className="flex items-center gap-1.5">
+                              <button
+                                onClick={() => handleManualAttendance(item)}
+                                disabled={manualAttendLoadingId === item.id || manualAbsenceLoadingId === item.id}
+                                className={`font-bold text-[11px] px-2.5 py-1.5 rounded-xl transition-all shadow-2xs flex items-center gap-1 ${
+                                  manualAttendSuccessId === item.id
+                                    ? 'bg-emerald-600 text-white'
+                                    : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300'
+                                }`}
+                                title="تسجيل حضور هذا المخدوم فوراً وإضافة 10 نقاط لحسابه"
+                              >
+                                {manualAttendSuccessId === item.id ? (
+                                  <>
+                                    <Check className="w-3.5 h-3.5" />
+                                    <span>تم الحضور ✓</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <UserPlus className="w-3.5 h-3.5 text-emerald-700" />
+                                    <span>{manualAttendLoadingId === item.id ? '...' : 'حاضر'}</span>
+                                  </>
+                                )}
+                              </button>
+
+                              <button
+                                onClick={() => handleManualAbsence(item)}
+                                disabled={manualAbsenceLoadingId === item.id || manualAttendLoadingId === item.id}
+                                className={`font-bold text-[11px] px-2.5 py-1.5 rounded-xl transition-all shadow-2xs flex items-center gap-1 ${
+                                  manualAbsenceSuccessId === item.id
+                                    ? 'bg-rose-600 text-white'
+                                    : 'bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-300'
+                                }`}
+                                title="تسجيل هذا المخدوم غائباً لليوم وإرسال تنبيه"
+                              >
+                                {manualAbsenceSuccessId === item.id ? (
+                                  <>
+                                    <Check className="w-3.5 h-3.5" />
+                                    <span>تم الغياب ✓</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <UserX className="w-3.5 h-3.5 text-rose-700" />
+                                    <span>{manualAbsenceLoadingId === item.id ? '...' : 'غائب'}</span>
+                                  </>
+                                )}
+                              </button>
+                            </div>
                           ) : (
                             <span className="text-slate-400 text-[10px]">—</span>
                           )}
@@ -1211,12 +1304,38 @@ export default function ServantDashboard({ user }) {
               </div>
             </div>
 
+            {/* Dynamic Numeric PIN Code for Students (رقم كود متغير يقدر يديه للمخدوم) */}
+            <div className="mt-5 w-full max-w-sm bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-300 rounded-2xl p-4 shadow-xs text-center space-y-2">
+              <div className="flex items-center justify-center gap-1.5 text-amber-900 font-extrabold text-xs">
+                <KeyRound className="w-4 h-4 text-amber-700" />
+                <span>كود الحضور الرقمي السريع (بدون كاميرا)</span>
+              </div>
+              <p className="text-[11px] text-slate-600">
+                يمكن للمخدوم كتابة هذا الرقم المكون من 4 أرقام مباشرة في حسابه لتسجيل حضوره:
+              </p>
+              <div className="bg-white border-2 border-dashed border-amber-400 py-2.5 px-6 rounded-2xl inline-block shadow-inner">
+                <span className="font-mono text-3xl font-black text-amber-900 tracking-widest" dir="ltr">
+                  {numericPin}
+                </span>
+              </div>
+              <div className="pt-1 flex items-center justify-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleGenerateNewPin}
+                  className="bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs py-1.5 px-3 rounded-xl transition-all shadow-2xs flex items-center gap-1"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  <span>توليد كود رقمي جديد 🔄</span>
+                </button>
+              </div>
+            </div>
+
             <div className="mt-5 flex items-center justify-center gap-3">
               <button
                 onClick={() => setQrCodeData(`STJOHN-ATTENDANCE-${new Date().toISOString().split('T')[0]}-${Math.floor(1000 + Math.random() * 9000)}`)}
                 className="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold py-2 px-3.5 rounded-xl transition-all"
               >
-                تحديث الكود
+                تحديث رمز QR
               </button>
               <button
                 onClick={() => window.print()}
