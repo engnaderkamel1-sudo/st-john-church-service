@@ -1,14 +1,61 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   ShieldCheck, Users, QrCode, BookOpen, CheckCircle, Clock, 
   Printer, UserCheck, Search, Award, FileCheck, Edit3, Save, Check, 
   FileText, Plus, Download, UploadCloud, ChevronLeft, Trash2, FolderPlus,
-  HelpCircle, Filter, Send, Layers, AlertCircle, MessageSquare, TrendingUp, Trophy
+  HelpCircle, Filter, Send, Layers, AlertCircle, MessageSquare, TrendingUp, Trophy, UserCog, RefreshCw
 } from 'lucide-react';
+import { db } from '../firebase';
+import { collection, getDocs, doc, updateDoc, query, orderBy } from 'firebase/firestore';
 
 export default function ServantDashboard({ user }) {
-  const [mainTab, setMainTab] = useState('subjects_hub'); // 'subjects_hub', 'exams_bank_hub', 'analytics_hub', 'attendance_qr'
+  const [mainTab, setMainTab] = useState('users_hub'); // Default to users & role approvals
   const [selectedGrade, setSelectedGrade] = useState('first');
+
+  // Registered Users Management & Approval State
+  const [allUsers, setAllUsers] = useState([]);
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [userRoleFilter, setUserRoleFilter] = useState('all');
+  const [roleUpdatingId, setRoleUpdatingId] = useState(null);
+
+  // Fetch registered users from Firestore
+  const fetchAllUsers = async () => {
+    setUsersLoading(true);
+    try {
+      const q = query(collection(db, 'users'));
+      const snap = await getDocs(q);
+      const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      setAllUsers(list);
+    } catch (err) {
+      console.error('Error fetching users:', err);
+    } finally {
+      setUsersLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchAllUsers();
+  }, []);
+
+  // Update User Role & Stage in Firestore
+  const handleUpdateUserRole = async (userId, newRole, newGrade = null) => {
+    setRoleUpdatingId(userId);
+    try {
+      const userRef = doc(db, 'users', userId);
+      const updateData = { role: newRole };
+      if (newGrade) updateData.grade = newGrade;
+      if (newRole === 'servant') updateData.status = 'active';
+
+      await updateDoc(userRef, updateData);
+      
+      setAllUsers(prev => prev.map(u => u.id === userId ? { ...u, ...updateData } : u));
+    } catch (err) {
+      console.error('Error updating role:', err);
+      alert('حدث خطأ أثناء تعديل رتبة المستخدم');
+    } finally {
+      setRoleUpdatingId(null);
+    }
+  };
 
   // Dynamic QR
   const todayStr = new Date().toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
@@ -228,6 +275,21 @@ export default function ServantDashboard({ user }) {
       {/* Main Navigation Tabs */}
       <div className="bg-white border border-slate-200 rounded-2xl p-1.5 flex items-center justify-around text-xs font-bold sticky top-16 z-30 shadow-xs overflow-x-auto">
         <button
+          onClick={() => { setMainTab('users_hub'); setActiveSubject(null); }}
+          className={`py-2 px-3 rounded-xl flex items-center gap-1.5 transition-all shrink-0 ${
+            mainTab === 'users_hub' ? 'bg-maroon-800 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          <UserCog className="w-4 h-4" />
+          <span>المستخدمين والأدوار</span>
+          {allUsers.length > 0 && (
+            <span className="text-[10px] bg-gold-400 text-maroon-950 px-1.5 py-0.2 rounded-full font-bold">
+              {allUsers.length}
+            </span>
+          )}
+        </button>
+
+        <button
           onClick={() => { setMainTab('subjects_hub'); setActiveSubject(null); }}
           className={`py-2 px-3 rounded-xl flex items-center gap-1.5 transition-all shrink-0 ${
             mainTab === 'subjects_hub' ? 'bg-maroon-800 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'
@@ -270,6 +332,175 @@ export default function ServantDashboard({ user }) {
           <span>كود الحضور (QR)</span>
         </button>
       </div>
+
+      {/* 0. Users & Roles Management Hub (Admin/Servant Approvals) */}
+      {mainTab === 'users_hub' && (
+        <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="font-extrabold text-slate-900 text-base">إدارة حسابات المستخدمين والموافقة على الأدوار</h3>
+                <span className="text-[11px] bg-maroon-100 text-maroon-900 font-bold px-2 py-0.5 rounded-full">
+                  صلاحيات مدير المنظومة
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 mt-1">
+                التحكم الكامل في حسابات المنظومة: الموافقة على رتبة المستخدم أو تعديلها (تحويل من خادم إلى مخدوم أو العكس، وتغيير المرحلة الدراسية).
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <select
+                value={userRoleFilter}
+                onChange={(e) => setUserRoleFilter(e.target.value)}
+                className="bg-slate-50 border border-slate-200 text-xs font-bold rounded-xl px-3 py-2 text-slate-700"
+              >
+                <option value="all">عرض الكل ({allUsers.length})</option>
+                <option value="student">المخدومين فقط ({allUsers.filter(u => u.role === 'student').length})</option>
+                <option value="servant">الخدام فقط ({allUsers.filter(u => u.role === 'servant').length})</option>
+              </select>
+
+              <button
+                onClick={fetchAllUsers}
+                disabled={usersLoading}
+                className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition-colors"
+                title="تحديث القائمة"
+              >
+                <RefreshCw className={`w-4 h-4 ${usersLoading ? 'animate-spin text-maroon-800' : ''}`} />
+              </button>
+            </div>
+          </div>
+
+          {/* Quick Metrics */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="bg-slate-50 border border-slate-200 p-4 rounded-2xl text-center">
+              <span className="text-[11px] text-slate-500 font-bold block">إجمالي المسجلين</span>
+              <span className="text-xl font-extrabold text-slate-900">{allUsers.length}</span>
+            </div>
+            <div className="bg-amber-50 border border-amber-200 p-4 rounded-2xl text-center">
+              <span className="text-[11px] text-amber-800 font-bold block">المخدومين</span>
+              <span className="text-xl font-extrabold text-amber-700">{allUsers.filter(u => u.role === 'student').length}</span>
+            </div>
+            <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-2xl text-center">
+              <span className="text-[11px] text-emerald-800 font-bold block">الخدام المعتمدين</span>
+              <span className="text-xl font-extrabold text-emerald-700">{allUsers.filter(u => u.role === 'servant').length}</span>
+            </div>
+            <div className="bg-purple-50 border border-purple-200 p-4 rounded-2xl text-center">
+              <span className="text-[11px] text-purple-800 font-bold block">فصل أليشع (إعداد خدام)</span>
+              <span className="text-xl font-extrabold text-purple-700">{allUsers.filter(u => u.grade === 'elisha').length}</span>
+            </div>
+          </div>
+
+          {/* Users Table */}
+          {usersLoading ? (
+            <div className="py-12 text-center text-slate-400 text-xs flex items-center justify-center gap-2">
+              <RefreshCw className="w-5 h-5 animate-spin text-maroon-800" />
+              <span>جاري تحميل قائمة المستخدمين من قاعدة البيانات...</span>
+            </div>
+          ) : allUsers.length === 0 ? (
+            <div className="text-center py-12 bg-slate-50 border border-dashed border-slate-200 rounded-2xl p-6">
+              <Users className="w-10 h-10 text-slate-300 mx-auto mb-2" />
+              <p className="text-xs font-bold text-slate-700">لم يسجل أي مستخدم جديد حتى الآن.</p>
+              <p className="text-[11px] text-slate-400 mt-1">عند تسجيل أي مستخدم برقم هاتفه ستظهر بياناته هنا للاعتماد أو التعديل.</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto border border-slate-200 rounded-2xl">
+              <table className="w-full text-right text-xs">
+                <thead className="bg-slate-50 border-b border-slate-200 text-slate-600">
+                  <tr>
+                    <th className="py-3 px-3">الاسم والبيانات</th>
+                    <th className="py-3 px-3">رقم الهاتف</th>
+                    <th className="py-3 px-3">الصفة الحالية</th>
+                    <th className="py-3 px-3">المرحلة / النطاق</th>
+                    <th className="py-3 px-3">تعديل الصفة (خادم / مخدوم)</th>
+                    <th className="py-3 px-3">تعديل المرحلة</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {allUsers
+                    .filter(u => userRoleFilter === 'all' || u.role === userRoleFilter)
+                    .map((item) => (
+                      <tr key={item.id} className="hover:bg-slate-50/80 transition-colors">
+                        <td className="py-3 px-3 font-bold text-slate-900">
+                          <div className="flex items-center gap-2">
+                            <div className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs ${
+                              item.role === 'servant' ? 'bg-maroon-800 text-white' : 'bg-slate-100 text-slate-700'
+                            }`}>
+                              {item.fullName ? item.fullName[0] : '؟'}
+                            </div>
+                            <div>
+                              <span>{item.fullName || 'بدون اسم'}</span>
+                              {item.id === user.id && (
+                                <span className="text-[10px] bg-slate-200 text-slate-700 px-1.5 py-0.2 rounded mr-1.5">حسابك</span>
+                              )}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="py-3 px-3 font-mono text-slate-600" dir="ltr">{item.phone}</td>
+                        <td className="py-3 px-3">
+                          <span className={`inline-flex items-center gap-1 text-[11px] font-extrabold px-2.5 py-0.5 rounded-full ${
+                            item.role === 'servant'
+                              ? 'bg-maroon-100 text-maroon-900 border border-maroon-200'
+                              : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                          }`}>
+                            {item.role === 'servant' ? 'خادم' : 'مخدوم'}
+                          </span>
+                        </td>
+                        <td className="py-3 px-3 font-bold text-slate-700">
+                          {item.role === 'servant' 
+                            ? (item.servantScope === 'all' ? 'أمين خدمة عام' : getGradeTitle(item.servantScope || 'all'))
+                            : getGradeTitle(item.grade || 'first')}
+                        </td>
+                        <td className="py-3 px-3">
+                          <div className="flex items-center gap-1.5">
+                            {item.role === 'student' ? (
+                              <button
+                                onClick={() => handleUpdateUserRole(item.id, 'servant')}
+                                disabled={roleUpdatingId === item.id}
+                                className="bg-maroon-800 hover:bg-maroon-700 text-white font-bold text-[11px] px-3 py-1 rounded-xl transition-all shadow-2xs flex items-center gap-1"
+                              >
+                                {roleUpdatingId === item.id ? 'جاري...' : 'ترقية إلى خادم ⬆️'}
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => handleUpdateUserRole(item.id, 'student', item.grade || 'first')}
+                                disabled={roleUpdatingId === item.id}
+                                className="bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 font-bold text-[11px] px-3 py-1 rounded-xl transition-all flex items-center gap-1"
+                              >
+                                {roleUpdatingId === item.id ? 'جاري...' : 'تحويل إلى مخدوم ⬇️'}
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                        <td className="py-3 px-3">
+                          <select
+                            value={item.role === 'servant' ? (item.servantScope || 'all') : (item.grade || 'first')}
+                            onChange={(e) => {
+                              const newStage = e.target.value;
+                              if (item.role === 'servant') {
+                                handleUpdateUserRole(item.id, 'servant', newStage);
+                              } else {
+                                handleUpdateUserRole(item.id, 'student', newStage);
+                              }
+                            }}
+                            disabled={roleUpdatingId === item.id}
+                            className="bg-white border border-slate-200 rounded-xl px-2.5 py-1 text-xs focus:outline-none focus:border-maroon-800"
+                          >
+                            <option value="first">سنة أولى ثانوي</option>
+                            <option value="second">سنة ثانية ثانوي</option>
+                            <option value="third">سنة ثالثة ثانوي</option>
+                            <option value="elisha">فصل أليشع (إعداد خدام)</option>
+                            {item.role === 'servant' && <option value="all">أمين عام (كافة المراحل)</option>}
+                          </select>
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* 1. Subjects & Curriculum Management Hub */}
       {mainTab === 'subjects_hub' && (
