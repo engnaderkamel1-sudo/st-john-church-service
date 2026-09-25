@@ -524,46 +524,102 @@ export default function StudentDashboard({ user }) {
         </div>
       )}
 
-      {/* 3. Exams Tab */}
+      {/* 3. Exams & Curriculum Tab */}
       {activeTab === 'exams' && (
-        <div className="space-y-4 text-right">
+        <div className="space-y-6 text-right">
           {!activeExam ? (
-            availableExams.map((exam) => {
-              const isCompleted = completedExams[exam.id];
-              return (
-                <div
-                  key={exam.id}
-                  className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
-                >
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="bg-maroon-900/80 border border-maroon-700/60 text-gold-300 text-[11px] px-2 py-0.5 rounded font-semibold">
-                        إلكتروني
-                      </span>
-                      <span className="text-xs text-slate-400">{exam.durationMinutes} دقيقة • {exam.totalScore} درجة</span>
+            <div className="space-y-6">
+              {/* Lessons & PDFs Section */}
+              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-3">
+                <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
+                  <h4 className="font-bold text-white text-sm flex items-center gap-2">
+                    <BookOpen className="w-4 h-4 text-gold-400" />
+                    مذكرات ودروس المنهج المقررة ({getGradeTitle(user.grade)})
+                  </h4>
+                  <span className="text-[11px] text-slate-400">PDF متاح للتحميل</span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="bg-slate-950/70 border border-slate-800 p-3 rounded-xl flex items-center justify-between">
+                    <div>
+                      <span className="text-[10px] bg-maroon-900 text-gold-300 px-2 py-0.5 rounded font-bold">الأسبوع الحالي</span>
+                      <h5 className="font-bold text-white text-xs mt-1">
+                        {user.grade === 'elisha' ? 'محاضرة: مهارات القيادة والخدمة الفعالة' : 'درس: أسرار الكنيسة السبعة - ينبوع النعمة'}
+                      </h5>
+                      <span className="text-[10px] text-slate-400">ملف PDF • 2.8 MB</span>
                     </div>
-                    <h4 className="text-sm sm:text-base font-bold text-white">{exam.title}</h4>
+                    <button
+                      onClick={() => alert('جاري تحميل مذكرة الدرس...')}
+                      className="p-2 bg-slate-800 hover:bg-slate-700 text-gold-300 rounded-lg transition-colors"
+                      title="تحميل"
+                    >
+                      <BookOpen className="w-4 h-4" />
+                    </button>
                   </div>
 
-                  {isCompleted ? (
-                    <div className="bg-emerald-950/70 border border-emerald-500/40 text-emerald-300 text-xs px-3 py-1.5 rounded-xl">
-                      تم التسليم (درجة الموضوعي: {isCompleted.autoScore}/20)
+                  <div className="bg-slate-950/70 border border-slate-800 p-3 rounded-xl flex items-center justify-between">
+                    <div>
+                      <span className="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded font-bold">ملزمة المراجعة</span>
+                      <h5 className="font-bold text-white text-xs mt-1">
+                        ملزمة الأسئلة والتدريبات لامتحان منتصف الفصل
+                      </h5>
+                      <span className="text-[10px] text-slate-400">ملف PDF • 3.4 MB</span>
                     </div>
-                  ) : (
                     <button
-                      onClick={() => {
-                        setActiveExam(exam);
-                        setExamAnswers({});
-                        setExamResult(null);
-                      }}
-                      className="bg-gold-500 hover:bg-gold-400 text-maroon-950 font-bold text-xs py-2 px-4 rounded-xl transition-all shadow"
+                      onClick={() => alert('جاري تحميل ملزمة المراجعة...')}
+                      className="p-2 bg-slate-800 hover:bg-slate-700 text-gold-300 rounded-lg transition-colors"
+                      title="تحميل"
                     >
-                      بدء الامتحان
+                      <BookOpen className="w-4 h-4" />
                     </button>
-                  )}
+                  </div>
                 </div>
-              );
-            })
+              </div>
+
+              {/* Available Exams Section */}
+              <div className="space-y-3">
+                <h4 className="font-bold text-white text-sm flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-gold-400" />
+                  الامتحانات الإلكترونية المتاحة
+                </h4>
+                {availableExams.map((exam) => {
+                  const isCompleted = completedExams[exam.id];
+                  return (
+                    <div
+                      key={exam.id}
+                      className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
+                    >
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="bg-maroon-900/80 border border-maroon-700/60 text-gold-300 text-[11px] px-2 py-0.5 rounded font-semibold">
+                            إلكتروني
+                          </span>
+                          <span className="text-xs text-slate-400">{exam.durationMinutes} دقيقة • {exam.totalScore} درجة</span>
+                        </div>
+                        <h4 className="text-sm sm:text-base font-bold text-white">{exam.title}</h4>
+                      </div>
+
+                      {isCompleted ? (
+                        <div className="bg-emerald-950/70 border border-emerald-500/40 text-emerald-300 text-xs px-3 py-1.5 rounded-xl">
+                          تم التسليم (درجة الموضوعي: {isCompleted.autoScore}/20)
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => {
+                            setActiveExam(exam);
+                            setExamAnswers({});
+                            setExamResult(null);
+                          }}
+                          className="bg-gold-500 hover:bg-gold-400 text-maroon-950 font-bold text-xs py-2 px-4 rounded-xl transition-all shadow"
+                        >
+                          بدء الامتحان
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           ) : (
             <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-5">
               <div className="flex items-center justify-between border-b border-slate-800 pb-3">
