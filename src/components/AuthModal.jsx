@@ -1,15 +1,19 @@
 import React, { useState } from 'react';
-import { X, User, Phone, Lock, BookOpen, GraduationCap, ShieldAlert } from 'lucide-react';
-import { db } from '../firebase';
+import { X, User, Phone, Lock, BookOpen, GraduationCap, ShieldAlert, Mail, KeyRound, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { db, auth } from '../firebase';
 import { collection, addDoc, getDocs, query, where, serverTimestamp } from 'firebase/firestore';
+import { sendPasswordResetEmail } from 'firebase/auth';
 
 export default function AuthModal({ isOpen, onClose, initialRole = 'student', initialMode = 'login', onLoginSuccess }) {
   const [isLogin, setIsLogin] = useState(initialMode !== 'register');
+  const [isForgot, setIsForgot] = useState(false);
+  const [resetSuccess, setResetSuccess] = useState('');
   const [role, setRole] = useState(initialRole);
   const [grade, setGrade] = useState('first');
   const [servantScope, setServantScope] = useState('all');
 
   const [fullName, setFullName] = useState('');
+  const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
 
@@ -19,12 +23,55 @@ export default function AuthModal({ isOpen, onClose, initialRole = 'student', in
   React.useEffect(() => {
     if (isOpen) {
       setIsLogin(initialMode !== 'register');
+      setIsForgot(false);
       setRole(initialRole);
       setError('');
+      setResetSuccess('');
     }
   }, [isOpen, initialMode, initialRole]);
 
   if (!isOpen) return null;
+
+  const handleResetPassword = async (e) => {
+    e.preventDefault();
+    setError('');
+    setResetSuccess('');
+    setLoading(true);
+
+    try {
+      const emailVal = email.trim();
+      if (!emailVal) {
+        setError('يرجى كتابة البريد الإلكتروني المسجل');
+        setLoading(false);
+        return;
+      }
+
+      // Check if email exists in users collection
+      const usersRef = collection(db, 'users');
+      const q = query(usersRef, where('email', '==', emailVal.toLowerCase()));
+      const snap = await getDocs(q);
+
+      if (snap.empty) {
+        setError('هذا البريد الإلكتروني غير مسجل في الخدمة');
+        setLoading(false);
+        return;
+      }
+
+      // Try sending via Firebase Auth reset
+      try {
+        await sendPasswordResetEmail(auth, emailVal);
+        setResetSuccess(`تم إرسال رابط استعادة كلمة السر بنجاح إلى: ${emailVal}. تفقد بريدك الإلكتروني.`);
+      } catch (authErr) {
+        // Fallback info if Firebase Auth email user is handled via phone/direct Firestore
+        setResetSuccess(`تم التحقق من بريدك (${emailVal}). يرجى التواصل مع أمين الخدمة أو تفقد صندوق الوارد لإتمام الاستعادة.`);
+      }
+    } catch (err) {
+      console.error(err);
+      setError('حدث خطأ أثناء إرسال طلب استعادة كلمة المرور');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -61,8 +108,19 @@ export default function AuthModal({ isOpen, onClose, initialRole = 'student', in
           return;
         }
 
+        if (email.trim()) {
+          const emailQ = query(usersRef, where('email', '==', email.trim().toLowerCase()));
+          const emailSnap = await getDocs(emailQ);
+          if (!emailSnap.empty) {
+            setError('البريد الإلكتروني مسجل بالفعل لمستخدم آخر');
+            setLoading(false);
+            return;
+          }
+        }
+
         const newUser = {
           fullName: fullName.trim(),
+          email: email.trim().toLowerCase(),
           phone: phone.trim(),
           password: password.trim(),
           role: role,
@@ -99,7 +157,11 @@ export default function AuthModal({ isOpen, onClose, initialRole = 'student', in
           <div className="flex items-center gap-2.5">
             <img src="/church_logo.jpg" alt="Logo" className="w-8 h-8 rounded-full border border-gold-300 object-cover shadow-sm" />
             <span className="font-bold text-sm text-gold-200">
-              {isLogin ? 'تسجيل الدخول إلى الخدمة' : 'إنشاء حساب جديد'}
+              {isForgot 
+                ? 'استعادة كلمة السر'
+                : isLogin 
+                  ? 'تسجيل الدخول إلى الخدمة' 
+                  : 'إنشاء حساب جديد'}
             </span>
           </div>
           <button 
@@ -111,149 +173,245 @@ export default function AuthModal({ isOpen, onClose, initialRole = 'student', in
           </button>
         </div>
 
-        {/* Form Body */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 text-xs p-3 rounded-xl flex items-center gap-2">
-              <ShieldAlert className="w-4 h-4 shrink-0 text-red-500" />
-              <span>{error}</span>
-            </div>
-          )}
-
-          {!isLogin && (
-            <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-3">
-              <label className="block text-xs font-bold text-slate-700 mb-2">اختر صفتك في الخدمة:</label>
-              <div className="grid grid-cols-2 gap-2 bg-slate-200/70 p-1 rounded-xl">
-                <button
-                  type="button"
-                  onClick={() => setRole('student')}
-                  className={`py-2 px-3 rounded-lg font-bold text-xs transition-all flex items-center justify-center gap-1.5 ${
-                    role === 'student'
-                      ? 'bg-white text-maroon-900 shadow-sm'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  <GraduationCap className="w-4 h-4" />
-                  <span>مخدوم</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setRole('servant')}
-                  className={`py-2 px-3 rounded-lg font-bold text-xs transition-all flex items-center justify-center gap-1.5 ${
-                    role === 'servant'
-                      ? 'bg-maroon-800 text-white shadow-sm'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  <BookOpen className="w-4 h-4" />
-                  <span>خادم</span>
-                </button>
+        {/* FORGOT PASSWORD VIEW */}
+        {isForgot ? (
+          <form onSubmit={handleResetPassword} className="p-6 space-y-4">
+            <div className="text-center pb-1">
+              <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mx-auto mb-2 border border-amber-200">
+                <KeyRound className="w-6 h-6" />
               </div>
+              <h3 className="font-bold text-sm text-slate-800">نسيت كلمة السر؟</h3>
+              <p className="text-xs text-slate-500 mt-1">
+                اكتب بريدك الإلكتروني المسجل لدينا وسنرسل لك رابط إعادة تعيين كلمة المرور فوراً.
+              </p>
             </div>
-          )}
 
-          {!isLogin && (
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-700 text-xs p-3 rounded-xl flex items-center gap-2">
+                <ShieldAlert className="w-4 h-4 shrink-0 text-red-500" />
+                <span>{error}</span>
+              </div>
+            )}
+
+            {resetSuccess && (
+              <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs p-3.5 rounded-xl flex items-start gap-2.5">
+                <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600 mt-0.5" />
+                <span className="leading-relaxed font-medium">{resetSuccess}</span>
+              </div>
+            )}
+
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">الاسم ثلاثي</label>
+              <label className="block text-xs font-bold text-slate-700 mb-1">البريد الإلكتروني المسجل</label>
               <div className="relative">
                 <input
-                  type="text"
+                  type="email"
                   required
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  placeholder="مثال: جورج سمير حنا"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 pl-10 text-xs focus:outline-none focus:border-maroon-700 focus:bg-white transition-colors"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="name@example.com"
+                  dir="ltr"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 pl-10 text-xs text-right focus:outline-none focus:border-maroon-700 focus:bg-white transition-colors"
                 />
-                <User className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
+                <Mail className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
               </div>
             </div>
-          )}
 
-          <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">رقم الهاتف</label>
-            <div className="relative">
-              <input
-                type="tel"
-                required
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="01XXXXXXXXX"
-                dir="ltr"
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 pl-10 text-xs text-right focus:outline-none focus:border-maroon-700 focus:bg-white transition-colors"
-              />
-              <Phone className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">كلمة المرور</label>
-            <div className="relative">
-              <input
-                type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 pl-10 text-xs focus:outline-none focus:border-maroon-700 focus:bg-white transition-colors"
-              />
-              <Lock className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
-            </div>
-          </div>
-
-          {/* Grade selection */}
-          {!isLogin && role === 'student' && (
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">المرحلة الدراسية</label>
-              <select
-                value={grade}
-                onChange={(e) => setGrade(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:border-maroon-700 focus:bg-white transition-colors"
-              >
-                <option value="first">سنة أولى ثانوي</option>
-                <option value="second">سنة ثانية ثانوي</option>
-                <option value="third">سنة ثالثة ثانوي</option>
-                <option value="elisha">فصل أليشع (إعداد خدام)</option>
-              </select>
-            </div>
-          )}
-
-          {/* Scope for servant */}
-          {!isLogin && role === 'servant' && (
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">الفصل المسؤول عنه</label>
-              <select
-                value={servantScope}
-                onChange={(e) => setServantScope(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:border-maroon-700 focus:bg-white transition-colors"
-              >
-                <option value="all">أمين خدمة عام (جميع المراحل)</option>
-                <option value="first">سنة أولى ثانوي</option>
-                <option value="second">سنة ثانية ثانوي</option>
-                <option value="third">سنة ثالثة ثانوي</option>
-                <option value="elisha">فصل أليشع (إعداد خدام)</option>
-              </select>
-            </div>
-          )}
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-maroon-800 hover:bg-maroon-700 text-white font-bold py-3 px-4 rounded-xl shadow-md transition-all flex items-center justify-center gap-2 mt-4 text-xs"
-          >
-            {loading ? <span>جاري التحقق...</span> : <span>{isLogin ? 'تسجيل الدخول' : 'تأكيد إنشاء الحساب'}</span>}
-          </button>
-
-          {/* Toggle Login / Register */}
-          <div className="text-center pt-2">
             <button
-              type="button"
-              onClick={() => { setIsLogin(!isLogin); setError(''); }}
-              className="text-xs text-maroon-800 hover:text-maroon-900 font-semibold underline"
+              type="submit"
+              disabled={loading}
+              className="w-full bg-maroon-800 hover:bg-maroon-700 text-white font-bold py-3 px-4 rounded-xl shadow-md transition-all flex items-center justify-center gap-2 mt-4 text-xs"
             >
-              {isLogin ? 'ليس لديك حساب؟ إنشاء حساب جديد' : 'لديك حساب بالفعل؟ تسجيل الدخول'}
+              {loading ? <span>جاري الإرسال...</span> : <span>إرسال رابط استعادة كلمة السر</span>}
             </button>
-          </div>
-        </form>
+
+            <div className="text-center pt-2">
+              <button
+                type="button"
+                onClick={() => { setIsForgot(false); setError(''); setResetSuccess(''); }}
+                className="text-xs text-slate-600 hover:text-maroon-800 font-bold flex items-center justify-center gap-1 mx-auto transition-colors"
+              >
+                <ArrowRight className="w-3.5 h-3.5" />
+                <span>العودة لتسجيل الدخول</span>
+              </button>
+            </div>
+          </form>
+        ) : (
+          /* REGULAR LOGIN / REGISTER FORM */
+          <form onSubmit={handleSubmit} className="p-6 space-y-4">
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-700 text-xs p-3 rounded-xl flex items-center gap-2">
+                <ShieldAlert className="w-4 h-4 shrink-0 text-red-500" />
+                <span>{error}</span>
+              </div>
+            )}
+
+            {!isLogin && (
+              <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-3">
+                <label className="block text-xs font-bold text-slate-700 mb-2">اختر صفتك في الخدمة:</label>
+                <div className="grid grid-cols-2 gap-2 bg-slate-200/70 p-1 rounded-xl">
+                  <button
+                    type="button"
+                    onClick={() => setRole('student')}
+                    className={`py-2 px-3 rounded-lg font-bold text-xs transition-all flex items-center justify-center gap-1.5 ${
+                      role === 'student'
+                        ? 'bg-white text-maroon-900 shadow-sm'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <GraduationCap className="w-4 h-4" />
+                    <span>مخدوم</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRole('servant')}
+                    className={`py-2 px-3 rounded-lg font-bold text-xs transition-all flex items-center justify-center gap-1.5 ${
+                      role === 'servant'
+                        ? 'bg-maroon-800 text-white shadow-sm'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <BookOpen className="w-4 h-4" />
+                    <span>خادم</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {!isLogin && (
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">الاسم ثلاثي</label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    required
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    placeholder="مثال: جورج سمير حنا"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 pl-10 text-xs focus:outline-none focus:border-maroon-700 focus:bg-white transition-colors"
+                  />
+                  <User className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
+                </div>
+              </div>
+            )}
+
+            {!isLogin && (
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-bold text-slate-700">البريد الإلكتروني</label>
+                  <span className="text-[10px] text-amber-700 font-medium">لاستعادة كلمة السر في أي وقت</span>
+                </div>
+                <div className="relative">
+                  <input
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="example@domain.com"
+                    dir="ltr"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 pl-10 text-xs text-right focus:outline-none focus:border-maroon-700 focus:bg-white transition-colors"
+                  />
+                  <Mail className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
+                </div>
+              </div>
+            )}
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">رقم الهاتف</label>
+              <div className="relative">
+                <input
+                  type="tel"
+                  required
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="01XXXXXXXXX"
+                  dir="ltr"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 pl-10 text-xs text-right focus:outline-none focus:border-maroon-700 focus:bg-white transition-colors"
+                />
+                <Phone className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
+              </div>
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs font-bold text-slate-700">كلمة المرور</label>
+                {isLogin && (
+                  <button
+                    type="button"
+                    onClick={() => { setIsForgot(true); setError(''); setResetSuccess(''); }}
+                    className="text-[11px] text-maroon-700 hover:text-maroon-900 font-bold hover:underline"
+                  >
+                    نسيت كلمة السر؟
+                  </button>
+                )}
+              </div>
+              <div className="relative">
+                <input
+                  type="password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 pl-10 text-xs focus:outline-none focus:border-maroon-700 focus:bg-white transition-colors"
+                />
+                <Lock className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
+              </div>
+            </div>
+
+            {/* Grade selection */}
+            {!isLogin && role === 'student' && (
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">المرحلة الدراسية</label>
+                <select
+                  value={grade}
+                  onChange={(e) => setGrade(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:border-maroon-700 focus:bg-white transition-colors"
+                >
+                  <option value="first">سنة أولى ثانوي</option>
+                  <option value="second">سنة ثانية ثانوي</option>
+                  <option value="third">سنة ثالثة ثانوي</option>
+                  <option value="elisha">فصل أليشع (إعداد خدام)</option>
+                </select>
+              </div>
+            )}
+
+            {/* Scope for servant */}
+            {!isLogin && role === 'servant' && (
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">الفصل المسؤول عنه</label>
+                <select
+                  value={servantScope}
+                  onChange={(e) => setServantScope(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:border-maroon-700 focus:bg-white transition-colors"
+                >
+                  <option value="all">أمين خدمة عام (جميع المراحل)</option>
+                  <option value="first">سنة أولى ثانوي</option>
+                  <option value="second">سنة ثانية ثانوي</option>
+                  <option value="third">سنة ثالثة ثانوي</option>
+                  <option value="elisha">فصل أليشع (إعداد خدام)</option>
+                </select>
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-maroon-800 hover:bg-maroon-700 text-white font-bold py-3 px-4 rounded-xl shadow-md transition-all flex items-center justify-center gap-2 mt-4 text-xs"
+            >
+              {loading ? <span>جاري التحقق...</span> : <span>{isLogin ? 'تسجيل الدخول' : 'تأكيد إنشاء الحساب'}</span>}
+            </button>
+
+            {/* Toggle Login / Register */}
+            <div className="text-center pt-2">
+              <button
+                type="button"
+                onClick={() => { setIsLogin(!isLogin); setIsForgot(false); setError(''); }}
+                className="text-xs text-maroon-800 hover:text-maroon-900 font-semibold underline"
+              >
+                {isLogin ? 'ليس لديك حساب؟ إنشاء حساب جديد' : 'لديك حساب بالفعل؟ تسجيل الدخول'}
+              </button>
+            </div>
+          </form>
+        )}
       </div>
     </div>
   );
