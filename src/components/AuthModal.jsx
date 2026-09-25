@@ -96,6 +96,25 @@ export default function AuthModal({ isOpen, onClose, initialRole = 'student', in
         }
 
         const userData = { id: snapshot.docs[0].id, ...snapshot.docs[0].data() };
+
+        // Record Login Log in Firestore
+        try {
+          await addDoc(collection(db, 'login_logs'), {
+            userId: userData.id,
+            userName: userData.fullName || 'مستخدم',
+            phone: userData.phone || phone.trim(),
+            role: userData.role || 'student',
+            grade: userData.grade || null,
+            servantScope: userData.servantScope || null,
+            action: 'login',
+            timestamp: serverTimestamp(),
+            timeStr: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }),
+            dateStr: new Date().toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
+          });
+        } catch (logErr) {
+          console.error('Failed to log login:', logErr);
+        }
+
         onLoginSuccess(userData);
         onClose();
       } else {
@@ -132,6 +151,25 @@ export default function AuthModal({ isOpen, onClose, initialRole = 'student', in
         };
 
         const docRef = await addDoc(usersRef, newUser);
+
+        // Record New Registration in login_logs
+        try {
+          await addDoc(collection(db, 'login_logs'), {
+            userId: docRef.id,
+            userName: newUser.fullName,
+            phone: newUser.phone,
+            role: newUser.role,
+            grade: newUser.grade,
+            servantScope: newUser.servantScope,
+            action: 'register',
+            timestamp: serverTimestamp(),
+            timeStr: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }),
+            dateStr: new Date().toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
+          });
+        } catch (logErr) {
+          console.error('Failed to log registration:', logErr);
+        }
+
         onLoginSuccess({ id: docRef.id, ...newUser });
         onClose();
       }
