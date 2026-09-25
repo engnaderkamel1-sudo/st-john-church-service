@@ -31,12 +31,8 @@ export default function App() {
     };
   }, [showNotifications]);
 
-  // Auto-Update Detection State
-  const [hasUpdate, setHasUpdate] = useState(false);
-  const [appVersion, setAppVersion] = useState('1.0.6');
-
+  // Automatic Seamless Update Detection
   useEffect(() => {
-    // Check for new version from /version.json
     const checkForUpdates = async () => {
       try {
         const res = await fetch(`/version.json?t=${Date.now()}`, { cache: 'no-store' });
@@ -46,26 +42,21 @@ export default function App() {
           
           if (!currentLocalVer) {
             localStorage.setItem('app_version', data.version);
-            setAppVersion(data.version);
           } else if (data.version && data.version !== currentLocalVer) {
-            setHasUpdate(true);
-            setAppVersion(data.version);
+            // Update silently and automatically without requiring user click
+            localStorage.setItem('app_version', data.version);
+            window.location.reload();
           }
         }
       } catch (err) {
-        console.log('Update check skipped:', err);
+        // quiet fail
       }
     };
 
     checkForUpdates();
-    const interval = setInterval(checkForUpdates, 45000); // Check every 45 seconds
+    const interval = setInterval(checkForUpdates, 30000); // Check every 30 seconds
     return () => clearInterval(interval);
   }, []);
-
-  const handleApplyUpdate = () => {
-    localStorage.setItem('app_version', appVersion);
-    window.location.reload(true);
-  };
 
   useEffect(() => {
     const saved = localStorage.getItem('church_user');
@@ -182,25 +173,6 @@ export default function App() {
           </div>
         </div>
       </header>
-
-      {/* Auto-Update Notification Banner */}
-      {hasUpdate && (
-        <div className="bg-gradient-to-r from-amber-500 via-gold-500 to-amber-600 text-maroon-950 font-bold px-4 py-2.5 shadow-md flex items-center justify-between text-xs sticky top-[61px] z-50 animate-in slide-in-from-top duration-300">
-          <div className="max-w-5xl mx-auto w-full flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-maroon-900 animate-spin" />
-              <span>تم إطلاق تحديث جديد للمنظومة (الإصدار {appVersion})! يرجى التحديث لتطبيق التعديلات فوراً.</span>
-            </div>
-            <button
-              onClick={handleApplyUpdate}
-              className="bg-maroon-900 hover:bg-maroon-950 text-white font-bold px-3.5 py-1 rounded-xl shadow-xs transition-all flex items-center gap-1.5 shrink-0"
-            >
-              <RefreshCw className="w-3.5 h-3.5" />
-              <span>تحديث التطبيق الآن ↻</span>
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* Main Container */}
       <main className="flex-1 max-w-5xl mx-auto px-4 py-8 w-full flex flex-col justify-center">
