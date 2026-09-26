@@ -8,7 +8,7 @@ import {
   History, Activity, Menu, X
 } from 'lucide-react';
 import { db } from '../firebase';
-import { collection, getDocs, doc, updateDoc, setDoc, addDoc, query, orderBy, serverTimestamp, limit } from 'firebase/firestore';
+import { collection, getDocs, doc, updateDoc, setDoc, addDoc, query, orderBy, serverTimestamp, limit, onSnapshot } from 'firebase/firestore';
 
 export default function ServantDashboard({ user }) {
   // Check if current user is App Administrator (Nader Reda)
@@ -64,6 +64,21 @@ export default function ServantDashboard({ user }) {
       fetchAllUsers();
       fetchLoginLogs();
     }
+
+    // Realtime sync of active attendance PIN across all servants
+    const unsubPin = onSnapshot(doc(db, 'service_settings', 'attendance_window'), (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        if (data.activePin) {
+          setNumericPin(data.activePin.toString());
+        }
+        if (data.activeCode) {
+          setQrCodeData(data.activeCode);
+        }
+      }
+    });
+
+    return () => unsubPin();
   }, [isAppAdmin]);
 
   // Update User Role & Stage in Firestore
