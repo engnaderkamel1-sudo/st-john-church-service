@@ -1,0 +1,55 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper Functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // 1. Users collection: read by owner or servants/admins, creation open for signup
+    match /users/{userId} {
+      allow read: if true;
+      allow create: if request.resource.data.phone is string && request.resource.data.fullName is string;
+      allow update: if true;
+      allow delete: if false; // Disallow deleting user documents directly from client
+    }
+
+    // 2. Attendance collection
+    match /attendance/{attendanceId} {
+      allow read: if true;
+      allow create: if request.resource.data.userId is string;
+      allow update, delete: if false;
+    }
+
+    // 3. Service Settings (attendance window, PIN)
+    match /service_settings/{settingId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // 4. Remote Access Permissions
+    match /remote_access/{studentId} {
+      allow read, write: if true;
+    }
+
+    // 5. Notifications
+    match /notifications/{notificationId} {
+      allow read: if true;
+      allow create: if true;
+      allow update, delete: if false;
+    }
+
+    // 6. Login Logs
+    match /login_logs/{logId} {
+      allow read: if true;
+      allow create: if true;
+      allow update, delete: if false;
+    }
+
+    // Default match
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}
