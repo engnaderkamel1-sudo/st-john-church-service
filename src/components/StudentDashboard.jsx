@@ -92,8 +92,21 @@ export default function StudentDashboard({ user }) {
         return;
       }
 
-      // Record attendance in Firestore
+      // Check if student has already registered attendance today
       const todayDateOnly = new Date().toISOString().split('T')[0];
+      const checkAttendQ = query(
+        collection(db, 'attendance'),
+        where('userId', '==', user.id),
+        where('date', '==', todayDateOnly)
+      );
+      const existingSnap = await getDocs(checkAttendQ);
+      if (!existingSnap.empty) {
+        setPinError('لقد قمت بتسجيل حضورك بالفعل لهذا اليوم! 🙏');
+        setPinLoading(false);
+        return;
+      }
+
+      // Record attendance in Firestore
       const todayStr = new Date().toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
       await addDoc(collection(db, 'attendance'), {
         userId: user.id,
