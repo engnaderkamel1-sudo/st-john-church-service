@@ -68,6 +68,11 @@ export default function ServantDashboard({ user }) {
 
   // Update User Role & Stage in Firestore
   const handleUpdateUserRole = async (userId, newRole, newGrade = null) => {
+    if (!isAppAdmin) {
+      alert('عفواً، تعديل الرتب والأدوار مقتصر على مشرف التطبيق فقط.');
+      return;
+    }
+
     setRoleUpdatingId(userId);
     try {
       const userRef = doc(db, 'users', userId);
