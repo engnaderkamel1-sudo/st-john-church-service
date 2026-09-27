@@ -378,6 +378,8 @@ export default function ServantDashboard({ user }) {
   const [newRefType, setNewRefType] = useState('pdf'); // 'pdf' | 'video' | 'audio'
   const [newRefUrl, setNewRefUrl] = useState('');
   const [refSaving, setRefSaving] = useState(false);
+  const [selectedUploadFile, setSelectedUploadFile] = useState(null);
+  const [uploadStatusText, setUploadStatusText] = useState('');
 
   // Question Bank & Exams State
   const [examSubSection, setExamSubSection] = useState('bank'); // 'bank' | 'assign'
@@ -614,14 +616,63 @@ export default function ServantDashboard({ user }) {
     if (!newRefTitle.trim() || !activeSubject) return;
 
     setRefSaving(true);
-    const parsed = parseResourceLink(newRefUrl, newRefType);
+    let finalUrl = newRefUrl.trim();
+    let finalFileId = null;
+
+    try {
+      if (newRefType !== 'video' && selectedUploadFile) {
+        setUploadStatusText('جاري تجهيز الملف للرفع...');
+        const base64Data = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => {
+            const result = reader.result;
+            const base64 = typeof result === 'string' && result.includes(',') ? result.split(',')[1] : result;
+            resolve(base64);
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(selectedUploadFile);
+        });
+
+        setUploadStatusText('جاري الرفع السحابي إلى Google Drive...');
+        const driveEndpoint = 'https://script.google.com/macros/s/AKfycbxhdl_hk5vB7NLLL7zdPmVXlwvAOiZYVLsrk5T73UdJpJJM9JpU74p0DexpSch7gI4I/exec';
+        const response = await fetch(driveEndpoint, {
+          method: 'POST',
+          mode: 'cors',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({
+            fileName: selectedUploadFile.name,
+            mimeType: selectedUploadFile.type || (newRefType === 'pdf' ? 'application/pdf' : 'audio/mpeg'),
+            base64: base64Data
+          })
+        });
+
+        const resData = await response.json();
+        if (resData.status === 'success') {
+          finalUrl = resData.url;
+          finalFileId = resData.fileId;
+        } else {
+          throw new Error(resData.message || 'تعذر استكمال الرفع إلى Google Drive');
+        }
+      }
+    } catch (uploadErr) {
+      console.error('Drive upload error:', uploadErr);
+      if (!finalUrl) {
+        alert('تنبيه: حدث خطأ أثناء رفع الملف إلى Google Drive: ' + (uploadErr.message || 'يرجى مراجعة صلاحيات السكربت أو تجربة رابط مباشر.'));
+        setRefSaving(false);
+        setUploadStatusText('');
+        return;
+      }
+    }
+
+    setUploadStatusText('جاري حفظ بيانات المحتوى في المادة...');
+    const parsed = parseResourceLink(finalUrl, newRefType);
 
     const newRef = {
       id: `rf-${Date.now()}`,
       title: newRefTitle.trim(),
       type: newRefType, // 'pdf' | 'video' | 'audio'
-      url: parsed.url,
-      fileId: parsed.fileId,
+      url: finalUrl,
+      fileId: finalFileId || parsed.fileId,
       videoId: parsed.videoId,
       date: new Date().toLocaleDateString('ar-EG', { year: 'numeric', month: 'short', day: 'numeric' })
     };
@@ -644,8 +695,10 @@ export default function ServantDashboard({ user }) {
       });
     } finally {
       setRefSaving(false);
+      setUploadStatusText('');
       setNewRefTitle('');
       setNewRefUrl('');
+      setSelectedUploadFile(null);
       setShowAddRefModal(false);
     }
   };
@@ -1369,16 +1422,7 @@ export default function ServantDashboard({ user }) {
                   <p className="text-xs text-slate-500 mt-0.5">إدارة المواد الدراسية ورفع المحاضرات والمذكرات عبر Google Drive واليوتيوب.</p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <a
-                    href="https://drive.google.com/drive/folders/116l6gznATsGs29zwx4LpuV5H2akyzeun?usp=drive_link"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 font-bold text-xs py-2 px-3 rounded-xl transition-all shadow-xs flex items-center gap-1.5"
-                    title="فتح مجلد جوجل درايف المخصص لرفع ملفات ومذكرات الخدمة"
-                  >
-                    <FolderPlus className="w-4 h-4 text-amber-600" />
-                    <span>مجلد Google Drive للخدمة 📂</span>
-                  </a>
+
                   <button
                     onClick={() => setShowAddSubjectModal(true)}
                     className="bg-maroon-800 hover:bg-maroon-700 text-white font-bold text-xs py-2 px-4 rounded-xl transition-all shadow-xs flex items-center justify-center gap-1.5"
@@ -1477,16 +1521,6 @@ export default function ServantDashboard({ user }) {
                   <span className="text-xs text-maroon-800 font-semibold">المسئول: {activeSubject.teacher}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <a
-                    href="https://drive.google.com/drive/folders/116l6gznATsGs29zwx4LpuV5H2akyzeun?usp=drive_link"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 font-bold text-xs py-2 px-3 rounded-xl transition-all shadow-xs flex items-center gap-1"
-                    title="فتح مجلد جوجل درايف للرفع"
-                  >
-                    <FolderPlus className="w-3.5 h-3.5 text-amber-600" />
-                    <span>مجلد درايف 📂</span>
-                  </a>
                   <button
                     onClick={() => setShowAddRefModal(true)}
                     className="bg-maroon-800 hover:bg-maroon-700 text-white font-bold text-xs py-2 px-3.5 rounded-xl transition-all shadow-xs flex items-center gap-1.5"
@@ -1504,7 +1538,7 @@ export default function ServantDashboard({ user }) {
               </div>
 
               {showAddRefModal && (
-                <form onSubmit={handleAddReference} className="bg-slate-50 border border-slate-200 p-4.5 rounded-2xl space-y-3">
+                <form onSubmit={handleAddReference} className="bg-slate-50 border border-slate-200 p-4.5 rounded-2xl space-y-3.5">
                   <h5 className="font-extrabold text-xs text-slate-800">إضافة محتوى تعليمي لمادة ({activeSubject.name})</h5>
                   
                   {/* Type Selector */}
@@ -1556,42 +1590,76 @@ export default function ServantDashboard({ user }) {
                     />
                   </div>
 
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                      {newRefType === 'pdf' && 'رابط ملف الـ PDF (جوجل درايف أو رابط مباشر)'}
-                      {newRefType === 'video' && 'رابط فيديو يوتيوب (YouTube Link or ID)'}
-                      {newRefType === 'audio' && 'رابط التسجيل الصوتي (جوجل درايف أو ملف صوتي)'}
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      placeholder={
-                        newRefType === 'pdf' 
-                          ? 'https://drive.google.com/file/d/1A2B3C.../view' 
-                          : newRefType === 'video'
-                          ? 'https://www.youtube.com/watch?v=... أو https://youtu.be/...'
-                          : 'https://drive.google.com/file/d/... أو رابط ملف MP3'
-                      }
-                      value={newRefUrl}
-                      onChange={(e) => setNewRefUrl(e.target.value)}
-                      className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-maroon-800"
-                    />
-                    <p className="text-[10px] text-slate-400 mt-1">
-                      💡 يمكنك رفع الملف على مجلد Google Drive المشترك ثم أخذ رابط المشاركة ولصقه هنا وسيقوم النظام تلقائياً بعرضه داخل التطبيق.
-                    </p>
-                  </div>
+                  {newRefType !== 'video' ? (
+                    <div className="space-y-2">
+                      <label className="block text-[11px] font-bold text-slate-700">
+                        {newRefType === 'pdf' ? 'اختر ملف المذكرة (PDF) من جهازك:' : 'اختر التسجيل الصوتي من جهازك:'}
+                      </label>
+                      <div className="border-2 border-dashed border-maroon-200 hover:border-maroon-600 bg-white p-4 rounded-2xl text-center cursor-pointer transition-colors relative">
+                        <input
+                          type="file"
+                          accept={newRefType === 'pdf' ? '.pdf' : 'audio/*'}
+                          onChange={(e) => {
+                            if (e.target.files && e.target.files[0]) {
+                              setSelectedUploadFile(e.target.files[0]);
+                              if (!newRefTitle.trim()) {
+                                setNewRefTitle(e.target.files[0].name.replace(/\.[^/.]+$/, ''));
+                              }
+                            }
+                          }}
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                        />
+                        <UploadCloud className="w-7 h-7 text-maroon-700 mx-auto mb-1" />
+                        {selectedUploadFile ? (
+                          <div className="text-xs font-bold text-emerald-700">
+                            تم اختيار: {selectedUploadFile.name} ({(selectedUploadFile.size / 1024 / 1024).toFixed(2)} MB) ✓
+                          </div>
+                        ) : (
+                          <div>
+                            <span className="text-xs font-bold text-slate-800 block">اضغط هنا لاختيار الملف من الموبايل أو الكمبيوتر</span>
+                            <span className="text-[10px] text-slate-400 mt-0.5 block">سيقوم التطبيق برفعه مباشرة إلى Google Drive الخاص بالخدمة تلقائياً</span>
+                          </div>
+                        )}
+                      </div>
 
-                  <div className="flex justify-end gap-2 pt-1">
+                      <details className="text-[11px] text-slate-500 pt-1">
+                        <summary className="cursor-pointer hover:text-maroon-800 font-bold">أو وضع رابط مباشر بدلاً من الرفع (اختياري)</summary>
+                        <input
+                          type="text"
+                          placeholder="https://drive.google.com/file/d/.../view"
+                          value={newRefUrl}
+                          onChange={(e) => setNewRefUrl(e.target.value)}
+                          className="w-full bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs mt-1.5 focus:outline-none focus:border-maroon-800"
+                        />
+                      </details>
+                    </div>
+                  ) : (
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                        رابط فيديو يوتيوب (YouTube Link or ID)
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="https://www.youtube.com/watch?v=... أو https://youtu.be/..."
+                        value={newRefUrl}
+                        onChange={(e) => setNewRefUrl(e.target.value)}
+                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-maroon-800"
+                      />
+                    </div>
+                  )}
+
+                  <div className="flex justify-end gap-2 pt-2 border-t border-slate-200">
                     <button type="button" onClick={() => setShowAddRefModal(false)} className="bg-white border border-slate-200 text-slate-600 text-xs px-3 py-1.5 rounded-xl font-bold">
                       إلغاء
                     </button>
                     <button 
                       type="submit" 
-                      disabled={refSaving}
-                      className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-4 py-1.5 rounded-xl flex items-center gap-1 disabled:opacity-50"
+                      disabled={refSaving || (newRefType !== 'video' && !selectedUploadFile && !newRefUrl.trim())}
+                      className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-5 py-2 rounded-xl flex items-center gap-1.5 disabled:opacity-50 shadow-xs transition-all"
                     >
                       <Check className="w-3.5 h-3.5" />
-                      <span>{refSaving ? 'جاري الحفظ...' : 'تأكيد الإضافة وإتاحته للمخدومين'}</span>
+                      <span>{refSaving ? (uploadStatusText || 'جاري الرفع...') : 'تأكيد رفع المحتوى للمخدومين'}</span>
                     </button>
                   </div>
                 </form>
