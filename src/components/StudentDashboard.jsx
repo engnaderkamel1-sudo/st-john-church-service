@@ -3,7 +3,7 @@ import {
   QrCode, Calendar, Award, CheckCircle2, Clock, AlertTriangle, BookOpen, 
   Flame, Camera, Heart, Check, Sun, Sunset, Moon, Sparkles, ShieldCheck,
   FileText, Send, CheckCircle, HelpCircle, Bell, ChevronLeft, Download,
-  Lock, AlertCircle, CheckSquare, Layers, KeyRound
+  Lock, AlertCircle, CheckSquare, Layers, KeyRound, Video, Music, ExternalLink, X
 } from 'lucide-react';
 import { db } from '../firebase';
 import { collection, addDoc, query, where, getDocs, doc, getDoc, onSnapshot, serverTimestamp, updateDoc } from 'firebase/firestore';
@@ -15,6 +15,36 @@ export default function StudentDashboard({ user }) {
   const [currentTimeStr, setCurrentTimeStr] = useState('');
   const [bypassTime, setBypassTime] = useState(false);
   const [servantOpenedAccess, setServantOpenedAccess] = useState(null);
+
+  // Curriculum Firestore Live State
+  const [subjectsData, setSubjectsData] = useState([]);
+  const [selectedSubject, setSelectedSubject] = useState(null);
+  const [activePreviewPdf, setActivePreviewPdf] = useState(null);
+  const [activePreviewVideo, setActivePreviewVideo] = useState(null);
+
+  // Sync real-time curriculum for current student grade
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, 'service_curriculum'), (snapshot) => {
+      const studentGrade = user.grade || 'first';
+      const list = [];
+      snapshot.forEach(docSnap => {
+        const data = { id: docSnap.id, ...docSnap.data() };
+        if (data.grade === studentGrade) {
+          list.push(data);
+        }
+      });
+      setSubjectsData(list);
+
+      if (selectedSubject) {
+        const updated = list.find(s => s.id === selectedSubject.id);
+        if (updated) setSelectedSubject(updated);
+      }
+    }, (err) => {
+      console.error('Error fetching student curriculum:', err);
+    });
+
+    return () => unsub();
+  }, [user.grade, selectedSubject?.id]);
 
   // Dynamic Numeric PIN Code Attendance State
   const [inputPinCode, setInputPinCode] = useState('');
@@ -588,15 +618,15 @@ export default function StudentDashboard({ user }) {
         </div>
       )}
 
-      {/* 3. Tab: Curriculum Divided by Subject */}
+      {/* 3. Tab: Curriculum Divided by Subject (Live Firestore) */}
       {activeTab === 'curriculum' && (
         <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-6 text-right">
           <div>
             <h3 className="font-extrabold text-slate-900 text-base flex items-center gap-2">
               <BookOpen className="w-5 h-5 text-maroon-800" />
-              المنهج الدراسي مقسم حسب المواد ({getGradeTitle(user.grade)})
+              المنهج والمواد الدراسية ({getGradeTitle(user.grade)})
             </h3>
-            <p className="text-xs text-slate-500 mt-0.5">اختر المادة لتصفح المراجع والملخصات والمادة العلمية المرفوعة من الخدام.</p>
+            <p className="text-xs text-slate-500 mt-0.5">اختر المادة لتصفح المذكرات والمحاضرات الصوتية والمرئية المرفوعة من الخدام.</p>
           </div>
 
           {!selectedSubject ? (
@@ -617,17 +647,19 @@ export default function StudentDashboard({ user }) {
                     <div>
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-[10px] bg-maroon-100 text-maroon-900 font-extrabold px-2.5 py-0.5 rounded-full">
-                          {sub.code}
+                          {sub.teacher || 'خادم المادة'}
                         </span>
-                        <span className="text-xs text-slate-400 font-bold">{sub.materialsCount} مراجع</span>
+                        <span className="text-xs text-slate-400 font-bold">{(sub.references || []).length} مراجع</span>
                       </div>
                       <h4 className="font-extrabold text-slate-900 text-base group-hover:text-maroon-800 transition-colors mb-1">
                         {sub.name}
                       </h4>
-                      <p className="text-xs text-slate-500 leading-relaxed mb-4">{sub.description}</p>
+                      <p className="text-xs text-slate-500 leading-relaxed mb-4">
+                        اضغط لفتح المذكرات وملفات الشرح والمحاضرات المسجلة.
+                      </p>
                     </div>
                     <div className="flex items-center justify-between text-xs font-bold text-maroon-800 pt-3 border-t border-slate-200/60">
-                      <span>فتح مراجع المادة</span>
+                      <span>فتح محتوى المادة</span>
                       <ChevronLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
                     </div>
                   </div>
@@ -640,7 +672,7 @@ export default function StudentDashboard({ user }) {
               <div className="flex items-center justify-between border-b border-slate-200 pb-3">
                 <div>
                   <h4 className="font-extrabold text-slate-900 text-base">{selectedSubject.name}</h4>
-                  <span className="text-xs text-slate-500">المراجع والمذكرات العلمية المتاحة</span>
+                  <span className="text-xs text-slate-500">مسئول المادة: {selectedSubject.teacher || 'خادم المادة'}</span>
                 </div>
                 <button
                   onClick={() => setSelectedSubject(null)}
@@ -650,27 +682,154 @@ export default function StudentDashboard({ user }) {
                 </button>
               </div>
 
-              <div className="space-y-3">
-                {selectedSubject.materials.map((mat) => (
-                  <div
-                    key={mat.id}
-                    className="bg-slate-50 border border-slate-200 p-4 rounded-2xl flex items-center justify-between gap-3 text-xs"
-                  >
-                    <div>
-                      <h5 className="font-bold text-slate-900 text-sm">{mat.title}</h5>
-                      <span className="text-[11px] text-slate-400 mt-1 block">
-                        ملف {mat.type} • {mat.size} • تاريخ الرفع: {mat.date}
-                      </span>
-                    </div>
-                    <button
-                      onClick={() => alert(`جاري تنزيل: ${mat.title}`)}
-                      className="bg-white hover:bg-maroon-50 text-maroon-800 border border-slate-200 hover:border-maroon-300 font-bold px-3 py-1.5 rounded-xl flex items-center gap-1.5 transition-all shadow-xs"
+              {(!selectedSubject.references || selectedSubject.references.length === 0) ? (
+                <div className="text-center py-10 text-slate-400 text-xs bg-slate-50 rounded-2xl border border-slate-200">
+                  لم يتم إضافة مراجع أو محاضرات لهذه المادة بعد.
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {selectedSubject.references.map((mat) => (
+                    <div
+                      key={mat.id}
+                      className="bg-slate-50 border border-slate-200 p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
                     >
-                      <Download className="w-3.5 h-3.5" />
-                      <span>تحميل</span>
+                      <div className="flex items-center gap-3">
+                        <div className={`p-2.5 rounded-xl shrink-0 ${
+                          mat.type === 'video' ? 'bg-red-50 text-red-600 border border-red-200' :
+                          mat.type === 'audio' ? 'bg-amber-50 text-amber-700 border border-amber-200' :
+                          'bg-maroon-50 text-maroon-800 border border-maroon-200'
+                        }`}>
+                          {mat.type === 'video' ? <Video className="w-4 h-4" /> : mat.type === 'audio' ? <Music className="w-4 h-4" /> : <FileText className="w-4 h-4" />}
+                        </div>
+                        <div>
+                          <h5 className="font-bold text-slate-900 text-sm">{mat.title}</h5>
+                          <span className="text-[11px] text-slate-400 mt-0.5 block">
+                            {mat.type === 'video' ? 'فيديو يوتيوب' : mat.type === 'audio' ? 'تسجيل صوتي' : 'مذكرة PDF'} • {mat.date || 'اليوم'}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Interactive Controls & Modals */}
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {/* Audio in-card mini player */}
+                        {mat.type === 'audio' && mat.url && (
+                          <audio controls className="h-8 max-w-[200px]" src={mat.url}>
+                            متصفحك لا يدعم تشغيل الصوت
+                          </audio>
+                        )}
+
+                        {/* PDF Viewer Button */}
+                        {mat.type === 'pdf' && mat.fileId && (
+                          <button
+                            onClick={() => setActivePreviewPdf(mat)}
+                            className="bg-maroon-800 hover:bg-maroon-900 text-white font-bold px-3 py-1.5 rounded-xl flex items-center gap-1.5 transition-all shadow-xs"
+                          >
+                            <BookOpen className="w-3.5 h-3.5" />
+                            <span>عرض المذكرة 📖</span>
+                          </button>
+                        )}
+
+                        {/* Video Player Modal Button */}
+                        {mat.type === 'video' && mat.videoId && (
+                          <button
+                            onClick={() => setActivePreviewVideo(mat)}
+                            className="bg-red-700 hover:bg-red-800 text-white font-bold px-3 py-1.5 rounded-xl flex items-center gap-1.5 transition-all shadow-xs"
+                          >
+                            <Video className="w-3.5 h-3.5" />
+                            <span>مشاهدة الفيديو ▶</span>
+                          </button>
+                        )}
+
+                        {/* Direct Download / Open Button */}
+                        {mat.url && (
+                          <a
+                            href={
+                              mat.fileId 
+                                ? `https://drive.google.com/uc?export=download&id=${mat.fileId}`
+                                : mat.url
+                            }
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 font-bold px-3 py-1.5 rounded-xl flex items-center gap-1.5 transition-all shadow-xs"
+                          >
+                            <Download className="w-3.5 h-3.5" />
+                            <span>تحميل</span>
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* PDF In-App Preview Modal */}
+          {activePreviewPdf && (
+            <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 animate-in fade-in">
+              <div className="bg-white rounded-3xl w-full max-w-4xl h-[88vh] flex flex-col overflow-hidden shadow-2xl border border-slate-200">
+                <div className="p-3.5 sm:p-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+                  <div className="flex items-center gap-2">
+                    <FileText className="w-5 h-5 text-maroon-800" />
+                    <span className="font-extrabold text-sm text-slate-900">{activePreviewPdf.title}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {activePreviewPdf.fileId && (
+                      <a
+                        href={`https://drive.google.com/uc?export=download&id=${activePreviewPdf.fileId}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="bg-maroon-800 hover:bg-maroon-700 text-white text-xs font-bold py-1.5 px-3 rounded-xl flex items-center gap-1"
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                        <span>تحميل المذكرة</span>
+                      </a>
+                    )}
+                    <button
+                      onClick={() => setActivePreviewPdf(null)}
+                      className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-200 rounded-lg transition-colors"
+                    >
+                      <X className="w-5 h-5" />
                     </button>
                   </div>
-                ))}
+                </div>
+                <div className="flex-1 bg-slate-100 p-1">
+                  <iframe
+                    src={`https://drive.google.com/file/d/${activePreviewPdf.fileId}/preview`}
+                    className="w-full h-full rounded-2xl border border-slate-200"
+                    title={activePreviewPdf.title}
+                    allow="autoplay"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* YouTube Video In-App Player Modal */}
+          {activePreviewVideo && (
+            <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 animate-in fade-in">
+              <div className="bg-slate-950 rounded-3xl w-full max-w-3xl overflow-hidden shadow-2xl border border-slate-800 text-white">
+                <div className="p-4 border-b border-slate-800 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Video className="w-5 h-5 text-red-500" />
+                    <span className="font-extrabold text-sm">{activePreviewVideo.title}</span>
+                  </div>
+                  <button
+                    onClick={() => setActivePreviewVideo(null)}
+                    className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+                <div className="aspect-video w-full">
+                  <iframe
+                    src={`https://www.youtube.com/embed/${activePreviewVideo.videoId}?autoplay=1`}
+                    className="w-full h-full"
+                    title={activePreviewVideo.title}
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                  />
+                </div>
               </div>
             </div>
           )}
