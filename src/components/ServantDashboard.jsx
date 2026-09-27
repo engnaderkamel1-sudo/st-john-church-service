@@ -9,7 +9,7 @@ import {
   Eye, EyeOff, Calendar, ChevronRight, FileSpreadsheet, File, BarChart3, TrendingDown, Image as ImageIcon
 } from 'lucide-react';
 import { db } from '../firebase';
-import { collection, getDocs, doc, updateDoc, setDoc, addDoc, deleteDoc, query, orderBy, serverTimestamp, limit, onSnapshot } from 'firebase/firestore';
+import { collection, getDocs, doc, updateDoc, setDoc, addDoc, deleteDoc, query, where, orderBy, serverTimestamp, limit, onSnapshot } from 'firebase/firestore';
 
 export default function ServantDashboard({ user }) {
   // Check if current user is App Administrator (Nader Reda or church prep account)
