@@ -60,8 +60,8 @@ export default function ServantDashboard({ user }) {
   };
 
   useEffect(() => {
+    fetchAllUsers();
     if (isAppAdmin) {
-      fetchAllUsers();
       fetchLoginLogs();
     }
 
@@ -379,6 +379,136 @@ export default function ServantDashboard({ user }) {
   const [newRefUrl, setNewRefUrl] = useState('');
   const [refSaving, setRefSaving] = useState(false);
 
+  // Question Bank & Exams State
+  const [examSubSection, setExamSubSection] = useState('bank'); // 'bank' | 'assign'
+  const [questionBank, setQuestionBank] = useState([
+    {
+      id: 'qb-1',
+      subject: 'عقيدة',
+      grade: 'first',
+      type: 'mcq',
+      difficulty: 'medium',
+      questionText: 'ما هو سر التجسد الإلهي وأهميته في خلاص البشرية؟',
+      options: ['اتحاد اللاهوت بالناسوت بغير اختلاط ولا امتزاج', 'ظهور رمزي مؤقت', 'حلول مجازي'],
+      correctAnswer: 'اتحاد اللاهوت بالناسوت بغير اختلاط ولا امتزاج',
+      points: 5
+    },
+    {
+      id: 'qb-2',
+      subject: 'تاريخ كنيسة',
+      grade: 'first',
+      type: 'true_false',
+      difficulty: 'easy',
+      questionText: 'انعقد مجمع نيقية المسكوني الأول عام 325 ميلادية لمقاومة بدعة أريوس.',
+      options: ['صح', 'خطأ'],
+      correctAnswer: 'صح',
+      points: 5
+    },
+    {
+      id: 'qb-3',
+      subject: 'طقس',
+      grade: 'elisha',
+      type: 'mcq',
+      difficulty: 'medium',
+      questionText: 'ما هي رتبة الشماس الكامل المسئول عن خدمة المذبح والشعب؟',
+      options: ['الدياكون', 'الأرشيدياكون', 'الإبصالتيس'],
+      correctAnswer: 'الدياكون',
+      points: 5
+    }
+  ]);
+  const [showAddQuestionModal, setShowAddQuestionModal] = useState(false);
+  const [newQuestion, setNewQuestion] = useState({
+    subject: '',
+    type: 'mcq',
+    difficulty: 'medium',
+    questionText: '',
+    options: ['', '', '', ''],
+    correctAnswer: '',
+    points: 5
+  });
+
+  const [createdExams, setCreatedExams] = useState([
+    {
+      id: 'ex-1',
+      title: 'امتحان أعمال شهر أكتوبر (عقيدة وطقس)',
+      subject: 'عقيدة',
+      grade: 'first',
+      durationMinutes: 20,
+      totalScore: 30,
+      questionsCount: 3,
+      status: 'active'
+    }
+  ]);
+  const [showCreateExamModal, setShowCreateExamModal] = useState(false);
+  const [newExamTitle, setNewExamTitle] = useState('');
+  const [newExamSubject, setNewExamSubject] = useState('');
+  const [newExamDuration, setNewExamDuration] = useState('20');
+
+  // Student Evaluation & Servant Comments State
+  const [studentComments, setStudentComments] = useState({});
+  const [savedCommentId, setSavedCommentId] = useState(null);
+
+  const handleCommentChange = (studentId, val) => {
+    setStudentComments(prev => ({ ...prev, [studentId]: val }));
+  };
+
+  const handleSaveComment = async (studentId) => {
+    setSavedCommentId(studentId);
+    try {
+      const commentText = studentComments[studentId] || '';
+      await updateDoc(doc(db, 'users', studentId), {
+        comment: commentText,
+        commentUpdatedAt: serverTimestamp()
+      });
+      setTimeout(() => setSavedCommentId(null), 2000);
+    } catch (err) {
+      console.error('Error saving comment:', err);
+      setTimeout(() => setSavedCommentId(null), 2000);
+    }
+  };
+
+  const studentsByGrade = React.useMemo(() => {
+    const grouped = { first: [], second: [], third: [], elisha: [] };
+    const students = (allUsers || []).filter(u => u.role === 'student');
+    students.forEach(st => {
+      const g = st.grade || 'first';
+      if (!grouped[g]) grouped[g] = [];
+      const attendanceRate = typeof st.attendanceRate === 'number' ? st.attendanceRate : 85;
+      const examScore = typeof st.examScore === 'number' ? st.examScore : 25;
+      grouped[g].push({
+        ...st,
+        points: st.points || 0,
+        attendanceRate,
+        examScore,
+        isRedFlag: st.isRedFlag !== undefined ? st.isRedFlag : (attendanceRate < 60),
+        comment: studentComments[st.id] !== undefined ? studentComments[st.id] : (st.comment || '')
+      });
+    });
+    return grouped;
+  }, [allUsers, studentComments]);
+
+  // Sync questions and exams from Firestore if available
+  useEffect(() => {
+    const unsubQ = onSnapshot(collection(db, 'service_questions'), (snap) => {
+      if (!snap.empty) {
+        const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        setQuestionBank(list);
+      }
+    }, (err) => console.log('Questions fetch info:', err));
+
+    const unsubEx = onSnapshot(collection(db, 'service_exams'), (snap) => {
+      if (!snap.empty) {
+        const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        setCreatedExams(list);
+      }
+    }, (err) => console.log('Exams fetch info:', err));
+
+    return () => {
+      unsubQ();
+      unsubEx();
+    };
+  }, []);
+
   // Sync service_curriculum collection from Firestore
   useEffect(() => {
     const unsub = onSnapshot(collection(db, 'service_curriculum'), (snapshot) => {
@@ -536,13 +666,12 @@ export default function ServantDashboard({ user }) {
     }
   };
 
-  const handleAddQuestionSubmit = (e) => {
+  const handleAddQuestionSubmit = async (e) => {
     e.preventDefault();
     if (!newQuestion.questionText.trim()) return;
 
     const qItem = {
-      id: `qb-${Date.now()}`,
-      subject: newQuestion.subject,
+      subject: newQuestion.subject || (currentGradeSubjects[0]?.name || 'عام'),
       grade: selectedGrade,
       type: newQuestion.type,
       difficulty: newQuestion.difficulty,
@@ -552,26 +681,54 @@ export default function ServantDashboard({ user }) {
       points: Number(newQuestion.points) || 5
     };
 
-    setQuestionBank([qItem, ...questionBank]);
+    try {
+      const docRef = await addDoc(collection(db, 'service_questions'), {
+        ...qItem,
+        createdAt: serverTimestamp()
+      });
+      setQuestionBank(prev => [{ id: docRef.id, ...qItem }, ...prev]);
+    } catch (err) {
+      console.error('Error saving question:', err);
+      setQuestionBank(prev => [{ id: `qb-${Date.now()}`, ...qItem }, ...prev]);
+    }
+
+    setNewQuestion({
+      subject: '',
+      type: 'mcq',
+      difficulty: 'medium',
+      questionText: '',
+      options: ['', '', '', ''],
+      correctAnswer: '',
+      points: 5
+    });
     setShowAddQuestionModal(false);
   };
 
-  const handleCreateExamSubmit = (e) => {
+  const handleCreateExamSubmit = async (e) => {
     e.preventDefault();
     if (!newExamTitle.trim()) return;
 
     const examItem = {
-      id: `ex-${Date.now()}`,
       title: newExamTitle.trim(),
-      subject: newExamSubject,
+      subject: newExamSubject || (currentGradeSubjects[0]?.name || 'عام'),
       grade: selectedGrade,
       durationMinutes: Number(newExamDuration) || 20,
       totalScore: 30,
-      questionsCount: questionBank.filter(q => q.grade === selectedGrade).length || 3,
+      questionsCount: (questionBank || []).filter(q => q.grade === selectedGrade).length || 3,
       status: 'active'
     };
 
-    setCreatedExams([examItem, ...createdExams]);
+    try {
+      const docRef = await addDoc(collection(db, 'service_exams'), {
+        ...examItem,
+        createdAt: serverTimestamp()
+      });
+      setCreatedExams(prev => [{ id: docRef.id, ...examItem }, ...prev]);
+    } catch (err) {
+      console.error('Error saving exam:', err);
+      setCreatedExams(prev => [{ id: `ex-${Date.now()}`, ...examItem }, ...prev]);
+    }
+
     setNewExamTitle('');
     setShowCreateExamModal(false);
   };
@@ -587,8 +744,8 @@ export default function ServantDashboard({ user }) {
   };
 
   const currentGradeSubjects = subjectsByGrade[selectedGrade] || [];
-  const currentGradeQuestions = questionBank.filter(q => q.grade === selectedGrade);
-  const currentGradeStudents = studentsByGrade[selectedGrade] || [];
+  const currentGradeQuestions = (questionBank || []).filter(q => q.grade === selectedGrade);
+  const currentGradeStudents = (studentsByGrade && studentsByGrade[selectedGrade]) || [];
 
   // Analytics Calculations
   const totalStudents = currentGradeStudents.length;
