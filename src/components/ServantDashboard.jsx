@@ -634,7 +634,7 @@ export default function ServantDashboard({ user }) {
         });
 
         setUploadStatusText('جاري الرفع السحابي إلى Google Drive...');
-        const driveEndpoint = 'https://script.google.com/macros/s/AKfycbxhdl_hk5vB7NLLL7zdPmVXlwvAOiZYVLsrk5T73UdJpJJM9JpU74p0DexpSch7gI4I/exec';
+        const driveEndpoint = 'https://script.google.com/macros/s/AKfycbxhdl_hk5vB7NLLL7zdPmVXlwvAOiZYVLsrk5T73UdJpJJM9JpU74p0DexpSch7gl4I/exec';
         const response = await fetch(driveEndpoint, {
           method: 'POST',
           mode: 'cors',
