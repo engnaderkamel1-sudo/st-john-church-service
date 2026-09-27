@@ -52,6 +52,131 @@ export default function StudentDashboard({ user }) {
   const [pinLoading, setPinLoading] = useState(false);
   const [pinError, setPinError] = useState('');
 
+  // Attendance & Points State
+  const [points, setPoints] = useState(user?.points || 0);
+  const [attendanceStatus, setAttendanceStatus] = useState(null);
+  const [scanning, setScanning] = useState(false);
+  const [attendanceRecords, setAttendanceRecords] = useState([]);
+
+  // Spiritual Diary State (Today & Yesterday allowed)
+  const todayDateStr = new Date().toISOString().split('T')[0];
+  const yesterdayDateStr = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+  const [selectedDiaryDate, setSelectedDiaryDate] = useState(todayDateStr);
+  const [diaryRecords, setDiaryRecords] = useState({
+    [todayDateStr]: { baker: false, ghoroub: false, nowm: false, bible: false, communion: false, confession: false },
+    [yesterdayDateStr]: { baker: false, ghoroub: false, nowm: false, bible: false, communion: false, confession: false }
+  });
+  const isEditableDate = selectedDiaryDate === todayDateStr || selectedDiaryDate === yesterdayDateStr;
+
+  // Exams State
+  const [availableExams, setAvailableExams] = useState([
+    {
+      id: 'ex-1',
+      title: 'امتحان أعمال شهر أكتوبر (عقيدة وطقس)',
+      subject: 'عقيدة',
+      durationMinutes: 20,
+      totalScore: 20,
+      questions: [
+        {
+          id: 'q-1',
+          type: 'mcq',
+          points: 10,
+          questionText: 'ما هو سر التجسد الإلهي وأهميته في خلاص البشرية؟',
+          options: ['اتحاد اللاهوت بالناسوت بغير اختلاط ولا امتزاج', 'ظهور رمزي مؤقت', 'حلول مجازي'],
+          correctAnswer: 'اتحاد اللاهوت بالناسوت بغير اختلاط ولا امتزاج'
+        },
+        {
+          id: 'q-2',
+          type: 'true_false',
+          points: 10,
+          questionText: 'انعقد مجمع نيقية المسكوني الأول عام 325م لمقاومة بدعة أريوس.',
+          options: ['صح', 'خطأ'],
+          correctAnswer: 'صح'
+        }
+      ]
+    }
+  ]);
+  const [completedExams, setCompletedExams] = useState({});
+  const [activeExam, setActiveExam] = useState(null);
+  const [examAnswers, setExamAnswers] = useState({});
+  const [examResult, setExamResult] = useState(null);
+
+  // Tasks State
+  const [tasks, setTasks] = useState([
+    {
+      id: 't-1',
+      title: 'حفظ آية الأسبوع وقراءتها في الخدمة',
+      points: 10,
+      description: '«كُلُّ شَيْءٍ بِهِ كَانَ، وَبِغَيْرِهِ لَمْ يَكُنْ شَيْءٌ مِمَّا كَانَ» (يوحنا 1: 3)',
+      deadline: 'يوم الجمعة القادم',
+      completed: false
+    },
+    {
+      id: 't-2',
+      title: 'قراءة أصحاح من إنجيل معلمنا يوحنا',
+      points: 5,
+      description: 'قراءة وتأمل في الأصحاح الأول مع كتابة آية لمستك في مذكراتك.',
+      deadline: 'اليوم',
+      completed: false
+    }
+  ]);
+
+  // Announcements State
+  const [announcements, setAnnouncements] = useState([
+    {
+      id: 'a-1',
+      title: 'ميعاد لقاء الخدمة الأسبوعي القادم',
+      text: 'نلتقي بمشيئة ربنا يوم الجمعة القادم الساعة 10:30 صباحاً في قاعة الكنيسة بالمعراج.',
+      date: 'اليوم',
+      sender: 'أمين الخدمة'
+    },
+    {
+      id: 'a-2',
+      title: 'تنبيه بخصوص الامتحانات الدورية',
+      text: 'يرجى مراجعة مذكرات ومراجع المنهج على المنصة قبل موعد الاختبار القادم.',
+      date: 'أمس',
+      sender: 'خدام المرحلة'
+    }
+  ]);
+
+  // Sync attendance records & points from Firestore
+  useEffect(() => {
+    if (!user?.id) return;
+
+    // Sync Points
+    const unsubUser = onSnapshot(doc(db, 'users', user.id), (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        if (typeof data.points === 'number') {
+          setPoints(data.points);
+        }
+      }
+    });
+
+    // Sync Attendance history
+    const qAttend = query(collection(db, 'attendance'), where('userId', '==', user.id));
+    const unsubAttend = onSnapshot(qAttend, (snap) => {
+      const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      list.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+      setAttendanceRecords(list);
+    }, (err) => console.log('Attendance listen err:', err));
+
+    // Sync Exams for student grade
+    const qEx = query(collection(db, 'service_exams'), where('grade', '==', user.grade || 'first'));
+    const unsubEx = onSnapshot(qEx, (snap) => {
+      if (!snap.empty) {
+        const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        setAvailableExams(list);
+      }
+    }, (err) => console.log('Student exams fetch info:', err));
+
+    return () => {
+      unsubUser();
+      unsubAttend();
+      unsubEx();
+    };
+  }, [user?.id, user?.grade]);
+
   // Check 10:30 AM to 02:00 PM OR remote permission opened by servant
   useEffect(() => {
     const checkTimeWindow = () => {
