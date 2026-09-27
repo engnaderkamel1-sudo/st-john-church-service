@@ -26,14 +26,12 @@ $baseTreeSha = $parentCommit.tree.sha
 Write-Host "Base tree SHA: $baseTreeSha"
 
 # 3. Collect local files to sync
-$excludePatterns = @("node_modules", ".git", "dist", "sync-github.ps1", ".env", "scratch_")
 $files = Get-ChildItem -Path . -Recurse -File | Where-Object {
-    $relativePath = $_.FullName.Substring((Get-Location).Path.Length + 1)
-    $ignore = $false
-    foreach ($p in $excludePatterns) {
-        if ($relativePath -like "*$p*") { $ignore = $true; break }
+    $relativePath = $_.FullName.Substring((Get-Location).Path.Length + 1).Replace("\", "/")
+    if ($relativePath -like ".git/*" -or $relativePath -like "node_modules/*" -or $relativePath -like "dist/*" -or $relativePath -like "scratch_*" -or $relativePath -eq "sync-github.ps1" -or $relativePath -eq ".env") {
+        return $false
     }
-    -not $ignore
+    return $true
 }
 
 Write-Host "Found $($files.Count) files to commit." -ForegroundColor Cyan
