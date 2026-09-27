@@ -637,18 +637,18 @@ export default function ServantDashboard({ user }) {
         const driveEndpoint = 'https://script.google.com/macros/s/AKfycbxhdl_hk5vB7NLLL7zdPmVXlwvAOiZYVLsrk5T73UdJpJJM9JpU74p0DexpSch7gI4I/exec';
         const response = await fetch(driveEndpoint, {
           method: 'POST',
-          mode: 'cors',
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
           body: JSON.stringify({
             fileName: selectedUploadFile.name,
             mimeType: selectedUploadFile.type || (newRefType === 'pdf' ? 'application/pdf' : 'audio/mpeg'),
+            base64Data: base64Data,
             base64: base64Data
           })
         });
 
         const resData = await response.json();
         if (resData.status === 'success') {
-          finalUrl = resData.url;
+          finalUrl = resData.fileUrl || resData.url || resData.downloadUrl;
           finalFileId = resData.fileId;
         } else {
           throw new Error(resData.message || 'تعذر استكمال الرفع إلى Google Drive');
