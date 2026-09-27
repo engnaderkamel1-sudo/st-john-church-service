@@ -5,7 +5,8 @@ import {
   FileText, Plus, Download, UploadCloud, ChevronLeft, Trash2, FolderPlus,
   HelpCircle, Filter, Send, Layers, AlertCircle, MessageSquare, TrendingUp, Trophy, UserCog, RefreshCw,
   BellRing, Unlock, Lock, UserPlus, UserX, KeyRound, Copy, Sun, Sunset, Moon, Sparkles, Heart,
-  History, Activity, Menu, X, Video, Music, ExternalLink
+  History, Activity, Menu, X, Video, Music, ExternalLink,
+  Eye, EyeOff, Calendar, ChevronRight, FileSpreadsheet, File, BarChart3, TrendingDown, Image as ImageIcon
 } from 'lucide-react';
 import { db } from '../firebase';
 import { collection, getDocs, doc, updateDoc, setDoc, addDoc, deleteDoc, query, orderBy, serverTimestamp, limit, onSnapshot } from 'firebase/firestore';
@@ -308,10 +309,22 @@ export default function ServantDashboard({ user }) {
     }
   };
 
-  // Servant Spiritual Diary State
+  // Curriculum Target: 'students' (مناهج ومراجع المخدومين) | 'servants' (مناهج ومراجع الخدام)
+  const [curriculumTarget, setCurriculumTarget] = useState('students');
+
+  // Servant Spiritual Diary State & Analytics
   const todayDateStr = new Date().toISOString().split('T')[0];
   const yesterdayDateStr = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+  const currentMonthStr = todayDateStr.substring(0, 7); // e.g. "2026-09"
   const [selectedDiaryDate, setSelectedDiaryDate] = useState(todayDateStr);
+  const [spiritualDiaryTab, setSpiritualDiaryTab] = useState('my_diary'); // 'my_diary' | 'students_tracking'
+  const [myDiarySubTab, setMyDiarySubTab] = useState('entry'); // 'entry' | 'history'
+  const [selectedDiaryMonth, setSelectedDiaryMonth] = useState(currentMonthStr);
+  const [studentTrackingGrade, setStudentTrackingGrade] = useState('first');
+  const [studentTrackingMonth, setStudentTrackingMonth] = useState(currentMonthStr);
+  const [studentsDiariesList, setStudentsDiariesList] = useState([]);
+  const [selectedStudentDetail, setSelectedStudentDetail] = useState(null);
+
   const [servantDiary, setServantDiary] = useState({
     [todayDateStr]: {
       baker: false,
@@ -327,36 +340,109 @@ export default function ServantDashboard({ user }) {
     }
   });
 
-  const handleToggleServantDiaryItem = (key) => {
-    setServantDiary(prev => {
-      const dayData = prev[selectedDiaryDate] || {
-        baker: false,
-        ghoroub: false,
-        nowm: false,
-        bible: false,
-        lessonPrep: false,
-        visitation: false,
-        communion: false,
-        confession: false,
-        spiritualBook: false,
-        notes: ''
-      };
-      const nextVal = !dayData[key];
-      return {
-        ...prev,
-        [selectedDiaryDate]: { ...dayData, [key]: nextVal }
-      };
-    });
+  // Sync servant's personal spiritual diary from Firestore
+  useEffect(() => {
+    if (!user?.id) return;
+    const q = query(collection(db, 'spiritual_diaries'), where('userId', '==', user.id));
+    const unsub = onSnapshot(q, (snapshot) => {
+      const records = {};
+      snapshot.forEach(docSnap => {
+        const data = docSnap.data();
+        if (data.date) {
+          records[data.date] = data;
+        }
+      });
+      setServantDiary(prev => ({ ...prev, ...records }));
+    }, (err) => console.error('Error fetching servant spiritual diary:', err));
+
+    return () => unsub();
+  }, [user?.id]);
+
+  // Sync students' spiritual diaries for pastoral care and tracking
+  useEffect(() => {
+    const q = query(
+      collection(db, 'spiritual_diaries'),
+      where('userRole', '==', 'student'),
+      where('month', '==', studentTrackingMonth)
+    );
+    const unsub = onSnapshot(q, (snapshot) => {
+      const list = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+      setStudentsDiariesList(list);
+    }, (err) => console.error('Error fetching students spiritual diaries:', err));
+
+    return () => unsub();
+  }, [studentTrackingMonth]);
+
+  const handleToggleServantDiaryItem = async (key) => {
+    const dayData = servantDiary[selectedDiaryDate] || {
+      baker: false,
+      ghoroub: false,
+      nowm: false,
+      bible: false,
+      lessonPrep: false,
+      visitation: false,
+      communion: false,
+      confession: false,
+      spiritualBook: false,
+      notes: ''
+    };
+    const nextVal = !dayData[key];
+    const updatedDay = {
+      ...dayData,
+      [key]: nextVal,
+      userId: user.id,
+      userName: user.fullName || 'الخادم',
+      userRole: 'servant',
+      grade: user.servantScope || 'all',
+      date: selectedDiaryDate,
+      month: selectedDiaryDate.substring(0, 7),
+      year: new Date(selectedDiaryDate).getFullYear()
+    };
+
+    setServantDiary(prev => ({
+      ...prev,
+      [selectedDiaryDate]: updatedDay
+    }));
+
+    try {
+      const docId = `${user.id}_${selectedDiaryDate}`;
+      await setDoc(doc(db, 'spiritual_diaries', docId), {
+        ...updatedDay,
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+    } catch (err) {
+      console.error('Error saving servant diary to Firestore:', err);
+    }
   };
 
-  const handleServantDiaryNoteChange = (text) => {
-    setServantDiary(prev => {
-      const dayData = prev[selectedDiaryDate] || {};
-      return {
-        ...prev,
-        [selectedDiaryDate]: { ...dayData, notes: text }
-      };
-    });
+  const handleServantDiaryNoteChange = async (text) => {
+    const dayData = servantDiary[selectedDiaryDate] || {};
+    const updatedDay = {
+      ...dayData,
+      notes: text,
+      userId: user.id,
+      userName: user.fullName || 'الخادم',
+      userRole: 'servant',
+      grade: user.servantScope || 'all',
+      date: selectedDiaryDate,
+      month: selectedDiaryDate.substring(0, 7),
+      year: new Date(selectedDiaryDate).getFullYear()
+    };
+
+    setServantDiary(prev => ({
+      ...prev,
+      [selectedDiaryDate]: updatedDay
+    }));
+
+    try {
+      const docId = `${user.id}_${selectedDiaryDate}`;
+      await setDoc(doc(db, 'spiritual_diaries', docId), {
+        ...updatedDay,
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+    } catch (err) {
+      console.error('Error saving servant diary note to Firestore:', err);
+    }
   };
 
   // Subjects Managed by Grade - Real-time sync with Firestore `service_curriculum`
@@ -548,6 +634,7 @@ export default function ServantDashboard({ user }) {
         grade: selectedGrade,
         name: newSubjectName.trim(),
         teacher: newSubjectTeacher.trim() || user.fullName || 'خادم المادة',
+        targetAudience: curriculumTarget, // 'students' | 'servants'
         references: [],
         createdAt: serverTimestamp()
       });
@@ -563,6 +650,7 @@ export default function ServantDashboard({ user }) {
         grade: selectedGrade,
         name: newSubjectName.trim(),
         teacher: newSubjectTeacher.trim() || user.fullName || 'خادم المادة',
+        targetAudience: curriculumTarget,
         references: []
       };
       setSubjectsByGrade(prev => ({
@@ -591,12 +679,26 @@ export default function ServantDashboard({ user }) {
     }
   };
 
+  // Detect file type from filename or MIME type
+  const detectFileType = (file) => {
+    if (!file) return 'file';
+    const ext = file.name.split('.').pop().toLowerCase();
+    if (ext === 'pdf') return 'pdf';
+    if (['doc', 'docx', 'rtf', 'txt', 'odt'].includes(ext)) return 'doc';
+    if (['xls', 'xlsx', 'csv'].includes(ext)) return 'excel';
+    if (['ppt', 'pptx'].includes(ext)) return 'ppt';
+    if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(ext)) return 'image';
+    if (['mp3', 'wav', 'm4a', 'aac', 'ogg', 'wma'].includes(ext) || file.type.startsWith('audio/')) return 'audio';
+    if (['mp4', 'mov', 'avi', 'mkv'].includes(ext) || file.type.startsWith('video/')) return 'video';
+    return 'file';
+  };
+
   // Helper to extract Drive / YouTube IDs
   const parseResourceLink = (url, type) => {
     if (!url) return { url: '', fileId: null, videoId: null };
     const cleanUrl = url.trim();
 
-    if (type === 'pdf' || type === 'audio') {
+    if (type !== 'video') {
       const driveMatch = cleanUrl.match(/\/file\/d\/([a-zA-Z0-9_-]+)/) || cleanUrl.match(/[?&]id=([a-zA-Z0-9_-]+)/);
       const fileId = driveMatch ? driveMatch[1] : null;
       return { url: cleanUrl, fileId, videoId: null };
@@ -640,7 +742,7 @@ export default function ServantDashboard({ user }) {
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
           body: JSON.stringify({
             fileName: selectedUploadFile.name,
-            mimeType: selectedUploadFile.type || (newRefType === 'pdf' ? 'application/pdf' : 'audio/mpeg'),
+            mimeType: selectedUploadFile.type || 'application/octet-stream',
             base64Data: base64Data,
             base64: base64Data
           })
@@ -665,16 +767,24 @@ export default function ServantDashboard({ user }) {
     }
 
     setUploadStatusText('جاري حفظ بيانات المحتوى في المادة...');
-    const parsed = parseResourceLink(finalUrl, newRefType);
+    const detectedType = selectedUploadFile ? detectFileType(selectedUploadFile) : newRefType;
+    const parsed = parseResourceLink(finalUrl, detectedType);
 
     const newRef = {
       id: `rf-${Date.now()}`,
       title: newRefTitle.trim(),
-      type: newRefType, // 'pdf' | 'video' | 'audio'
+      type: detectedType, // 'pdf' | 'doc' | 'excel' | 'ppt' | 'image' | 'audio' | 'video' | 'file'
+      fileType: detectedType,
+      fileName: selectedUploadFile?.name || '',
       url: finalUrl,
       fileId: finalFileId || parsed.fileId,
       videoId: parsed.videoId,
-      date: new Date().toLocaleDateString('ar-EG', { year: 'numeric', month: 'short', day: 'numeric' })
+      date: new Date().toLocaleDateString('ar-EG', { year: 'numeric', month: 'short', day: 'numeric' }),
+      time: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }),
+      uploadedBy: user.fullName || user.phone || 'الخادم المسؤول',
+      uploadedByRole: user.role || 'servant',
+      targetAudience: curriculumTarget,
+      isPublishedForStudents: true // متاح افتراضياً مع إمكانية التفعيل والإلغاء
     };
 
     const updatedRefs = [newRef, ...(activeSubject.references || [])];
@@ -700,6 +810,29 @@ export default function ServantDashboard({ user }) {
       setNewRefUrl('');
       setSelectedUploadFile(null);
       setShowAddRefModal(false);
+    }
+  };
+
+  // Toggle reference visibility for students (تفعيل أو إلغاء إتاحة المحتوى للطلبة)
+  const handleToggleRefVisibility = async (refId) => {
+    if (!activeSubject) return;
+    const currentRefs = activeSubject.references || [];
+    const targetRef = currentRefs.find(r => r.id === refId);
+    if (!targetRef) return;
+
+    const newStatus = targetRef.isPublishedForStudents === false ? true : false;
+    const updatedRefs = currentRefs.map(r => 
+      r.id === refId ? { ...r, isPublishedForStudents: newStatus } : r
+    );
+
+    try {
+      await updateDoc(doc(db, 'service_curriculum', activeSubject.id), {
+        references: updatedRefs
+      });
+      setActiveSubject({ ...activeSubject, references: updatedRefs });
+    } catch (err) {
+      console.error('Error toggling reference visibility:', err);
+      setActiveSubject({ ...activeSubject, references: updatedRefs });
     }
   };
 
@@ -796,9 +929,31 @@ export default function ServantDashboard({ user }) {
     return titles[g] || g;
   };
 
-  const currentGradeSubjects = subjectsByGrade[selectedGrade] || [];
+  const allCurrentGradeSubjects = subjectsByGrade[selectedGrade] || [];
+  const currentGradeSubjects = allCurrentGradeSubjects.filter(sub => (sub.targetAudience || 'students') === curriculumTarget);
   const currentGradeQuestions = (questionBank || []).filter(q => q.grade === selectedGrade);
   const currentGradeStudents = (studentsByGrade && studentsByGrade[selectedGrade]) || [];
+
+  const getRefTypeMeta = (type) => {
+    switch (type) {
+      case 'pdf':
+        return { label: 'ملف PDF', icon: FileText, color: 'text-red-700 bg-red-50 border-red-200' };
+      case 'doc':
+        return { label: 'مستند Word', icon: FileText, color: 'text-blue-700 bg-blue-50 border-blue-200' };
+      case 'excel':
+        return { label: 'شيت Excel', icon: FileSpreadsheet, color: 'text-emerald-700 bg-emerald-50 border-emerald-200' };
+      case 'ppt':
+        return { label: 'عرض PowerPoint', icon: FileText, color: 'text-amber-700 bg-amber-50 border-amber-200' };
+      case 'image':
+        return { label: 'صورة', icon: ImageIcon, color: 'text-cyan-700 bg-cyan-50 border-cyan-200' };
+      case 'audio':
+        return { label: 'تسجيل صوتي', icon: Music, color: 'text-purple-700 bg-purple-50 border-purple-200' };
+      case 'video':
+        return { label: 'فيديو يوتيوب', icon: Video, color: 'text-red-700 bg-red-50 border-red-200' };
+      default:
+        return { label: 'ملف مرفق', icon: File, color: 'text-slate-700 bg-slate-100 border-slate-300' };
+    }
+  };
 
   // Analytics Calculations
   const totalStudents = currentGradeStudents.length;
@@ -864,10 +1019,10 @@ export default function ServantDashboard({ user }) {
         <span className="text-xs font-bold text-maroon-950 bg-maroon-50 px-3 py-1.5 rounded-xl border border-maroon-100">
           {mainTab === 'users_hub' && userHubSubTab === 'accounts' && 'المستخدمين والأدوار'}
           {mainTab === 'users_hub' && userHubSubTab === 'login_history' && 'سجل النشاط والدخول'}
-          {mainTab === 'subjects_hub' && 'المواد والمناهج'}
+          {mainTab === 'subjects_hub' && (curriculumTarget === 'students' ? 'مناهج ومراجع المخدومين' : 'مناهج ومراجع الخدام 🔒')}
           {mainTab === 'exams_bank_hub' && 'بنك الأسئلة والامتحانات'}
           {mainTab === 'analytics_hub' && 'الإحصائيات والأوائل'}
-          {mainTab === 'spiritual_diary' && 'نوتة الخادم الروحية'}
+          {mainTab === 'spiritual_diary' && 'النوتة الروحية ومتابعة المخدومين'}
           {mainTab === 'attendance_qr' && 'كود الحضور (QR)'}
         </span>
       </div>
@@ -952,22 +1107,49 @@ export default function ServantDashboard({ user }) {
               </button>
             )}
 
-            {/* 3. Subjects & Curriculum */}
+            {/* 3. Subjects & Curriculum for Students */}
             <button
               type="button"
               onClick={() => {
                 setMainTab('subjects_hub');
+                setCurriculumTarget('students');
                 setActiveSubject(null);
                 setMobileSidebarOpen(false);
               }}
               className={`w-full text-right py-2.5 px-3 rounded-2xl flex items-center gap-2.5 text-xs font-bold transition-all ${
-                mainTab === 'subjects_hub'
+                mainTab === 'subjects_hub' && curriculumTarget === 'students'
                   ? 'bg-maroon-800 text-white shadow-sm'
                   : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
               }`}
             >
-              <BookOpen className={`w-4 h-4 ${mainTab === 'subjects_hub' ? 'text-gold-300' : 'text-slate-500'}`} />
-              <span>المواد والمناهج</span>
+              <BookOpen className={`w-4 h-4 ${mainTab === 'subjects_hub' && curriculumTarget === 'students' ? 'text-gold-300' : 'text-slate-500'}`} />
+              <span>مناهج ومراجع المخدومين</span>
+            </button>
+
+            {/* 3.1 Subjects & Curriculum for Servants */}
+            <button
+              type="button"
+              onClick={() => {
+                setMainTab('subjects_hub');
+                setCurriculumTarget('servants');
+                setActiveSubject(null);
+                setMobileSidebarOpen(false);
+              }}
+              className={`w-full text-right py-2.5 px-3 rounded-2xl flex items-center justify-between text-xs font-bold transition-all ${
+                mainTab === 'subjects_hub' && curriculumTarget === 'servants'
+                  ? 'bg-maroon-800 text-white shadow-sm'
+                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                <ShieldCheck className={`w-4 h-4 ${mainTab === 'subjects_hub' && curriculumTarget === 'servants' ? 'text-gold-300' : 'text-maroon-700'}`} />
+                <span>مناهج ومراجع الخدام</span>
+              </div>
+              <span className={`text-[9px] px-1.5 py-0.5 rounded-md font-bold ${
+                mainTab === 'subjects_hub' && curriculumTarget === 'servants' ? 'bg-gold-400 text-maroon-950' : 'bg-amber-100 text-amber-900'
+              }`}>
+                خاص 🔒
+              </span>
             </button>
 
             {/* 4. Exam & Question Bank */}
@@ -1011,7 +1193,7 @@ export default function ServantDashboard({ user }) {
               )}
             </button>
 
-            {/* 6. Spiritual Diary */}
+            {/* 6. Spiritual Diary & Pastoral Tracking */}
             <button
               type="button"
               onClick={() => {
@@ -1019,14 +1201,21 @@ export default function ServantDashboard({ user }) {
                 setActiveSubject(null);
                 setMobileSidebarOpen(false);
               }}
-              className={`w-full text-right py-2.5 px-3 rounded-2xl flex items-center gap-2.5 text-xs font-bold transition-all ${
+              className={`w-full text-right py-2.5 px-3 rounded-2xl flex items-center justify-between text-xs font-bold transition-all ${
                 mainTab === 'spiritual_diary'
                   ? 'bg-maroon-800 text-white shadow-sm'
                   : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
               }`}
             >
-              <Sun className={`w-4 h-4 ${mainTab === 'spiritual_diary' ? 'text-gold-300' : 'text-amber-500'}`} />
-              <span>نوتة الخادم الروحية</span>
+              <div className="flex items-center gap-2.5">
+                <Sun className={`w-4 h-4 ${mainTab === 'spiritual_diary' ? 'text-gold-300' : 'text-amber-500'}`} />
+                <span>النوتة الروحية والمتابعة</span>
+              </div>
+              <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                mainTab === 'spiritual_diary' ? 'bg-gold-400 text-maroon-950' : 'bg-slate-100 text-slate-600'
+              }`}>
+                رعائي
+              </span>
             </button>
 
             {/* 7. Attendance QR Code */}
@@ -1411,18 +1600,74 @@ export default function ServantDashboard({ user }) {
     )}
 
       {/* 1. Subjects & Curriculum Management Hub */}
-      {/* 1. Subjects & Curriculum Hub (Real-time Firestore) */}
       {mainTab === 'subjects_hub' && (
         <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-6">
+          {/* Audience Switcher Tabs: Students vs Servants */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => { setCurriculumTarget('students'); setActiveSubject(null); }}
+                className={`text-xs px-4 py-2 rounded-xl font-bold transition-all flex items-center gap-2 ${
+                  curriculumTarget === 'students'
+                    ? 'bg-maroon-800 text-white shadow-sm'
+                    : 'bg-slate-100 text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <BookOpen className="w-4 h-4" />
+                <span>مناهج ومراجع المخدومين</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => { setCurriculumTarget('servants'); setActiveSubject(null); }}
+                className={`text-xs px-4 py-2 rounded-xl font-bold transition-all flex items-center gap-2 ${
+                  curriculumTarget === 'servants'
+                    ? 'bg-maroon-800 text-white shadow-sm'
+                    : 'bg-slate-100 text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <ShieldCheck className="w-4 h-4 text-gold-300" />
+                <span>مناهج ومراجع الخدام 🔒 (خاص)</span>
+              </button>
+            </div>
+
+            <div className="text-[11px] font-bold text-slate-500 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl">
+              المرحلة المحددة: <strong className="text-maroon-900">{getGradeTitle(selectedGrade)}</strong>
+            </div>
+          </div>
+
+          {/* Audience Context Notice */}
+          <div className={`p-3 rounded-2xl text-xs flex items-center gap-2 border font-medium ${
+            curriculumTarget === 'servants'
+              ? 'bg-amber-50/70 border-amber-200 text-amber-900'
+              : 'bg-slate-50 border-slate-200 text-slate-700'
+          }`}>
+            {curriculumTarget === 'servants' ? (
+              <>
+                <ShieldCheck className="w-4 h-4 text-amber-700 shrink-0" />
+                <span>قسم مخصص للخدام فقط: لرفع مراجع التحضير والتأملات والتوجيهات الرعوية الخاصة بالخدمة (مخفية تماماً عن المخدومين).</span>
+              </>
+            ) : (
+              <>
+                <BookOpen className="w-4 h-4 text-maroon-800 shrink-0" />
+                <span>مناهج ومحاضرات المخدومين: يتم بثها للطلبة، مع إمكانية إتاحة أو إخفاء أي محاضرة بزر واحد في أي وقت.</span>
+              </>
+            )}
+          </div>
+
           {!activeSubject ? (
             <div className="space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
                 <div>
-                  <h3 className="font-extrabold text-slate-900 text-base">مواد ومناهج: {getGradeTitle(selectedGrade)}</h3>
-                  <p className="text-xs text-slate-500 mt-0.5">إدارة المواد الدراسية ورفع المحاضرات والمذكرات عبر Google Drive واليوتيوب.</p>
+                  <h3 className="font-extrabold text-slate-900 text-base">
+                    {curriculumTarget === 'students' ? 'مواد ومناهج المخدومين' : 'مواد ومراجع الخدام'}: {getGradeTitle(selectedGrade)}
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    إدارة المواد ورفع الملفات (PDF، Word، Excel، صور، تسجيلات) إلى Google Drive مباشرة.
+                  </p>
                 </div>
                 <div className="flex items-center gap-2">
-
                   <button
                     onClick={() => setShowAddSubjectModal(true)}
                     className="bg-maroon-800 hover:bg-maroon-700 text-white font-bold text-xs py-2 px-4 rounded-xl transition-all shadow-xs flex items-center justify-center gap-1.5"
@@ -1435,14 +1680,16 @@ export default function ServantDashboard({ user }) {
 
               {showAddSubjectModal && (
                 <form onSubmit={handleAddSubject} className="bg-slate-50 border border-slate-200 p-4.5 rounded-2xl space-y-3">
-                  <h4 className="font-extrabold text-xs text-maroon-900">إضافة مادة دراسية جديدة لـ ({getGradeTitle(selectedGrade)})</h4>
+                  <h4 className="font-extrabold text-xs text-maroon-900">
+                    إضافة مادة جديدة ({curriculumTarget === 'students' ? 'للمخدومين' : 'للخدام فقط'}) - {getGradeTitle(selectedGrade)}
+                  </h4>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <label className="block text-[11px] font-bold text-slate-700 mb-1">اسم المادة</label>
                       <input
                         type="text"
                         required
-                        placeholder="مثال: طقوس الكنيسة، تاريخ كنيسة، عقيدة"
+                        placeholder="مثال: طقوس الكنيسة، تاريخ كنيسة، عقيدة، إعداد درس"
                         value={newSubjectName}
                         onChange={(e) => setNewSubjectName(e.target.value)}
                         className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-maroon-800"
@@ -1473,8 +1720,8 @@ export default function ServantDashboard({ user }) {
               {currentGradeSubjects.length === 0 ? (
                 <div className="text-center py-12 bg-slate-50 border border-dashed border-slate-200 rounded-2xl p-6">
                   <BookOpen className="w-10 h-10 text-slate-300 mx-auto mb-2" />
-                  <p className="text-xs font-bold text-slate-700">لا توجد مواد دراسية مضافة لهذه المرحلة حتى الآن.</p>
-                  <p className="text-[11px] text-slate-400 mt-1">اضغط على زر "إضافة مادة جديدة" للبدء في إضافة المواد ورفع المناهج والمذكرات.</p>
+                  <p className="text-xs font-bold text-slate-700">لا توجد مواد مضافة في هذا القسم لهذه المرحلة بعد.</p>
+                  <p className="text-[11px] text-slate-400 mt-1">اضغط على زر "إضافة مادة جديدة" للبدء في إضافة المواد ورفع المذكرات والمحاضرات.</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1501,7 +1748,7 @@ export default function ServantDashboard({ user }) {
                           </div>
                         </div>
                         <h4 className="font-extrabold text-slate-900 text-base group-hover:text-maroon-800 transition-colors mb-1">{sub.name}</h4>
-                        <p className="text-xs text-slate-500 leading-relaxed mb-4">اضغط للدخول ورفع مذكرات PDF، تسجيلات صوتية وفيديوهات للمادة.</p>
+                        <p className="text-xs text-slate-500 leading-relaxed mb-4">اضغط للدخول وإدارة المذكرات والملفات والتسجيلات وفتح المحاضرات للمخدومين.</p>
                       </div>
                       <div className="flex items-center justify-between text-xs font-bold text-maroon-800 pt-3 border-t border-slate-200/60">
                         <span>إدارة مراجع ومحاضرات المادة ({(sub.references || []).length})</span>
@@ -1516,7 +1763,9 @@ export default function ServantDashboard({ user }) {
             <div className="space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
                 <div>
-                  <span className="text-xs text-slate-400 font-bold">المادة الحالية</span>
+                  <span className="text-xs text-slate-400 font-bold">
+                    المادة الحالية ({curriculumTarget === 'students' ? 'مناهج المخدومين' : 'مناهج الخدام 🔒'})
+                  </span>
                   <h4 className="font-extrabold text-slate-900 text-lg">{activeSubject.name}</h4>
                   <span className="text-xs text-maroon-800 font-semibold">المسئول: {activeSubject.teacher}</span>
                 </div>
@@ -1526,7 +1775,7 @@ export default function ServantDashboard({ user }) {
                     className="bg-maroon-800 hover:bg-maroon-700 text-white font-bold text-xs py-2 px-3.5 rounded-xl transition-all shadow-xs flex items-center gap-1.5"
                   >
                     <UploadCloud className="w-4 h-4" />
-                    <span>إضافة محتوى / ملخص</span>
+                    <span>إضافة محتوى / ملف</span>
                   </button>
                   <button
                     onClick={() => setActiveSubject(null)}
@@ -1539,7 +1788,9 @@ export default function ServantDashboard({ user }) {
 
               {showAddRefModal && (
                 <form onSubmit={handleAddReference} className="bg-slate-50 border border-slate-200 p-4.5 rounded-2xl space-y-3.5">
-                  <h5 className="font-extrabold text-xs text-slate-800">إضافة محتوى تعليمي لمادة ({activeSubject.name})</h5>
+                  <h5 className="font-extrabold text-xs text-slate-800">
+                    إضافة محتوى تعليمي لمادة ({activeSubject.name}) - {curriculumTarget === 'students' ? 'للمخدومين' : 'للخدام فقط'}
+                  </h5>
                   
                   {/* Type Selector */}
                   <div>
@@ -1547,23 +1798,13 @@ export default function ServantDashboard({ user }) {
                     <div className="grid grid-cols-3 gap-2">
                       <button
                         type="button"
-                        onClick={() => setNewRefType('pdf')}
+                        onClick={() => setNewRefType('file')}
                         className={`py-2 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
-                          newRefType === 'pdf' ? 'bg-maroon-800 text-white border-maroon-800 shadow-sm' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                          newRefType === 'file' || newRefType === 'pdf' ? 'bg-maroon-800 text-white border-maroon-800 shadow-sm' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
                         }`}
                       >
                         <FileText className="w-3.5 h-3.5" />
-                        <span>مذكرة PDF</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setNewRefType('video')}
-                        className={`py-2 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
-                          newRefType === 'video' ? 'bg-red-700 text-white border-red-700 shadow-sm' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
-                        }`}
-                      >
-                        <Video className="w-3.5 h-3.5" />
-                        <span>فيديو يوتيوب</span>
+                        <span>ملف (PDF، Word، Excel، صور)</span>
                       </button>
                       <button
                         type="button"
@@ -1574,6 +1815,16 @@ export default function ServantDashboard({ user }) {
                       >
                         <Music className="w-3.5 h-3.5" />
                         <span>تسجيل صوتي</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setNewRefType('video')}
+                        className={`py-2 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
+                          newRefType === 'video' ? 'bg-red-700 text-white border-red-700 shadow-sm' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                        }`}
+                      >
+                        <Video className="w-3.5 h-3.5" />
+                        <span>فيديو يوتيوب</span>
                       </button>
                     </div>
                   </div>
@@ -1593,12 +1844,12 @@ export default function ServantDashboard({ user }) {
                   {newRefType !== 'video' ? (
                     <div className="space-y-2">
                       <label className="block text-[11px] font-bold text-slate-700">
-                        {newRefType === 'pdf' ? 'اختر ملف المذكرة (PDF) من جهازك:' : 'اختر التسجيل الصوتي من جهازك:'}
+                        اختر أي ملف من جهازك (PDF، Word، Excel، PowerPoint، صور، صوتيات):
                       </label>
                       <div className="border-2 border-dashed border-maroon-200 hover:border-maroon-600 bg-white p-4 rounded-2xl text-center cursor-pointer transition-colors relative">
                         <input
                           type="file"
-                          accept={newRefType === 'pdf' ? '.pdf' : 'audio/*'}
+                          accept="*/*"
                           onChange={(e) => {
                             if (e.target.files && e.target.files[0]) {
                               setSelectedUploadFile(e.target.files[0]);
@@ -1659,7 +1910,7 @@ export default function ServantDashboard({ user }) {
                       className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-5 py-2 rounded-xl flex items-center gap-1.5 disabled:opacity-50 shadow-xs transition-all"
                     >
                       <Check className="w-3.5 h-3.5" />
-                      <span>{refSaving ? (uploadStatusText || 'جاري الرفع...') : 'تأكيد رفع المحتوى للمخدومين'}</span>
+                      <span>{refSaving ? (uploadStatusText || 'جاري الرفع...') : 'تأكيد حفظ ورفع المحتوى'}</span>
                     </button>
                   </div>
                 </form>
@@ -1669,49 +1920,90 @@ export default function ServantDashboard({ user }) {
                 {(!activeSubject.references || activeSubject.references.length === 0) ? (
                   <div className="text-center py-10 text-slate-400 text-xs">لم يتم إضافة مراجع أو محتوى لهذه المادة بعد.</div>
                 ) : (
-                  activeSubject.references.map((rf) => (
-                    <div key={rf.id} className="bg-slate-50 border border-slate-200 p-4 rounded-2xl flex items-center justify-between text-xs">
-                      <div className="flex items-center gap-3">
-                        <div className={`p-2.5 rounded-xl shrink-0 ${
-                          rf.type === 'video' ? 'bg-red-50 text-red-600 border border-red-200' :
-                          rf.type === 'audio' ? 'bg-amber-50 text-amber-700 border border-amber-200' :
-                          'bg-maroon-50 text-maroon-800 border border-maroon-200'
-                        }`}>
-                          {rf.type === 'video' ? <Video className="w-4 h-4" /> : rf.type === 'audio' ? <Music className="w-4 h-4" /> : <FileText className="w-4 h-4" />}
+                  activeSubject.references.map((rf) => {
+                    const meta = getRefTypeMeta(rf.type);
+                    const IconComp = meta.icon;
+                    return (
+                      <div key={rf.id} className="bg-slate-50 border border-slate-200 p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                        <div className="flex items-center gap-3">
+                          <div className={`p-2.5 rounded-xl shrink-0 border ${meta.color}`}>
+                            <IconComp className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h5 className="font-extrabold text-slate-900 text-sm">{rf.title}</h5>
+                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${meta.color}`}>
+                                {meta.label}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2 text-[11px] text-slate-400 mt-1 flex-wrap">
+                              <span>رفع بواسطة: <strong className="text-slate-600">{rf.uploadedBy || 'الخادم المسؤول'}</strong></span>
+                              <span>•</span>
+                              <span>{rf.date || 'اليوم'} {rf.time ? `(${rf.time})` : ''}</span>
+                              {rf.fileName && (
+                                <>
+                                  <span>•</span>
+                                  <span className="font-mono text-[10px] text-slate-500">{rf.fileName}</span>
+                                </>
+                              )}
+                            </div>
+                          </div>
                         </div>
-                        <div>
-                          <h5 className="font-extrabold text-slate-900 text-sm">{rf.title}</h5>
-                          <span className="text-[11px] text-slate-400 mt-0.5 block">
-                            {rf.type === 'video' ? 'فيديو يوتيوب' : rf.type === 'audio' ? 'تسجيل صوتي' : 'ملف PDF'} • تاريخ الإضافة: {rf.date || 'اليوم'}
-                          </span>
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-center gap-2">
-                        {rf.url && (
-                          <a
-                            href={rf.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 font-bold px-2.5 py-1 rounded-lg text-[11px] flex items-center gap-1"
+                        
+                        <div className="flex items-center gap-2 shrink-0">
+                          {rf.url && (
+                            <a
+                              href={rf.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 font-bold px-2.5 py-1 rounded-lg text-[11px] flex items-center gap-1"
+                            >
+                              <ExternalLink className="w-3 h-3" />
+                              <span>فتح</span>
+                            </a>
+                          )}
+
+                          {/* Toggle Visibility for Students */}
+                          {curriculumTarget === 'students' ? (
+                            <button
+                              type="button"
+                              onClick={() => handleToggleRefVisibility(rf.id)}
+                              className={`font-bold px-3 py-1 rounded-lg text-[10px] flex items-center gap-1.5 transition-all shadow-2xs ${
+                                rf.isPublishedForStudents !== false
+                                  ? 'bg-emerald-50 text-emerald-800 border border-emerald-300 hover:bg-emerald-100'
+                                  : 'bg-amber-50 text-amber-800 border border-amber-300 hover:bg-amber-100'
+                              }`}
+                              title="اضغط لتفعيل أو إخفاء المحتوى عن المخدومين"
+                            >
+                              {rf.isPublishedForStudents !== false ? (
+                                <>
+                                  <Eye className="w-3 h-3 text-emerald-600" />
+                                  <span>متاح للمخدومين 👁️ (انقر للإخفاء)</span>
+                                </>
+                              ) : (
+                                <>
+                                  <EyeOff className="w-3 h-3 text-amber-600" />
+                                  <span>مخفي عن المخدومين 🔒 (انقر للإتاحة)</span>
+                                </>
+                              )}
+                            </button>
+                          ) : (
+                            <span className="bg-slate-100 text-slate-600 border border-slate-200 font-bold px-2.5 py-1 rounded-lg text-[10px]">
+                              خاص بالخدام 🔒
+                            </span>
+                          )}
+
+                          <button
+                            onClick={() => handleDeleteReference(rf.id)}
+                            className="text-slate-400 hover:text-red-600 p-1.5 rounded-lg hover:bg-red-50 transition-colors"
+                            title="حذف هذا المرجع"
                           >
-                            <ExternalLink className="w-3 h-3" />
-                            <span>فتح</span>
-                          </a>
-                        )}
-                        <span className="bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold px-2.5 py-1 rounded-lg text-[10px]">
-                          متاح للمخدومين ✓
-                        </span>
-                        <button
-                          onClick={() => handleDeleteReference(rf.id)}
-                          className="text-slate-400 hover:text-red-600 p-1.5 rounded-lg hover:bg-red-50 transition-colors"
-                          title="حذف هذا المرجع"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                  ))
+                    );
+                  })
                 )}
               </div>
             </div>
@@ -2248,150 +2540,555 @@ export default function ServantDashboard({ user }) {
         </div>
       )}
 
-      {/* 5. Tab: Servant Spiritual Diary (نوتة الخادم الروحية) */}
+      {/* 5. Tab: Servant Spiritual Diary & Pastoral Tracking */}
       {mainTab === 'spiritual_diary' && (
         <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-6 text-right">
-          {/* Header */}
+          {/* Main Sub-Navigation: My Diary vs Students Tracking */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
-            <div>
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-900 flex items-center justify-center font-bold">
-                  <Sun className="w-5 h-5 text-amber-700" />
-                </div>
-                <h3 className="font-extrabold text-slate-900 text-base">
-                  نوتة الخادم الروحية اليومية
-                </h3>
-              </div>
-              <p className="text-xs text-slate-500 mt-1">
-                «كُنْ قُدْوَةً لِلْمُؤْمِنِينَ فِي الْكَلاَمِ، فِي التَّصَرُّفِ، فِي الْمَحَبَّةِ، فِي الرُّوحِ، فِي الإِيمَانِ، فِي الطَّهَارَةِ» (1 تيموثاوس 4: 12)
-              </p>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setSpiritualDiaryTab('my_diary')}
+                className={`text-xs px-4 py-2 rounded-xl font-bold transition-all flex items-center gap-2 ${
+                  spiritualDiaryTab === 'my_diary'
+                    ? 'bg-maroon-800 text-white shadow-sm'
+                    : 'bg-slate-100 text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <Sun className="w-4 h-4 text-gold-300" />
+                <span>نوتتي الروحية الشخصية (كخادم)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setSpiritualDiaryTab('students_tracking')}
+                className={`text-xs px-4 py-2 rounded-xl font-bold transition-all flex items-center gap-2 ${
+                  spiritualDiaryTab === 'students_tracking'
+                    ? 'bg-maroon-800 text-white shadow-sm'
+                    : 'bg-slate-100 text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <Users className="w-4 h-4" />
+                <span>متابعة التزام المخدومين روحيّاً (رعائي)</span>
+              </button>
             </div>
 
-            {/* Date Selector */}
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-bold text-slate-600">اختر اليوم:</span>
-              <select
-                value={selectedDiaryDate}
-                onChange={(e) => setSelectedDiaryDate(e.target.value)}
-                className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-800 focus:outline-none focus:border-maroon-800"
-              >
-                <option value={todayDateStr}>اليوم ({todayDateStr})</option>
-                <option value={yesterdayDateStr}>أمس ({yesterdayDateStr})</option>
-              </select>
+            <div className="text-[11px] font-bold text-slate-500 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl">
+              «كُنْ قُدْوَةً لِلْمُؤْمِنِينَ فِي الْكَلاَمِ، فِي التَّصَرُّفِ، فِي الْمَحَبَّةِ»
             </div>
           </div>
 
-          {/* Daily Canonical Prayers & Personal Devotions */}
-          <div className="space-y-3">
-            <h4 className="font-extrabold text-slate-800 text-xs flex items-center gap-1.5">
-              <Sparkles className="w-4 h-4 text-amber-600" />
-              <span>الصلوات والأجبية والإنجيل</span>
-            </h4>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {[
-                { key: 'baker', label: 'صلاة باكر', icon: Sun, desc: 'حضور باكر وطلب معونة الله' },
-                { key: 'ghoroub', label: 'صلاة الغروب', icon: Sunset, desc: 'شكر اليوم ومراجعة النفس' },
-                { key: 'nowm', label: 'صلاة النوم', icon: Moon, desc: 'تسليم النفس ليد الفادي' },
-                { key: 'bible', label: 'قراءة الإنجيل بتأمل', icon: BookOpen, desc: 'غذاء الروح اليومي' }
-              ].map(({ key, label, icon: Icon, desc }) => {
-                const checked = servantDiary[selectedDiaryDate]?.[key] || false;
-                return (
-                  <div
-                    key={key}
-                    onClick={() => handleToggleServantDiaryItem(key)}
-                    className={`p-4 rounded-2xl border transition-all flex flex-col justify-between h-30 cursor-pointer ${
-                      checked
-                        ? 'bg-amber-50/70 border-amber-300 text-amber-950 shadow-xs'
-                        : 'bg-slate-50 border-slate-200 text-slate-600 hover:border-slate-300'
+          {/* TAB 1: PERSONAL SERVANT DIARY */}
+          {spiritualDiaryTab === 'my_diary' && (
+            <div className="space-y-6">
+              {/* Secondary Sub-Tabs: Daily Entry vs History & Analytics */}
+              <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-3">
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setMyDiarySubTab('entry')}
+                    className={`text-xs px-3.5 py-1.5 rounded-xl font-bold transition-all ${
+                      myDiarySubTab === 'entry'
+                        ? 'bg-maroon-50 text-maroon-900 border border-maroon-200'
+                        : 'text-slate-500 hover:bg-slate-50'
                     }`}
                   >
-                    <div className="flex items-center justify-between">
-                      <Icon className={`w-5 h-5 ${checked ? 'text-amber-600' : 'text-slate-400'}`} />
-                      <div className={`w-6 h-6 rounded-lg flex items-center justify-center border text-xs ${
-                        checked ? 'bg-amber-500 border-amber-500 text-white font-bold' : 'border-slate-300 bg-white'
-                      }`}>
-                        {checked && <Check className="w-4 h-4 stroke-[3]" />}
+                    تسجيل اليوم والأمس ✍️
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMyDiarySubTab('history')}
+                    className={`text-xs px-3.5 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 ${
+                      myDiarySubTab === 'history'
+                        ? 'bg-maroon-50 text-maroon-900 border border-maroon-200'
+                        : 'text-slate-500 hover:bg-slate-50'
+                    }`}
+                  >
+                    <BarChart3 className="w-3.5 h-3.5" />
+                    <span>سجل المتابعة والشهور السابقة 📈</span>
+                  </button>
+                </div>
+
+                {myDiarySubTab === 'entry' ? (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-slate-600">اليوم المحدد:</span>
+                    <select
+                      value={selectedDiaryDate}
+                      onChange={(e) => setSelectedDiaryDate(e.target.value)}
+                      className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-800 focus:outline-none focus:border-maroon-800"
+                    >
+                      <option value={todayDateStr}>اليوم ({todayDateStr})</option>
+                      <option value={yesterdayDateStr}>أمس ({yesterdayDateStr})</option>
+                    </select>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-slate-600">اختر الشهر للمتابعة:</span>
+                    <select
+                      value={selectedDiaryMonth}
+                      onChange={(e) => setSelectedDiaryMonth(e.target.value)}
+                      className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-800 focus:outline-none focus:border-maroon-800"
+                    >
+                      {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map(offset => {
+                        const d = new Date(new Date().getFullYear(), new Date().getMonth() - offset, 1);
+                        const val = d.toISOString().substring(0, 7);
+                        const label = d.toLocaleDateString('ar-EG', { month: 'long', year: 'numeric' });
+                        return <option key={val} value={val}>{label}</option>;
+                      })}
+                    </select>
+                  </div>
+                )}
+              </div>
+
+              {/* Sub-view 1: Daily Entry */}
+              {myDiarySubTab === 'entry' && (
+                <div className="space-y-6">
+                  {/* Daily Canonical Prayers */}
+                  <div className="space-y-3">
+                    <h4 className="font-extrabold text-slate-800 text-xs flex items-center gap-1.5">
+                      <Sparkles className="w-4 h-4 text-amber-600" />
+                      <span>الصلوات والأجبية والإنجيل ({selectedDiaryDate})</span>
+                    </h4>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      {[
+                        { key: 'baker', label: 'صلاة باكر', icon: Sun, desc: 'حضور باكر وطلب معونة الله' },
+                        { key: 'ghoroub', label: 'صلاة الغروب', icon: Sunset, desc: 'شكر اليوم ومراجعة النفس' },
+                        { key: 'nowm', label: 'صلاة النوم', icon: Moon, desc: 'تسليم النفس ليد الفادي' },
+                        { key: 'bible', label: 'قراءة الإنجيل بتأمل', icon: BookOpen, desc: 'غذاء الروح اليومي' }
+                      ].map(({ key, label, icon: Icon, desc }) => {
+                        const checked = servantDiary[selectedDiaryDate]?.[key] || false;
+                        return (
+                          <div
+                            key={key}
+                            onClick={() => handleToggleServantDiaryItem(key)}
+                            className={`p-4 rounded-2xl border transition-all flex flex-col justify-between h-30 cursor-pointer ${
+                              checked
+                                ? 'bg-amber-50/70 border-amber-300 text-amber-950 shadow-xs'
+                                : 'bg-slate-50 border-slate-200 text-slate-600 hover:border-slate-300'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <Icon className={`w-5 h-5 ${checked ? 'text-amber-600' : 'text-slate-400'}`} />
+                              <div className={`w-6 h-6 rounded-lg flex items-center justify-center border text-xs ${
+                                checked ? 'bg-amber-500 border-amber-500 text-white font-bold' : 'border-slate-300 bg-white'
+                              }`}>
+                                {checked && <Check className="w-4 h-4 stroke-[3]" />}
+                              </div>
+                            </div>
+                            <div>
+                              <div className="font-extrabold text-xs">{label}</div>
+                              <div className="text-[10px] text-slate-400 mt-0.5">{desc}</div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Ministry Duties */}
+                  <div className="space-y-3 pt-2">
+                    <h4 className="font-extrabold text-slate-800 text-xs flex items-center gap-1.5">
+                      <Heart className="w-4 h-4 text-maroon-800" />
+                      <span>أمانة الخدمة والافتقاد</span>
+                    </h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {[
+                        { key: 'lessonPrep', label: 'تحضير درس الخدمة والصلاة لأجله', desc: 'الدراسة المتأنية والتحضير' },
+                        { key: 'visitation', label: 'افتقاد المخدومين (مكالمة / زيارة)', desc: 'السؤال عن الغائبين والمحتاجين' },
+                        { key: 'spiritualBook', label: 'قراءة في كتاب روحي / سير قديسين', desc: 'تنمية المعرفة الآبائية' },
+                        { key: 'confession', label: 'جلسة الاعتراف والإرشاد الروحي', desc: 'المواظبة على سر التوبة والاعتراف' }
+                      ].map(({ key, label, desc }) => {
+                        const checked = servantDiary[selectedDiaryDate]?.[key] || false;
+                        return (
+                          <div
+                            key={key}
+                            onClick={() => handleToggleServantDiaryItem(key)}
+                            className={`p-3.5 rounded-2xl border transition-all flex items-center justify-between cursor-pointer ${
+                              checked
+                                ? 'bg-emerald-50 border-emerald-300 text-emerald-950 shadow-2xs'
+                                : 'bg-slate-50 border-slate-200 text-slate-700 hover:border-slate-300'
+                            }`}
+                          >
+                            <div>
+                              <span className="font-extrabold text-xs block">{label}</span>
+                              <span className="text-[11px] text-slate-500 mt-0.5">{desc}</span>
+                            </div>
+                            <div className={`w-6 h-6 rounded-lg flex items-center justify-center border text-xs shrink-0 mr-3 ${
+                              checked ? 'bg-emerald-600 border-emerald-600 text-white font-bold' : 'border-slate-300 bg-white'
+                            }`}>
+                              {checked && <Check className="w-4 h-4 stroke-[3]" />}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Notes */}
+                  <div className="space-y-2 pt-2 border-t border-slate-100">
+                    <h4 className="font-extrabold text-slate-800 text-xs flex items-center gap-1.5">
+                      <Edit3 className="w-4 h-4 text-maroon-800" />
+                      <span>تأملات، صلوات شخصية، وملاحظات روحية</span>
+                    </h4>
+                    <textarea
+                      rows={3}
+                      value={servantDiary[selectedDiaryDate]?.notes || ''}
+                      onChange={(e) => handleServantDiaryNoteChange(e.target.value)}
+                      placeholder="اكتب ما لمسه قلبك اليوم من كلمة الله، أو أسماء المخدومين الذين وضعتهم في صلاتك الخاصة..."
+                      className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-3 text-xs text-slate-800 focus:outline-none focus:border-maroon-800 focus:bg-white transition-all"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Sub-view 2: History & Analytics */}
+              {myDiarySubTab === 'history' && (() => {
+                // Compute current month and previous month stats
+                const curMonthDays = Object.keys(servantDiary).filter(d => d.startsWith(selectedDiaryMonth));
+                const [curY, curM] = selectedDiaryMonth.split('-').map(Number);
+                const prevD = new Date(curY, curM - 2, 1);
+                const prevMonthStr = prevD.toISOString().substring(0, 7);
+                const prevMonthDays = Object.keys(servantDiary).filter(d => d.startsWith(prevMonthStr));
+
+                let curBaker = 0, curGhoroub = 0, curNowm = 0, curBible = 0, curComm = 0, curConf = 0, curPrep = 0, curVisit = 0;
+                curMonthDays.forEach(d => {
+                  const entry = servantDiary[d] || {};
+                  if (entry.baker) curBaker++;
+                  if (entry.ghoroub) curGhoroub++;
+                  if (entry.nowm) curNowm++;
+                  if (entry.bible) curBible++;
+                  if (entry.communion) curComm++;
+                  if (entry.confession) curConf++;
+                  if (entry.lessonPrep) curPrep++;
+                  if (entry.visitation) curVisit++;
+                });
+
+                let prevPrayersTotal = 0;
+                prevMonthDays.forEach(d => {
+                  const entry = servantDiary[d] || {};
+                  if (entry.baker) prevPrayersTotal++;
+                  if (entry.ghoroub) prevPrayersTotal++;
+                  if (entry.nowm) prevPrayersTotal++;
+                });
+
+                const curPrayersTotal = curBaker + curGhoroub + curNowm;
+                const prayersDiff = curPrayersTotal - prevPrayersTotal;
+
+                return (
+                  <div className="space-y-6">
+                    {/* Performance Comparison Banner */}
+                    <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      <div>
+                        <span className="text-xs text-slate-500 font-bold block">مقارنة الالتزام بالصلوات مع الشهر السابق:</span>
+                        <div className="flex items-center gap-2 mt-1">
+                          {prayersDiff > 0 ? (
+                            <div className="flex items-center gap-1.5 text-emerald-700 font-extrabold text-sm">
+                              <TrendingUp className="w-5 h-5 text-emerald-600" />
+                              <span>صليت أكثر هذا الشهر (+{prayersDiff} صلاة أجبية مقارنة بالشهر السابق) ↗️</span>
+                            </div>
+                          ) : prayersDiff < 0 ? (
+                            <div className="flex items-center gap-1.5 text-amber-700 font-extrabold text-sm">
+                              <TrendingDown className="w-5 h-5 text-amber-600" />
+                              <span>صليت أقل هذا الشهر ({prayersDiff} صلاة أجبية عن الشهر السابق) - تحتاج لتكثيف خلوتك ↘️</span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-1.5 text-slate-700 font-extrabold text-sm">
+                              <span>ثبات في معدل الصلوات مقارنة بالشهر السابق (مواظبة جيدة) ➡️</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="bg-white border border-slate-200 px-4 py-2 rounded-xl text-center shadow-2xs">
+                        <span className="text-[11px] text-slate-400 block font-bold">أيام التسجيل</span>
+                        <span className="text-lg font-extrabold text-maroon-900">{curMonthDays.length} يوم</span>
                       </div>
                     </div>
-                    <div>
-                      <div className="font-extrabold text-xs">{label}</div>
-                      <div className="text-[10px] text-slate-400 mt-0.5">{desc}</div>
+
+                    {/* Monthly KPI Stats Grid */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      <div className="bg-slate-50 border border-slate-200 p-3.5 rounded-2xl text-center">
+                        <Sun className="w-5 h-5 text-amber-600 mx-auto mb-1" />
+                        <span className="text-lg font-extrabold text-slate-900 block">{curBaker}</span>
+                        <span className="text-[11px] font-bold text-slate-500">صلاة باكر</span>
+                      </div>
+                      <div className="bg-slate-50 border border-slate-200 p-3.5 rounded-2xl text-center">
+                        <Moon className="w-5 h-5 text-indigo-600 mx-auto mb-1" />
+                        <span className="text-lg font-extrabold text-slate-900 block">{curNowm + curGhoroub}</span>
+                        <span className="text-[11px] font-bold text-slate-500">غروب ونوم</span>
+                      </div>
+                      <div className="bg-slate-50 border border-slate-200 p-3.5 rounded-2xl text-center">
+                        <BookOpen className="w-5 h-5 text-maroon-800 mx-auto mb-1" />
+                        <span className="text-lg font-extrabold text-slate-900 block">{curBible}</span>
+                        <span className="text-[11px] font-bold text-slate-500">قراءات إنجيل</span>
+                      </div>
+                      <div className="bg-slate-50 border border-slate-200 p-3.5 rounded-2xl text-center">
+                        <Heart className="w-5 h-5 text-red-600 mx-auto mb-1" />
+                        <span className="text-lg font-extrabold text-slate-900 block">{curPrep + curVisit}</span>
+                        <span className="text-[11px] font-bold text-slate-500">تحضير وافتقاد</span>
+                      </div>
+                    </div>
+
+                    {/* Detailed Days Log Table */}
+                    <div className="space-y-3">
+                      <h4 className="font-extrabold text-slate-900 text-xs">سجل الأيام المفصل لشهر ({selectedDiaryMonth})</h4>
+                      {curMonthDays.length === 0 ? (
+                        <div className="text-center py-8 text-slate-400 text-xs bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+                          لم يتم تسجيل أي أيام في هذا الشهر حتى الآن.
+                        </div>
+                      ) : (
+                        <div className="overflow-x-auto border border-slate-200 rounded-2xl">
+                          <table className="w-full text-right text-xs">
+                            <thead className="bg-slate-50 border-b border-slate-200 text-slate-600">
+                              <tr>
+                                <th className="py-2.5 px-3">التاريخ</th>
+                                <th className="py-2.5 px-3 text-center">باكر ☀️</th>
+                                <th className="py-2.5 px-3 text-center">غروب 🌅</th>
+                                <th className="py-2.5 px-3 text-center">نوم 🌙</th>
+                                <th className="py-2.5 px-3 text-center">الإنجيل 📖</th>
+                                <th className="py-2.5 px-3 text-center">تحضير درس</th>
+                                <th className="py-2.5 px-3 text-center">افتقاد</th>
+                                <th className="py-2.5 px-3">ملاحظات اليوم</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                              {curMonthDays.sort().reverse().map(dStr => {
+                                const day = servantDiary[dStr] || {};
+                                return (
+                                  <tr key={dStr} className="hover:bg-slate-50/80">
+                                    <td className="py-2.5 px-3 font-bold font-mono text-slate-800">{dStr}</td>
+                                    <td className="py-2.5 px-3 text-center">{day.baker ? <span className="text-emerald-600 font-bold">✓</span> : <span className="text-slate-300">-</span>}</td>
+                                    <td className="py-2.5 px-3 text-center">{day.ghoroub ? <span className="text-emerald-600 font-bold">✓</span> : <span className="text-slate-300">-</span>}</td>
+                                    <td className="py-2.5 px-3 text-center">{day.nowm ? <span className="text-emerald-600 font-bold">✓</span> : <span className="text-slate-300">-</span>}</td>
+                                    <td className="py-2.5 px-3 text-center">{day.bible ? <span className="text-emerald-600 font-bold">✓</span> : <span className="text-slate-300">-</span>}</td>
+                                    <td className="py-2.5 px-3 text-center">{day.lessonPrep ? <span className="text-emerald-600 font-bold">✓</span> : <span className="text-slate-300">-</span>}</td>
+                                    <td className="py-2.5 px-3 text-center">{day.visitation ? <span className="text-emerald-600 font-bold">✓</span> : <span className="text-slate-300">-</span>}</td>
+                                    <td className="py-2.5 px-3 text-slate-500 text-[11px] max-w-[200px] truncate">{day.notes || '-'}</td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
                     </div>
                   </div>
                 );
-              })}
+              })()}
             </div>
-          </div>
+          )}
 
-          {/* Service & Ministry Duties (مسؤوليات الخدمة والرعاية) */}
-          <div className="space-y-3 pt-2">
-            <h4 className="font-extrabold text-slate-800 text-xs flex items-center gap-1.5">
-              <Heart className="w-4 h-4 text-maroon-800" />
-              <span>أمانة الخدمة والافتقاد</span>
-            </h4>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {[
-                { 
-                  key: 'lessonPrep', 
-                  label: 'تحضير درس الخدمة والصلاة لأجله', 
-                  desc: 'الدراسة المتأنية واستخراج الشواهد والوسائل الإيضاحية' 
-                },
-                { 
-                  key: 'visitation', 
-                  label: 'افتقاد المخدومين (مكالمة / زيارة)', 
-                  desc: 'السؤال عن الغائبين والمحتاجين إلى رعاية ومتابعة' 
-                },
-                { 
-                  key: 'spiritualBook', 
-                  label: 'قراءة في كتاب روحي / سير قديسين', 
-                  desc: 'تنمية المعرفة الآبائية والروحية المستمرة' 
-                },
-                { 
-                  key: 'confession', 
-                  label: 'جلسة الاعتراف والإرشاد الروحي', 
-                  desc: 'المواظبة على سر التوبة والاعتراف مع أب الاعتراف' 
-                }
-              ].map(({ key, label, desc }) => {
-                const checked = servantDiary[selectedDiaryDate]?.[key] || false;
-                return (
-                  <div
-                    key={key}
-                    onClick={() => handleToggleServantDiaryItem(key)}
-                    className={`p-3.5 rounded-2xl border transition-all flex items-center justify-between cursor-pointer ${
-                      checked
-                        ? 'bg-emerald-50 border-emerald-300 text-emerald-950 shadow-2xs'
-                        : 'bg-slate-50 border-slate-200 text-slate-700 hover:border-slate-300'
-                    }`}
+          {/* TAB 2: STUDENTS PASTORAL TRACKING */}
+          {spiritualDiaryTab === 'students_tracking' && (
+            <div className="space-y-6">
+              {/* Filter Controls: Grade & Month */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50 border border-slate-200 p-4 rounded-2xl">
+                <div>
+                  <h4 className="font-extrabold text-slate-900 text-sm">متابعة التزام مخدومي المرحلة</h4>
+                  <p className="text-xs text-slate-500 mt-0.5">استعراض مدى مواظبة الطلبة على النوتة الروحية والصلوات والأسرار لمتابعتهم رعائياً.</p>
+                </div>
+
+                <div className="flex items-center gap-2 flex-wrap">
+                  <select
+                    value={studentTrackingGrade}
+                    onChange={(e) => setStudentTrackingGrade(e.target.value)}
+                    className="bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-800 focus:outline-none focus:border-maroon-800"
                   >
-                    <div>
-                      <span className="font-extrabold text-xs block">{label}</span>
-                      <span className="text-[11px] text-slate-500 mt-0.5">{desc}</span>
+                    <option value="first">سنة أولى</option>
+                    <option value="second">سنة ثانية</option>
+                    <option value="third">سنة ثالثة</option>
+                    <option value="elisha">فصل أليشع (إعداد خدام)</option>
+                  </select>
+
+                  <select
+                    value={studentTrackingMonth}
+                    onChange={(e) => setStudentTrackingMonth(e.target.value)}
+                    className="bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-800 focus:outline-none focus:border-maroon-800"
+                  >
+                    {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map(offset => {
+                      const d = new Date(new Date().getFullYear(), new Date().getMonth() - offset, 1);
+                      const val = d.toISOString().substring(0, 7);
+                      const label = d.toLocaleDateString('ar-EG', { month: 'long', year: 'numeric' });
+                      return <option key={val} value={val}>{label}</option>;
+                    })}
+                  </select>
+                </div>
+              </div>
+
+              {/* Students Table with Spiritual Commitment Metrics */}
+              {(() => {
+                const gradeStudents = allUsers.filter(u => u.role === 'student' && (u.grade || 'first') === studentTrackingGrade);
+
+                if (gradeStudents.length === 0) {
+                  return (
+                    <div className="text-center py-10 text-slate-400 text-xs bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+                      لا يوجد مخدومين مسجلين في {getGradeTitle(studentTrackingGrade)} حالياً.
                     </div>
-                    <div className={`w-6 h-6 rounded-lg flex items-center justify-center border text-xs shrink-0 mr-3 ${
-                      checked ? 'bg-emerald-600 border-emerald-600 text-white font-bold' : 'border-slate-300 bg-white'
-                    }`}>
-                      {checked && <Check className="w-4 h-4 stroke-[3]" />}
-                    </div>
+                  );
+                }
+
+                return (
+                  <div className="overflow-x-auto border border-slate-200 rounded-2xl">
+                    <table className="w-full text-right text-xs">
+                      <thead className="bg-slate-50 border-b border-slate-200 text-slate-600">
+                        <tr>
+                          <th className="py-3 px-3">المخدوم</th>
+                          <th className="py-3 px-3 text-center">أيام التسجيل</th>
+                          <th className="py-3 px-3 text-center">صلوات الأجبية</th>
+                          <th className="py-3 px-3 text-center">قراءات الإنجيل</th>
+                          <th className="py-3 px-3 text-center">التناول والاعتراف</th>
+                          <th className="py-3 px-3 text-center">مستوى الالتزام</th>
+                          <th className="py-3 px-3 text-center">إجراء رعائي</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {gradeStudents.map((st) => {
+                          const studentEntries = studentsDiariesList.filter(d => d.userId === st.id);
+                          const daysCount = studentEntries.length;
+                          let totalPrayers = 0;
+                          let totalBible = 0;
+                          let totalComm = 0;
+                          let totalConf = 0;
+
+                          studentEntries.forEach(entry => {
+                            if (entry.baker) totalPrayers++;
+                            if (entry.ghoroub) totalPrayers++;
+                            if (entry.nowm) totalPrayers++;
+                            if (entry.bible) totalBible++;
+                            if (entry.communion) totalComm++;
+                            if (entry.confession) totalConf++;
+                          });
+
+                          // Rating
+                          let statusLabel = 'يحتاج افتقاد وتشجيع ⚠️';
+                          let statusClass = 'bg-amber-100 text-amber-900 border-amber-200';
+                          if (daysCount >= 18) {
+                            statusLabel = 'ممتاز ومواظب 🌟';
+                            statusClass = 'bg-emerald-100 text-emerald-900 border-emerald-200';
+                          } else if (daysCount >= 8) {
+                            statusLabel = 'جيد 👍';
+                            statusClass = 'bg-blue-100 text-blue-900 border-blue-200';
+                          }
+
+                          return (
+                            <tr key={st.id} className="hover:bg-slate-50/80 transition-colors">
+                              <td className="py-3 px-3 font-bold text-slate-900">
+                                <div>
+                                  <span>{st.fullName}</span>
+                                  <span className="text-[10px] text-slate-400 block font-mono" dir="ltr">{st.phone}</span>
+                                </div>
+                              </td>
+                              <td className="py-3 px-3 text-center font-bold text-slate-800">{daysCount} يوم</td>
+                              <td className="py-3 px-3 text-center font-bold text-amber-700">{totalPrayers} صلاة</td>
+                              <td className="py-3 px-3 text-center font-bold text-maroon-800">{totalBible} أصحاح</td>
+                              <td className="py-3 px-3 text-center text-slate-600 font-bold">
+                                {totalComm > 0 && <span className="text-emerald-700">تناول ({totalComm}) </span>}
+                                {totalConf > 0 && <span className="text-maroon-800">• اعتراف ({totalConf})</span>}
+                                {totalComm === 0 && totalConf === 0 && <span className="text-slate-400">لم يسجل</span>}
+                              </td>
+                              <td className="py-3 px-3 text-center">
+                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${statusClass}`}>
+                                  {statusLabel}
+                                </span>
+                              </td>
+                              <td className="py-3 px-3 text-center">
+                                <button
+                                  type="button"
+                                  onClick={() => setSelectedStudentDetail({
+                                    student: st,
+                                    entries: studentEntries,
+                                    daysCount,
+                                    totalPrayers,
+                                    totalBible,
+                                    totalComm,
+                                    totalConf
+                                  })}
+                                  className="bg-maroon-50 hover:bg-maroon-100 text-maroon-900 border border-maroon-200 font-bold px-2.5 py-1 rounded-lg text-[11px] transition-colors"
+                                >
+                                  عرض التقرير 📄
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
                   </div>
                 );
-              })}
-            </div>
-          </div>
+              })()}
 
-          {/* Personal Servant Reflections / Notes */}
-          <div className="space-y-2 pt-2 border-t border-slate-100">
-            <h4 className="font-extrabold text-slate-800 text-xs flex items-center gap-1.5">
-              <Edit3 className="w-4 h-4 text-maroon-800" />
-              <span>تأملات، صلوات شخصية، وملاحظات روحية</span>
-            </h4>
-            <textarea
-              rows={3}
-              value={servantDiary[selectedDiaryDate]?.notes || ''}
-              onChange={(e) => handleServantDiaryNoteChange(e.target.value)}
-              placeholder="اكتب ما لمسه قلبك اليوم من كلمة الله، أو أسماء المخدومين الذين وضعتهم في صلاتك الخاصة..."
-              className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-3 text-xs text-slate-800 focus:outline-none focus:border-maroon-800 focus:bg-white transition-all"
-            />
-          </div>
+              {/* Detail Modal for Selected Student */}
+              {selectedStudentDetail && (
+                <div className="fixed inset-0 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in">
+                  <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-xl border border-slate-200 space-y-4 max-h-[85vh] overflow-y-auto">
+                    <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                      <div>
+                        <h4 className="font-extrabold text-slate-900 text-base">{selectedStudentDetail.student.fullName}</h4>
+                        <span className="text-xs text-slate-500">تقرير النوتة الروحية لشهر ({studentTrackingMonth})</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedStudentDetail(null)}
+                        className="text-slate-400 hover:text-slate-600 p-1"
+                      >
+                        <X className="w-5 h-5" />
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                      <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                        <span className="text-slate-400 block text-[10px] font-bold">أيام التسجيل</span>
+                        <strong className="text-slate-900 text-sm">{selectedStudentDetail.daysCount} يوم</strong>
+                      </div>
+                      <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                        <span className="text-slate-400 block text-[10px] font-bold">صلوات الأجبية</span>
+                        <strong className="text-amber-800 text-sm">{selectedStudentDetail.totalPrayers} صلاة</strong>
+                      </div>
+                      <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                        <span className="text-slate-400 block text-[10px] font-bold">قراءات الإنجيل</span>
+                        <strong className="text-maroon-800 text-sm">{selectedStudentDetail.totalBible} أصحاح</strong>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <h5 className="font-bold text-xs text-slate-800">سجل الأيام المسجلة لهذا المخدوم:</h5>
+                      {selectedStudentDetail.entries.length === 0 ? (
+                        <div className="text-center py-6 text-slate-400 text-xs bg-slate-50 rounded-xl">
+                          لم يسجل المخدوم أي نوتة في هذا الشهر بعد.
+                        </div>
+                      ) : (
+                        <div className="divide-y divide-slate-100 max-h-56 overflow-y-auto border border-slate-200 rounded-xl">
+                          {selectedStudentDetail.entries.sort((a,b) => b.date.localeCompare(a.date)).map(en => (
+                            <div key={en.id || en.date} className="p-2.5 text-xs flex items-center justify-between hover:bg-slate-50">
+                              <span className="font-bold font-mono text-slate-800">{en.date}</span>
+                              <div className="flex items-center gap-1.5 text-[11px]">
+                                {en.baker && <span className="bg-amber-100 text-amber-900 px-1.5 py-0.5 rounded font-bold">باكر</span>}
+                                {en.ghoroub && <span className="bg-amber-100 text-amber-900 px-1.5 py-0.5 rounded font-bold">غروب</span>}
+                                {en.nowm && <span className="bg-indigo-100 text-indigo-900 px-1.5 py-0.5 rounded font-bold">نوم</span>}
+                                {en.bible && <span className="bg-maroon-100 text-maroon-900 px-1.5 py-0.5 rounded font-bold">إنجيل</span>}
+                                {en.communion && <span className="bg-emerald-100 text-emerald-900 px-1.5 py-0.5 rounded font-bold">تناول</span>}
+                                {en.confession && <span className="bg-purple-100 text-purple-900 px-1.5 py-0.5 rounded font-bold">اعتراف</span>}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="pt-2">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedStudentDetail(null)}
+                        className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2 rounded-xl text-xs transition-colors"
+                      >
+                        إغلاق التقرير
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
         </main>
