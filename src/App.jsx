@@ -150,19 +150,19 @@ export default function App() {
         <div className="fixed inset-0 z-[9999] bg-gradient-to-b from-slate-900 via-maroon-950 to-slate-950 text-white flex flex-col items-center justify-between p-8 font-cairo select-none animate-in fade-in duration-300">
           <div className="w-full flex justify-center pt-2"></div>
 
-          {/* Center Logo & Titles */}
-          <div className="flex flex-col items-center text-center space-y-6 max-w-sm px-4">
+          {/* Center Logo & Titles & Prominent Verse */}
+          <div className="flex flex-col items-center text-center space-y-5 max-w-md px-4 my-auto">
             <div className="relative group">
               <div className="absolute -inset-4 bg-gradient-to-r from-gold-500/30 to-amber-600/30 rounded-full blur-xl animate-pulse"></div>
               <img 
                 src="/church_logo.jpg" 
                 alt="شعار كنيسة القديس ماريوحنا المعمدان" 
-                className="w-40 h-40 sm:w-48 sm:h-48 rounded-full border-4 border-gold-400 object-cover shadow-2xl relative z-10 ring-4 ring-gold-400/20"
+                className="w-36 h-36 sm:w-44 sm:h-44 rounded-full border-4 border-gold-400 object-cover shadow-2xl relative z-10 ring-4 ring-gold-400/20"
               />
             </div>
 
-            <div className="space-y-2">
-              <h2 className="text-base sm:text-lg font-bold text-slate-100">
+            <div className="space-y-1.5">
+              <h2 className="text-sm sm:text-base font-bold text-slate-200">
                 كنيسة القديس ماريوحنا المعمدان بالمعراج - مطرانية المعادي
               </h2>
               <div className="h-0.5 w-16 bg-gold-400/60 mx-auto rounded-full"></div>
@@ -170,24 +170,30 @@ export default function App() {
                 خدمة أليشع النبي وإعداد خدام
               </h1>
             </div>
+
+            {/* Prominent Bible Verse Placed Up with Larger Font */}
+            <div className="bg-slate-900/85 border border-gold-400/50 px-5 py-3.5 rounded-2xl shadow-xl backdrop-blur-md max-w-sm sm:max-w-md mx-auto">
+              <p className="text-base sm:text-lg font-extrabold text-amber-200 leading-relaxed font-cairo">
+                «لَيْسَ أَنْتُمُ اخْتَرْتُمُونِي بَلْ أَنَا اخْتَرْتُكُمْ وَأَقَمْتُكُمْ لِتَذْهَبُوا وَتَأْتُوا بِثَمَرٍ»
+              </p>
+              <span className="block text-xs sm:text-sm font-bold text-gold-400 mt-1.5 font-cairo">
+                (يوحنا 15: 16)
+              </span>
+            </div>
           </div>
 
           {/* Bottom Progress Bar & Loading */}
-          <div className="w-full max-w-sm space-y-3 pb-6">
+          <div className="w-full max-w-sm space-y-2.5 pb-6">
             <div className="flex items-center justify-between text-xs text-gold-200/90 font-bold px-1">
               <span>جاري التحميل...</span>
               <span className="font-mono">{splashProgress}%</span>
             </div>
-            <div className="w-full h-2 bg-slate-800/90 rounded-full overflow-hidden p-0.5 border border-gold-500/30 shadow-inner">
+            <div className="w-full h-2.5 bg-slate-800/90 rounded-full overflow-hidden p-0.5 border border-gold-500/30 shadow-inner">
               <div 
                 className="h-full bg-gradient-to-r from-gold-400 via-amber-400 to-gold-300 rounded-full transition-all duration-75 ease-out shadow-sm"
                 style={{ width: `${splashProgress}%` }}
               ></div>
             </div>
-            <p className="text-[11px] text-center text-gold-200/80 leading-relaxed font-medium">
-              «لَيْسَ أَنْتُمُ اخْتَرْتُمُونِي بَلْ أَنَا اخْتَرْتُكُمْ وَأَقَمْتُكُمْ لِتَذْهَبُوا وَتَأْتُوا بِثَمَرٍ»
-              <span className="block text-[10px] text-slate-400 mt-0.5">(يوحنا 15: 16)</span>
-            </p>
           </div>
         </div>
       )}
