@@ -70,6 +70,10 @@ export default function ServantAiStudioModal({
         });
       } else if (initialFile) {
         setSelectedFile(initialFile);
+      } else {
+        setSelectedFile(null);
+        setFileBase64('');
+        setFileMimeType('');
       }
       setError('');
       setAddedSuccess(false);
