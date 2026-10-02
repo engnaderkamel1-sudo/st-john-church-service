@@ -201,33 +201,33 @@ export default function App() {
 
       <div className="min-h-screen bg-slate-50 text-slate-800 flex flex-col justify-between selection:bg-gold-500 selection:text-maroon-950 font-cairo">
       {/* Light Mode Royal Header */}
-      <header className="py-3.5 px-4 border-b border-slate-200/80 bg-white shadow-sm sticky top-0 z-40 backdrop-blur-md">
-        <div className="max-w-5xl mx-auto flex items-center justify-between">
+      <header className="py-2.5 sm:py-3.5 px-3 sm:px-4 border-b border-slate-200/80 bg-white shadow-sm sticky top-0 z-40 backdrop-blur-md">
+        <div className="max-w-5xl mx-auto flex items-center justify-between gap-2">
           {/* Logo & Identity */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5 min-w-0">
             <img 
               src="/church_logo.jpg" 
               alt="شعار كنيسة القديس ماريوحنا المعمدان" 
-              className="w-11 h-11 rounded-full border-2 border-gold-400 object-cover shadow-sm"
+              className="w-9 h-9 sm:w-11 sm:h-11 rounded-full border-2 border-gold-400 object-cover shadow-sm shrink-0"
             />
-            <div>
-              <h1 className="text-base md:text-lg font-bold text-maroon-900 leading-tight">خدمة أليشع النبي وإعداد خدام</h1>
-              <p className="text-[11px] text-slate-500 font-medium">كنيسة ماريوحنا المعمدان بالمعراج - مطرانية المعادي</p>
+            <div className="min-w-0">
+              <h1 className="text-xs sm:text-base md:text-lg font-bold text-maroon-900 leading-tight truncate">خدمة أليشع النبي وإعداد خدام</h1>
+              <p className="text-[10px] sm:text-[11px] text-slate-500 font-medium truncate hidden sm:block">كنيسة ماريوحنا المعمدان بالمعراج - مطرانية المعادي</p>
             </div>
           </div>
 
           {/* Right Action Icons */}
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
             {/* Notification Bell */}
             <div className="relative" ref={notificationRef}>
               <button
                 onClick={() => setShowNotifications(prev => !prev)}
-                className="p-2 text-slate-600 hover:text-maroon-900 hover:bg-slate-100 rounded-xl transition-colors relative"
+                className="p-1.5 sm:p-2 text-slate-600 hover:text-maroon-900 hover:bg-slate-100 rounded-xl transition-colors relative"
                 title="التنبيهات"
               >
-                <Bell className="w-5 h-5" />
+                <Bell className="w-4 h-4 sm:w-5 sm:h-5" />
                 {notifications.length > 0 && (
-                  <span className="min-w-4 h-4 px-1 bg-amber-500 text-maroon-950 font-black text-[10px] rounded-full absolute -top-1 -right-1 ring-2 ring-white flex items-center justify-center">
+                  <span className="min-w-3.5 h-3.5 sm:min-w-4 sm:h-4 px-1 bg-amber-500 text-maroon-950 font-black text-[9px] sm:text-[10px] rounded-full absolute -top-1 -right-1 ring-2 ring-white flex items-center justify-center">
                     {notifications.length}
                   </span>
                 )}
@@ -257,21 +257,22 @@ export default function App() {
 
             {/* User Logged in badge + Role Switcher (للخدام للتجربة) + Logout */}
             {currentUser && (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 sm:gap-2">
                 {/* Switcher Button for Servants to test Student Mode */}
                 {currentUser.role !== 'student' && (
                   <button
                     type="button"
                     onClick={() => setServantPreviewMode(prev => !prev)}
-                    className={`text-xs font-bold py-1.5 px-3 rounded-xl transition-all shadow-xs flex items-center gap-1.5 border ${
+                    className={`text-[11px] sm:text-xs font-bold py-1 sm:py-1.5 px-2 sm:px-3 rounded-xl transition-all shadow-xs flex items-center gap-1 border cursor-pointer active:scale-95 ${
                       servantPreviewMode
                         ? 'bg-amber-500 hover:bg-amber-600 text-maroon-950 border-amber-400 animate-pulse'
                         : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200'
                     }`}
                     title="التبديل بين شاشة الخادم وتجربة شاشة المخدوم بنفس الحساب"
                   >
-                    <ArrowLeftRight className="w-3.5 h-3.5" />
-                    <span>{servantPreviewMode ? 'العودة لحساب الخادم ↩' : 'تجربة كـ مخدوم 🎓'}</span>
+                    <ArrowLeftRight className="w-3.5 h-3.5 shrink-0" />
+                    <span className="hidden sm:inline">{servantPreviewMode ? 'العودة لحساب الخادم ↩' : 'تجربة كـ مخدوم 🎓'}</span>
+                    <span className="sm:hidden">{servantPreviewMode ? 'الخادم ↩' : 'مخدوم 🎓'}</span>
                   </button>
                 )}
 

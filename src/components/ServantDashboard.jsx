@@ -1015,28 +1015,30 @@ export default function ServantDashboard({ user }) {
       </div>
 
       {/* Top Floating Appbar with Menu Trigger and Active Tab Pill */}
-      <div className="bg-white border border-slate-200/90 rounded-2xl p-3 shadow-xs flex items-center justify-between gap-3 sticky top-16 z-30 backdrop-blur-md">
+      <div className="bg-white border border-slate-200/90 rounded-2xl p-2.5 sm:p-3 shadow-xs flex items-center justify-between gap-2 sticky top-16 z-30 backdrop-blur-md">
         <button
           type="button"
           onClick={() => setMobileSidebarOpen(true)}
-          className="px-3.5 py-2.5 bg-gradient-to-r from-maroon-900 to-maroon-800 text-white rounded-xl flex items-center gap-2.5 text-xs font-bold shadow-sm hover:from-maroon-950 hover:to-maroon-900 active:scale-95 transition-all cursor-pointer ring-1 ring-gold-400/30"
+          className="px-3 sm:px-3.5 py-2 sm:py-2.5 bg-gradient-to-r from-maroon-900 to-maroon-800 text-white rounded-xl flex items-center gap-2 text-xs font-bold shadow-sm hover:from-maroon-950 hover:to-maroon-900 active:scale-95 transition-all cursor-pointer ring-1 ring-gold-400/30 shrink-0"
           title="فتح قائمة الأقسام"
         >
           <Menu className="w-4 h-4 text-gold-300 shrink-0" />
           <span>القائمة الرئيسية</span>
         </button>
 
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-extrabold text-maroon-950 bg-maroon-50/80 border border-maroon-200/70 px-3.5 py-1.5 rounded-xl shadow-2xs flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-gold-500 inline-block animate-pulse"></span>
-            {mainTab === 'students_hub' && 'بيانات المخدومين والملف الشامل'}
-            {mainTab === 'users_hub' && userHubSubTab === 'accounts' && 'المستخدمين والأدوار'}
-            {mainTab === 'users_hub' && userHubSubTab === 'login_history' && 'سجل النشاط والدخول'}
-            {mainTab === 'subjects_hub' && (curriculumTarget === 'students' ? 'مناهج ومراجع المخدومين' : 'مناهج ومراجع الخدام 🔒')}
-            {mainTab === 'exams_bank_hub' && 'بنك الأسئلة والامتحانات'}
-            {mainTab === 'analytics_hub' && 'الإحصائيات والأوائل'}
-            {mainTab === 'spiritual_diary' && 'النوتة الروحية ومتابعة المخدومين'}
-            {mainTab === 'attendance_qr' && 'كود الحضور (QR)'}
+        <div className="min-w-0">
+          <span className="text-[11px] sm:text-xs font-extrabold text-maroon-950 bg-maroon-50/80 border border-maroon-200/70 px-2.5 sm:px-3.5 py-1.5 rounded-xl shadow-2xs flex items-center gap-1.5 truncate">
+            <span className="w-2 h-2 rounded-full bg-gold-500 inline-block animate-pulse shrink-0"></span>
+            <span className="truncate">
+              {mainTab === 'students_hub' && 'بيانات المخدومين'}
+              {mainTab === 'users_hub' && userHubSubTab === 'accounts' && 'المستخدمين والأدوار'}
+              {mainTab === 'users_hub' && userHubSubTab === 'login_history' && 'سجل الدخول'}
+              {mainTab === 'subjects_hub' && (curriculumTarget === 'students' ? 'مناهج المخدومين' : 'مناهج الخدام 🔒')}
+              {mainTab === 'exams_bank_hub' && 'بنك الامتحانات'}
+              {mainTab === 'analytics_hub' && 'الإحصائيات والأوائل'}
+              {mainTab === 'spiritual_diary' && 'النوتة الروحية'}
+              {mainTab === 'attendance_qr' && 'كود الحضور (QR)'}
+            </span>
           </span>
         </div>
       </div>

@@ -142,44 +142,44 @@ export default function StudentProfileModal({ student, onClose, getGradeTitle })
           </button>
         </div>
 
-        {/* Tab Switcher */}
-        <div className="flex items-center justify-around border-b border-slate-200 bg-slate-50 p-1 text-xs font-bold overflow-x-auto shrink-0">
+        {/* Tab Switcher (Horizontally scrollable with smooth touch) */}
+        <div className="flex items-center gap-1 border-b border-slate-200 bg-slate-50 p-1.5 text-xs font-bold overflow-x-auto shrink-0 scrollbar-none">
           <button
             onClick={() => setActiveTab('overview')}
-            className={`py-2 px-3 rounded-xl transition-all cursor-pointer ${
-              activeTab === 'overview' ? 'bg-white text-maroon-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+            className={`py-2 px-3 rounded-xl transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+              activeTab === 'overview' ? 'bg-maroon-800 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
             }`}
           >
             نظرة عامة 📊
           </button>
           <button
             onClick={() => setActiveTab('attendance')}
-            className={`py-2 px-3 rounded-xl transition-all cursor-pointer ${
-              activeTab === 'attendance' ? 'bg-white text-maroon-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+            className={`py-2 px-3 rounded-xl transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+              activeTab === 'attendance' ? 'bg-maroon-800 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
             }`}
           >
-            الحضور والغياب ({totalDaysPresent})
+            الحضور ({totalDaysPresent})
           </button>
           <button
             onClick={() => setActiveTab('exams')}
-            className={`py-2 px-3 rounded-xl transition-all cursor-pointer ${
-              activeTab === 'exams' ? 'bg-white text-maroon-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+            className={`py-2 px-3 rounded-xl transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+              activeTab === 'exams' ? 'bg-maroon-800 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
             }`}
           >
-            الامتحانات والدرجات ({totalExamsSolved})
+            الامتحانات ({totalExamsSolved})
           </button>
           <button
             onClick={() => setActiveTab('diary')}
-            className={`py-2 px-3 rounded-xl transition-all cursor-pointer ${
-              activeTab === 'diary' ? 'bg-white text-maroon-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+            className={`py-2 px-3 rounded-xl transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+              activeTab === 'diary' ? 'bg-maroon-800 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
             }`}
           >
             النوتة الروحية ({totalDiariesLogged})
           </button>
           <button
             onClick={() => setActiveTab('notes')}
-            className={`py-2 px-3 rounded-xl transition-all cursor-pointer ${
-              activeTab === 'notes' ? 'bg-white text-maroon-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+            className={`py-2 px-3 rounded-xl transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+              activeTab === 'notes' ? 'bg-maroon-800 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
             }`}
           >
             تقييم الخادم ✍️

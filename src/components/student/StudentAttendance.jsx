@@ -109,12 +109,12 @@ export default function StudentAttendance({
                 onChange={(e) => setInputPinCode(e.target.value)}
                 placeholder="أدخل الكود الرقمي..."
                 disabled={(!isWithinTime && !bypassTime) || pinLoading || attendanceStatus === 'success'}
-                className="flex-1 bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-mono font-bold tracking-widest text-center text-slate-900 focus:outline-none focus:border-maroon-800 disabled:bg-slate-100 disabled:text-slate-400"
+                className="flex-1 bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 min-h-[44px] text-xs sm:text-sm font-mono font-bold tracking-widest text-center text-slate-900 focus:outline-none focus:border-maroon-800 disabled:bg-slate-100 disabled:text-slate-400"
               />
               <button
                 type="submit"
                 disabled={(!isWithinTime && !bypassTime) || pinLoading || attendanceStatus === 'success'}
-                className="bg-maroon-800 hover:bg-maroon-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all disabled:bg-slate-200 disabled:text-slate-400 shrink-0"
+                className="bg-maroon-800 hover:bg-maroon-700 active:scale-95 text-white px-4 py-2.5 min-h-[44px] rounded-xl text-xs font-bold transition-all disabled:bg-slate-200 disabled:text-slate-400 shrink-0 cursor-pointer"
               >
                 {pinLoading ? 'جاري...' : 'تسجيل بالكود'}
               </button>

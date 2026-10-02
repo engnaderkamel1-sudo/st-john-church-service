@@ -461,52 +461,54 @@ export default function StudentDashboard({ user }) {
   return (
     <div className="w-full max-w-4xl mx-auto space-y-6 pb-12">
       {/* Student Profile Card (Light Mode) */}
-      <div className="bg-white border border-slate-200 rounded-3xl p-5 shadow-sm flex items-center justify-between gap-4">
-        <div className="flex items-center gap-3.5 text-right">
-          <div className="w-13 h-13 rounded-2xl bg-maroon-50 border border-maroon-200 text-maroon-900 flex items-center justify-center font-bold text-xl shrink-0 shadow-xs">
+      <div className="bg-white border border-slate-200 rounded-3xl p-3.5 sm:p-5 shadow-sm flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5 sm:gap-3.5 text-right min-w-0">
+          <div className="w-10 h-10 sm:w-13 sm:h-13 rounded-2xl bg-maroon-50 border border-maroon-200 text-maroon-900 flex items-center justify-center font-bold text-lg sm:text-xl shrink-0 shadow-xs">
             {user.fullName ? user.fullName[0] : 'م'}
           </div>
-          <div>
-            <h2 className="text-base sm:text-lg font-extrabold text-slate-900">{user.fullName}</h2>
-            <div className="flex items-center gap-2 text-xs text-slate-500 mt-1">
-              <span className="bg-maroon-800 text-white px-2.5 py-0.5 rounded-full font-bold text-[10px]">
+          <div className="min-w-0">
+            <h2 className="text-sm sm:text-base font-extrabold text-slate-900 truncate">{user.fullName}</h2>
+            <div className="flex items-center gap-1.5 text-xs text-slate-500 mt-0.5">
+              <span className="bg-maroon-800 text-white px-2 py-0.5 rounded-full font-bold text-[9px] sm:text-[10px]">
                 {getGradeTitle(user.grade)}
               </span>
-              <span>{user.phone}</span>
+              <span className="font-mono text-[11px] truncate" dir="ltr">{user.phone}</span>
             </div>
           </div>
         </div>
 
         {/* Stats */}
-        <div className="flex items-center gap-2">
-          <div className="bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-2xl text-center">
-            <span className="text-[10px] text-slate-400 block font-medium">النقاط الروحية</span>
-            <span className="text-sm font-extrabold text-maroon-800">{points} نقطة</span>
+        <div className="flex items-center gap-2 shrink-0">
+          <div className="bg-slate-50 border border-slate-200 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-2xl text-center">
+            <span className="text-[9px] sm:text-[10px] text-slate-500 block font-medium">النقاط</span>
+            <span className="text-xs sm:text-sm font-extrabold text-maroon-800">{points} ⭐</span>
           </div>
         </div>
       </div>
 
       {/* Top Floating Appbar with Menu Trigger and Active Tab Pill */}
-      <div className="bg-white border border-slate-200/90 rounded-2xl p-3 shadow-xs flex items-center justify-between gap-3 sticky top-16 z-30 backdrop-blur-md">
+      <div className="bg-white border border-slate-200/90 rounded-2xl p-2.5 sm:p-3 shadow-xs flex items-center justify-between gap-2 sticky top-16 z-30 backdrop-blur-md">
         <button
           type="button"
           onClick={() => setIsNavDrawerOpen(true)}
-          className="px-3.5 py-2.5 bg-gradient-to-r from-maroon-900 to-maroon-800 text-white rounded-xl flex items-center gap-2.5 text-xs font-bold shadow-sm hover:from-maroon-950 hover:to-maroon-900 active:scale-95 transition-all cursor-pointer ring-1 ring-gold-400/30"
+          className="px-3 sm:px-3.5 py-2 sm:py-2.5 bg-gradient-to-r from-maroon-900 to-maroon-800 text-white rounded-xl flex items-center gap-2 text-xs font-bold shadow-sm hover:from-maroon-950 hover:to-maroon-900 active:scale-95 transition-all cursor-pointer ring-1 ring-gold-400/30 shrink-0"
           title="فتح أقسام الخدمة"
         >
           <Menu className="w-4 h-4 text-gold-300 shrink-0" />
           <span>أقسام المخدوم</span>
         </button>
 
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-extrabold text-maroon-950 bg-maroon-50/80 border border-maroon-200/70 px-3.5 py-1.5 rounded-xl shadow-2xs flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-gold-500 inline-block animate-pulse"></span>
-            {activeTab === 'attendance' && 'تسجيل حضور'}
-            {activeTab === 'spiritual_diary' && 'النوتة الروحية'}
-            {activeTab === 'curriculum' && 'المنهج والمواد الدراسية'}
-            {activeTab === 'exams' && 'الامتحانات والاختبارات'}
-            {activeTab === 'tasks' && 'التاسكات والأنشطة'}
-            {activeTab === 'announcements' && 'لوحة التنبيهات والإعلانات'}
+        <div className="min-w-0">
+          <span className="text-[11px] sm:text-xs font-extrabold text-maroon-950 bg-maroon-50/80 border border-maroon-200/70 px-2.5 sm:px-3.5 py-1.5 rounded-xl shadow-2xs flex items-center gap-1.5 truncate">
+            <span className="w-2 h-2 rounded-full bg-gold-500 inline-block animate-pulse shrink-0"></span>
+            <span className="truncate">
+              {activeTab === 'attendance' && 'تسجيل حضور'}
+              {activeTab === 'spiritual_diary' && 'النوتة الروحية'}
+              {activeTab === 'curriculum' && 'المنهج والمواد'}
+              {activeTab === 'exams' && 'الامتحانات'}
+              {activeTab === 'tasks' && 'التاسكات والأنشطة'}
+              {activeTab === 'announcements' && 'لوحة التنبيهات'}
+            </span>
           </span>
         </div>
       </div>
