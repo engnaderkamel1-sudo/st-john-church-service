@@ -194,141 +194,51 @@ export default function ServantUsersHub({
               <p className="text-[11px] text-slate-400 mt-1">عند تسجيل أي مستخدم برقم هاتفه ستظهر بياناته هنا للاعتماد أو التعديل.</p>
             </div>
           ) : (
-            <div className="overflow-x-auto border border-slate-200 rounded-2xl">
-              <table className="w-full text-right text-xs">
-                <thead className="bg-slate-50 border-b border-slate-200 text-slate-600">
-                  <tr>
-                    <th className="py-3 px-3">الاسم والبيانات</th>
-                    <th className="py-3 px-3">رقم الهاتف</th>
-                    <th className="py-3 px-3">الصفة الحالية</th>
-                    <th className="py-3 px-3">المرحلة / النطاق</th>
-                    <th className="py-3 px-3">تسجيل الحضور / الغياب اليدوي</th>
-                    <th className="py-3 px-3">تعديل الصفة (خادم / مخدوم)</th>
-                    <th className="py-3 px-3">تعديل المرحلة</th>
-                    <th className="py-3 px-3">إعادة تعيين السر 🔑</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {allUsers
-                    .filter(u => userRoleFilter === 'all' || u.role === userRoleFilter)
-                    .map((item) => (
-                      <tr key={item.id} className="hover:bg-slate-50/80 transition-colors">
-                        <td className="py-3 px-3 font-bold text-slate-900">
-                          <div className="flex items-center gap-2">
-                            <div className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs ${
-                              item.role === 'servant' ? 'bg-maroon-800 text-white' : 'bg-slate-100 text-slate-700'
-                            }`}>
-                              {item.fullName ? item.fullName[0] : '؟'}
-                            </div>
-                            <div>
-                              <div className="flex items-center gap-1.5">
-                                <span>{item.fullName || 'بدون اسم'}</span>
-                                {item.id === user.id && (
-                                  <span className="text-[10px] bg-slate-200 text-slate-700 px-1.5 py-0.2 rounded mr-1.5">حسابك</span>
-                                )}
-                              </div>
-                              {item.email && (
-                                <span className="text-[10px] text-slate-400 block font-normal font-mono" dir="ltr">{item.email}</span>
+            <div className="space-y-4">
+              {/* Mobile Responsive Cards (Visible on screens < md) */}
+              <div className="md:hidden space-y-3">
+                {allUsers
+                  .filter(u => userRoleFilter === 'all' || u.role === userRoleFilter)
+                  .map((item) => (
+                    <div key={`m-${item.id}`} className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs space-y-3">
+                      {/* User Info Header */}
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm shrink-0 ${
+                            item.role === 'servant' ? 'bg-maroon-800 text-white' : 'bg-slate-100 text-slate-700'
+                          }`}>
+                            {item.fullName ? item.fullName[0] : '؟'}
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="font-extrabold text-slate-900 text-sm">{item.fullName || 'بدون اسم'}</span>
+                              {item.id === user.id && (
+                                <span className="text-[10px] bg-slate-100 text-slate-700 px-2 py-0.5 rounded-full font-bold">حسابك</span>
                               )}
                             </div>
-                          </div>
-                        </td>
-                        <td className="py-3 px-3 font-mono text-slate-600" dir="ltr">{item.phone}</td>
-                        <td className="py-3 px-3">
-                          <span className={`inline-flex items-center gap-1 text-[11px] font-extrabold px-2.5 py-0.5 rounded-full ${
-                            item.role === 'servant'
-                              ? 'bg-maroon-100 text-maroon-900 border border-maroon-200'
-                              : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
-                          }`}>
-                            {item.role === 'servant' ? 'خادم' : 'مخدوم'}
-                          </span>
-                        </td>
-                        <td className="py-3 px-3 font-bold text-slate-700">
-                          {(item.role === 'admin' || item.phone === '01275571569' || (item.email && item.email.includes('nader.kamel')))
-                            ? <span className="text-amber-700 font-extrabold">مشرف التطبيق 👑</span>
-                            : item.role === 'servant'
-                            ? <span className="text-maroon-800 font-bold">خادم عام (جميع المراحل)</span>
-                            : getGradeTitle(item.grade || 'first')}
-                        </td>
-                        <td className="py-3 px-3">
-                          {item.role === 'student' ? (
-                            <div className="flex items-center gap-1.5">
-                              <button
-                                onClick={() => handleManualAttendance(item)}
-                                disabled={manualAttendLoadingId === item.id || manualAbsenceLoadingId === item.id}
-                                className={`font-bold text-[11px] px-2.5 py-1.5 rounded-xl transition-all shadow-2xs flex items-center gap-1 ${
-                                  manualAttendSuccessId === item.id
-                                    ? 'bg-emerald-600 text-white'
-                                    : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300'
-                                }`}
-                                title="تسجيل حضور هذا المخدوم فوراً وإضافة 10 نقاط لحسابه"
-                              >
-                                {manualAttendSuccessId === item.id ? (
-                                  <>
-                                    <Check className="w-3.5 h-3.5" />
-                                    <span>تم الحضور ✓</span>
-                                  </>
-                                ) : (
-                                  <>
-                                    <UserPlus className="w-3.5 h-3.5 text-emerald-700" />
-                                    <span>{manualAttendLoadingId === item.id ? '...' : 'حاضر'}</span>
-                                  </>
-                                )}
-                              </button>
-
-                              <button
-                                onClick={() => handleManualAbsence(item)}
-                                disabled={manualAbsenceLoadingId === item.id || manualAttendLoadingId === item.id}
-                                className={`font-bold text-[11px] px-2.5 py-1.5 rounded-xl transition-all shadow-2xs flex items-center gap-1 ${
-                                  manualAbsenceSuccessId === item.id
-                                    ? 'bg-rose-600 text-white'
-                                    : 'bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-300'
-                                }`}
-                                title="تسجيل هذا المخدوم غائباً لليوم وإرسال تنبيه"
-                              >
-                                {manualAbsenceSuccessId === item.id ? (
-                                  <>
-                                    <Check className="w-3.5 h-3.5" />
-                                    <span>تم الغياب ✓</span>
-                                  </>
-                                ) : (
-                                  <>
-                                    <UserX className="w-3.5 h-3.5 text-rose-700" />
-                                    <span>{manualAbsenceLoadingId === item.id ? '...' : 'غائب'}</span>
-                                  </>
-                                )}
-                              </button>
-                            </div>
-                          ) : (
-                            <span className="text-slate-400 text-[10px]">—</span>
-                          )}
-                        </td>
-                        <td className="py-3 px-3">
-                          <div className="flex items-center gap-1.5">
-                            {item.role === 'student' ? (
-                              <button
-                                onClick={() => handleUpdateUserRole(item.id, 'servant')}
-                                disabled={roleUpdatingId === item.id}
-                                className="bg-maroon-800 hover:bg-maroon-700 text-white font-bold text-[11px] px-3 py-1 rounded-xl transition-all shadow-2xs flex items-center gap-1"
-                              >
-                                {roleUpdatingId === item.id ? 'جاري...' : 'ترقية إلى خادم ⬆️'}
-                              </button>
-                            ) : (
-                              <button
-                                onClick={() => handleUpdateUserRole(item.id, 'student', item.grade || 'first')}
-                                disabled={roleUpdatingId === item.id || item.phone === '01275571569'}
-                                className="bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 font-bold text-[11px] px-3 py-1 rounded-xl transition-all flex items-center gap-1"
-                              >
-                                {roleUpdatingId === item.id ? 'جاري...' : 'تحويل إلى مخدوم ⬇️'}
-                              </button>
+                            <span className="text-xs text-slate-500 font-mono block mt-0.5" dir="ltr">{item.phone}</span>
+                            {item.email && (
+                              <span className="text-[10px] text-slate-400 font-mono block truncate max-w-[200px]" dir="ltr">{item.email}</span>
                             )}
                           </div>
-                        </td>
-                        <td className="py-3 px-3">
+                        </div>
+
+                        {/* Role Badge */}
+                        <span className={`inline-flex items-center gap-1 text-[11px] font-extrabold px-2.5 py-1 rounded-full shrink-0 ${
+                          item.role === 'servant'
+                            ? 'bg-maroon-100 text-maroon-900 border border-maroon-200'
+                            : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                        }`}>
+                          {item.role === 'servant' ? 'خادم' : 'مخدوم'}
+                        </span>
+                      </div>
+
+                      {/* Stage / Role Detail */}
+                      <div className="text-xs bg-slate-50 p-2.5 rounded-xl border border-slate-100 flex items-center justify-between">
+                        <span className="text-slate-500 font-medium">المرحلة:</span>
+                        <div className="font-bold text-slate-800">
                           {item.role === 'servant' ? (
-                            <span className="text-xs text-slate-500 font-bold bg-slate-100 px-2 py-1 rounded-lg">
-                              خادم عام (كافة المراحل)
-                            </span>
+                            <span className="text-maroon-800 font-bold">خادم عام (جميع المراحل)</span>
                           ) : (
                             <select
                               value={item.grade || 'first'}
@@ -337,7 +247,7 @@ export default function ServantUsersHub({
                                 handleUpdateUserRole(item.id, 'student', newStage);
                               }}
                               disabled={roleUpdatingId === item.id}
-                              className="bg-white border border-slate-200 rounded-xl px-2.5 py-1 text-xs focus:outline-none focus:border-maroon-800"
+                              className="bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-bold focus:outline-none focus:border-maroon-800"
                             >
                               <option value="first">سنة أولى</option>
                               <option value="second">سنة ثانية</option>
@@ -345,8 +255,82 @@ export default function ServantUsersHub({
                               <option value="elisha">فصل أليشع (إعداد خدام)</option>
                             </select>
                           )}
-                        </td>
-                        <td className="py-3 px-3">
+                        </div>
+                      </div>
+
+                      {/* Action Buttons with 44px+ touch targets */}
+                      <div className="space-y-2 pt-1 border-t border-slate-100">
+                        {item.role === 'student' && (
+                          <div className="grid grid-cols-2 gap-2">
+                            <button
+                              type="button"
+                              onClick={() => handleManualAttendance(item)}
+                              disabled={manualAttendLoadingId === item.id || manualAbsenceLoadingId === item.id}
+                              className={`min-h-[44px] font-bold text-xs px-3 py-2 rounded-xl transition-all shadow-2xs flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 ${
+                                manualAttendSuccessId === item.id
+                                  ? 'bg-emerald-600 text-white'
+                                  : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300'
+                              }`}
+                            >
+                              {manualAttendSuccessId === item.id ? (
+                                <>
+                                  <Check className="w-4 h-4" />
+                                  <span>تم الحضور ✓</span>
+                                </>
+                              ) : (
+                                <>
+                                  <UserPlus className="w-4 h-4 text-emerald-700" />
+                                  <span>{manualAttendLoadingId === item.id ? '...' : 'تسجيل حاضر'}</span>
+                                </>
+                              )}
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => handleManualAbsence(item)}
+                              disabled={manualAbsenceLoadingId === item.id || manualAttendLoadingId === item.id}
+                              className={`min-h-[44px] font-bold text-xs px-3 py-2 rounded-xl transition-all shadow-2xs flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 ${
+                                manualAbsenceSuccessId === item.id
+                                  ? 'bg-rose-600 text-white'
+                                  : 'bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-300'
+                              }`}
+                            >
+                              {manualAbsenceSuccessId === item.id ? (
+                                <>
+                                  <Check className="w-4 h-4" />
+                                  <span>تم الغياب ✓</span>
+                                </>
+                              ) : (
+                                <>
+                                  <UserX className="w-4 h-4 text-rose-700" />
+                                  <span>{manualAbsenceLoadingId === item.id ? '...' : 'تسجيل غائب'}</span>
+                                </>
+                              )}
+                            </button>
+                          </div>
+                        )}
+
+                        <div className="grid grid-cols-2 gap-2">
+                          {item.role === 'student' ? (
+                            <button
+                              type="button"
+                              onClick={() => handleUpdateUserRole(item.id, 'servant')}
+                              disabled={roleUpdatingId === item.id}
+                              className="min-h-[44px] bg-maroon-800 hover:bg-maroon-700 text-white font-bold text-xs px-3 py-2 rounded-xl transition-all shadow-2xs flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+                            >
+                              <span>ترقية لخادم ⬆️</span>
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => handleUpdateUserRole(item.id, 'student', item.grade || 'first')}
+                              disabled={roleUpdatingId === item.id || item.phone === '01275571569'}
+                              className="min-h-[44px] bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 font-bold text-xs px-3 py-2 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+                            >
+                              <span>تحويل لمخدوم ⬇️</span>
+                            </button>
+                          )}
+
                           <button
                             type="button"
                             onClick={() => {
@@ -354,17 +338,194 @@ export default function ServantUsersHub({
                               setNewPassInput('123456');
                               setResetPassSuccess(false);
                             }}
-                            className="bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 font-bold text-[11px] px-2.5 py-1.5 rounded-xl transition-all shadow-2xs flex items-center gap-1 shrink-0"
-                            title="تغيير أو إعادة تعيين كلمة المرور لهذا المستخدم فوراً"
+                            className="min-h-[44px] bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 font-bold text-xs px-3 py-2 rounded-xl transition-all shadow-2xs flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
                           >
-                            <Key className="w-3.5 h-3.5 text-amber-700" />
+                            <Key className="w-4 h-4 text-amber-700" />
                             <span>تغيير السر 🔑</span>
                           </button>
-                        </td>
-                      </tr>
-                    ))}
-                </tbody>
-              </table>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+
+              {/* Desktop Table View (Visible on screens >= md) */}
+              <div className="hidden md:block overflow-x-auto border border-slate-200 rounded-2xl">
+                <table className="w-full text-right text-xs">
+                  <thead className="bg-slate-50 border-b border-slate-200 text-slate-600">
+                    <tr>
+                      <th className="py-3 px-3">الاسم والبيانات</th>
+                      <th className="py-3 px-3">رقم الهاتف</th>
+                      <th className="py-3 px-3">الصفة الحالية</th>
+                      <th className="py-3 px-3">المرحلة / النطاق</th>
+                      <th className="py-3 px-3">تسجيل الحضور / الغياب اليدوي</th>
+                      <th className="py-3 px-3">تعديل الصفة (خادم / مخدوم)</th>
+                      <th className="py-3 px-3">تعديل المرحلة</th>
+                      <th className="py-3 px-3">إعادة تعيين السر 🔑</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {allUsers
+                      .filter(u => userRoleFilter === 'all' || u.role === userRoleFilter)
+                      .map((item) => (
+                        <tr key={item.id} className="hover:bg-slate-50/80 transition-colors">
+                          <td className="py-3.5 px-3 font-bold text-slate-900">
+                            <div className="flex items-center gap-2">
+                              <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs ${
+                                item.role === 'servant' ? 'bg-maroon-800 text-white' : 'bg-slate-100 text-slate-700'
+                              }`}>
+                                {item.fullName ? item.fullName[0] : '؟'}
+                              </div>
+                              <div>
+                                <div className="flex items-center gap-1.5">
+                                  <span>{item.fullName || 'بدون اسم'}</span>
+                                  {item.id === user.id && (
+                                    <span className="text-[10px] bg-slate-200 text-slate-700 px-1.5 py-0.2 rounded mr-1.5">حسابك</span>
+                                  )}
+                                </div>
+                                {item.email && (
+                                  <span className="text-[10px] text-slate-400 block font-normal font-mono" dir="ltr">{item.email}</span>
+                                )}
+                              </div>
+                            </div>
+                          </td>
+                          <td className="py-3.5 px-3 font-mono text-slate-600" dir="ltr">{item.phone}</td>
+                          <td className="py-3.5 px-3">
+                            <span className={`inline-flex items-center gap-1 text-[11px] font-extrabold px-2.5 py-1 rounded-full ${
+                              item.role === 'servant'
+                                ? 'bg-maroon-100 text-maroon-900 border border-maroon-200'
+                                : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                            }`}>
+                              {item.role === 'servant' ? 'خادم' : 'مخدوم'}
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-3 font-bold text-slate-700">
+                            {(item.role === 'admin' || item.phone === '01275571569' || (item.email && item.email.includes('nader.kamel')))
+                              ? <span className="text-amber-700 font-extrabold">مشرف التطبيق 👑</span>
+                              : item.role === 'servant'
+                              ? <span className="text-maroon-800 font-bold">خادم عام (جميع المراحل)</span>
+                              : getGradeTitle(item.grade || 'first')}
+                          </td>
+                          <td className="py-3.5 px-3">
+                            {item.role === 'student' ? (
+                              <div className="flex items-center gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() => handleManualAttendance(item)}
+                                  disabled={manualAttendLoadingId === item.id || manualAbsenceLoadingId === item.id}
+                                  className={`min-h-[38px] font-bold text-[11px] px-3 py-1.5 rounded-xl transition-all shadow-2xs flex items-center gap-1 cursor-pointer active:scale-95 ${
+                                    manualAttendSuccessId === item.id
+                                      ? 'bg-emerald-600 text-white'
+                                      : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300'
+                                  }`}
+                                  title="تسجيل حضور هذا المخدوم فوراً وإضافة 10 نقاط لحسابه"
+                                >
+                                  {manualAttendSuccessId === item.id ? (
+                                    <>
+                                      <Check className="w-3.5 h-3.5" />
+                                      <span>تم الحضور ✓</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <UserPlus className="w-3.5 h-3.5 text-emerald-700" />
+                                      <span>{manualAttendLoadingId === item.id ? '...' : 'حاضر'}</span>
+                                    </>
+                                  )}
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => handleManualAbsence(item)}
+                                  disabled={manualAbsenceLoadingId === item.id || manualAttendLoadingId === item.id}
+                                  className={`min-h-[38px] font-bold text-[11px] px-3 py-1.5 rounded-xl transition-all shadow-2xs flex items-center gap-1 cursor-pointer active:scale-95 ${
+                                    manualAbsenceSuccessId === item.id
+                                      ? 'bg-rose-600 text-white'
+                                      : 'bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-300'
+                                  }`}
+                                  title="تسجيل هذا المخدوم غائباً لليوم وإرسال تنبيه"
+                                >
+                                  {manualAbsenceSuccessId === item.id ? (
+                                    <>
+                                      <Check className="w-3.5 h-3.5" />
+                                      <span>تم الغياب ✓</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <UserX className="w-3.5 h-3.5 text-rose-700" />
+                                      <span>{manualAbsenceLoadingId === item.id ? '...' : 'غائب'}</span>
+                                    </>
+                                  )}
+                                </button>
+                              </div>
+                            ) : (
+                              <span className="text-slate-400 text-[10px]">—</span>
+                            )}
+                          </td>
+                          <td className="py-3.5 px-3">
+                            <div className="flex items-center gap-1.5">
+                              {item.role === 'student' ? (
+                                <button
+                                  type="button"
+                                  onClick={() => handleUpdateUserRole(item.id, 'servant')}
+                                  disabled={roleUpdatingId === item.id}
+                                  className="min-h-[38px] bg-maroon-800 hover:bg-maroon-700 text-white font-bold text-[11px] px-3 py-1.5 rounded-xl transition-all shadow-2xs flex items-center gap-1 cursor-pointer active:scale-95"
+                                >
+                                  {roleUpdatingId === item.id ? 'جاري...' : 'ترقية إلى خادم ⬆️'}
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => handleUpdateUserRole(item.id, 'student', item.grade || 'first')}
+                                  disabled={roleUpdatingId === item.id || item.phone === '01275571569'}
+                                  className="min-h-[38px] bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 font-bold text-[11px] px-3 py-1.5 rounded-xl transition-all flex items-center gap-1 cursor-pointer active:scale-95"
+                                >
+                                  {roleUpdatingId === item.id ? 'جاري...' : 'تحويل إلى مخدوم ⬇️'}
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                          <td className="py-3.5 px-3">
+                            {item.role === 'servant' ? (
+                              <span className="text-xs text-slate-500 font-bold bg-slate-100 px-2 py-1 rounded-lg">
+                                خادم عام (كافة المراحل)
+                              </span>
+                            ) : (
+                              <select
+                                value={item.grade || 'first'}
+                                onChange={(e) => {
+                                  const newStage = e.target.value;
+                                  handleUpdateUserRole(item.id, 'student', newStage);
+                                }}
+                                disabled={roleUpdatingId === item.id}
+                                className="bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs focus:outline-none focus:border-maroon-800"
+                              >
+                                <option value="first">سنة أولى</option>
+                                <option value="second">سنة ثانية</option>
+                                <option value="third">سنة ثالثة</option>
+                                <option value="elisha">فصل أليشع (إعداد خدام)</option>
+                              </select>
+                            )}
+                          </td>
+                          <td className="py-3.5 px-3">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setResettingUser(item);
+                                setNewPassInput('123456');
+                                setResetPassSuccess(false);
+                              }}
+                              className="min-h-[38px] bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 font-bold text-[11px] px-3 py-1.5 rounded-xl transition-all shadow-2xs flex items-center gap-1 shrink-0 cursor-pointer active:scale-95"
+                              title="تغيير أو إعادة تعيين كلمة المرور لهذا المستخدم فوراً"
+                            >
+                              <Key className="w-3.5 h-3.5 text-amber-700" />
+                              <span>تغيير السر 🔑</span>
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
         </div>
