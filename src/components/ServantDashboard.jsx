@@ -1014,38 +1014,17 @@ export default function ServantDashboard({ user }) {
         </div>
       </div>
 
-      {/* Top Floating Appbar with Direct 'بيانات المخدومين' Button & Menu Trigger */}
+      {/* Top Floating Appbar with Menu Trigger and Active Tab Pill */}
       <div className="bg-white border border-slate-200/90 rounded-2xl p-3 shadow-xs flex items-center justify-between gap-3 sticky top-16 z-30 backdrop-blur-md">
-        <div className="flex items-center gap-2">
-          {/* Main Drawer Menu Button */}
-          <button
-            type="button"
-            onClick={() => setMobileSidebarOpen(true)}
-            className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl flex items-center gap-2 text-xs font-bold transition-all cursor-pointer border border-slate-200"
-            title="فتح قائمة الأقسام الكاملة"
-          >
-            <Menu className="w-4 h-4 text-maroon-800 shrink-0" />
-            <span>القائمة ☰</span>
-          </button>
-
-          {/* Prominent Direct Button: بيانات المخدومين */}
-          <button
-            type="button"
-            onClick={() => {
-              setMainTab('students_hub');
-              setActiveSubject(null);
-            }}
-            className={`px-3.5 py-2 rounded-xl flex items-center gap-2 text-xs font-black shadow-xs transition-all cursor-pointer ring-1 ring-gold-400/40 active:scale-95 ${
-              mainTab === 'students_hub'
-                ? 'bg-gradient-to-r from-maroon-950 via-maroon-900 to-maroon-950 text-white'
-                : 'bg-gradient-to-r from-maroon-900 to-maroon-800 hover:from-maroon-950 hover:to-maroon-900 text-white'
-            }`}
-            title="عرض وبحث بيانات وسنوات المخدومين والملف الشامل"
-          >
-            <Users className="w-4 h-4 text-gold-300 shrink-0" />
-            <span>بيانات المخدومين 👤</span>
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => setMobileSidebarOpen(true)}
+          className="px-3.5 py-2.5 bg-gradient-to-r from-maroon-900 to-maroon-800 text-white rounded-xl flex items-center gap-2.5 text-xs font-bold shadow-sm hover:from-maroon-950 hover:to-maroon-900 active:scale-95 transition-all cursor-pointer ring-1 ring-gold-400/30"
+          title="فتح قائمة الأقسام"
+        >
+          <Menu className="w-4 h-4 text-gold-300 shrink-0" />
+          <span>القائمة الرئيسية</span>
+        </button>
 
         <div className="flex items-center gap-2">
           <span className="text-xs font-extrabold text-maroon-950 bg-maroon-50/80 border border-maroon-200/70 px-3.5 py-1.5 rounded-xl shadow-2xs flex items-center gap-1.5">
