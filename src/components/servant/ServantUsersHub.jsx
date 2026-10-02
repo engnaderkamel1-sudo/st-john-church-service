@@ -94,7 +94,7 @@ export default function ServantUsersHub({
       </div>
 
       {userHubSubTab === 'accounts' && (
-        <>
+        <div className="space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
             <div>
               <div className="flex items-center gap-2">
@@ -319,8 +319,8 @@ export default function ServantUsersHub({
                 </tbody>
               </table>
             </div>
-        </>
-      )}
+          </div>
+        )}
 
       {userHubSubTab === 'login_history' && (
         /* Login History View (سجل دخول المستخدمين) */
