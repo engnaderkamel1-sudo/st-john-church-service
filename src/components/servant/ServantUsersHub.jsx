@@ -319,8 +319,9 @@ export default function ServantUsersHub({
                 </tbody>
               </table>
             </div>
-          </div>
-        )}
+          )}
+        </div>
+      )}
 
       {userHubSubTab === 'login_history' && (
         /* Login History View (سجل دخول المستخدمين) */
