@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { 
   Sparkles, Upload, FileText, Image as ImageIcon, CheckCircle, 
   AlertCircle, X, ChevronRight, BookOpen, Layers, Presentation, 
-  Trash2, Plus, Edit3, Send, Play, Copy, Check 
+  Trash2, Plus, Edit3, Send, Play, Copy, Check, Download, Printer
 } from 'lucide-react';
 import { generateChurchQuestions, generateChurchPresentation, generateChurchStudyGuide } from '../../services/geminiService';
 
@@ -117,6 +117,125 @@ export default function ServantAiStudioModal({
   const handleCancelEditStudyGuide = () => {
     setIsEditingStudyGuide(false);
     setEditStudyGuideData(null);
+  };
+
+  // Export Study Guide as Printable / PDF Document
+  const handleExportStudyGuidePdf = () => {
+    if (!generatedStudyGuide) return;
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      alert('يرجى السماح بالنوافذ المنبثقة (Popups) لتحميل ملف الـ PDF.');
+      return;
+    }
+
+    const title = generatedStudyGuide.title || 'ملخص الدرس';
+    const summary = generatedStudyGuide.summary || '';
+    const mainPointsHtml = (generatedStudyGuide.mainPoints || [])
+      .map(p => `<li style="margin-bottom: 8px;">${p}</li>`)
+      .join('');
+    const applicationsHtml = (generatedStudyGuide.spiritualApplications || [])
+      .map(app => `<li style="margin-bottom: 8px;">${app}</li>`)
+      .join('');
+    const discussionHtml = (generatedStudyGuide.groupDiscussion || [])
+      .map(q => `<li style="margin-bottom: 8px;">${q}</li>`)
+      .join('');
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html dir="rtl" lang="ar">
+      <head>
+        <meta charset="utf-8" />
+        <title>${title} - ملخص</title>
+        <style>
+          body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Cairo", sans-serif;
+            padding: 40px;
+            color: #1e293b;
+            line-height: 1.8;
+            max-width: 800px;
+            margin: auto;
+          }
+          .header {
+            text-align: center;
+            border-bottom: 2px solid #800000;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+          }
+          .church-title {
+            font-size: 14px;
+            color: #64748b;
+            font-weight: bold;
+          }
+          .doc-title {
+            font-size: 24px;
+            color: #800000;
+            font-weight: 800;
+            margin: 10px 0;
+          }
+          .section {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+          }
+          .section-title {
+            font-size: 16px;
+            font-weight: bold;
+            color: #800000;
+            margin-bottom: 10px;
+            border-bottom: 1px dashed #cbd5e1;
+            padding-bottom: 6px;
+          }
+          ul {
+            padding-right: 25px;
+            margin: 0;
+          }
+          @media print {
+            body { padding: 0; }
+            .no-print { display: none; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <div class="church-title">كنيسة القديس ماريوحنا المعمدان بالمعراج - مطرانية المعادي</div>
+          <div class="doc-title">${title}</div>
+          <div style="font-size: 12px; color: #94a3b8;">تم الاستخراج والتلخيص بواسطة الاستوديو الذكي • ${new Date().toLocaleDateString('ar-EG')}</div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">📖 الملخص العام:</div>
+          <p style="margin: 0; font-size: 14px;">${summary}</p>
+        </div>
+
+        ${mainPointsHtml ? `
+        <div class="section">
+          <div class="section-title">📌 الأفكار والنقاط الرئيسية:</div>
+          <ul style="font-size: 14px;">${mainPointsHtml}</ul>
+        </div>` : ''}
+
+        ${applicationsHtml ? `
+        <div class="section">
+          <div class="section-title">🕊️ التطبيق الروحي والعملي:</div>
+          <ul style="font-size: 14px;">${applicationsHtml}</ul>
+        </div>` : ''}
+
+        ${discussionHtml ? `
+        <div class="section">
+          <div class="section-title">💬 أسئلة نقاش للمجموعات:</div>
+          <ul style="font-size: 14px;">${discussionHtml}</ul>
+        </div>` : ''}
+
+        <script>
+          window.onload = function() {
+            window.print();
+          };
+        </script>
+      </body>
+      </html>
+    `);
+    printWindow.document.close();
   };
 
   const handleFileChange = (e) => {
@@ -854,15 +973,28 @@ export default function ServantAiStudioModal({
                 </div>
               ) : (
                 <div className="bg-slate-50 border border-slate-200 p-5 rounded-2xl space-y-3">
-                  <div className="flex items-center justify-between border-b border-slate-200/80 pb-2">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200/80 pb-3">
                     <h4 className="font-extrabold text-slate-900 text-base">{generatedStudyGuide.title}</h4>
-                    <button
-                      onClick={handleStartEditStudyGuide}
-                      className="bg-white border border-slate-200 hover:border-maroon-800 text-slate-700 hover:text-maroon-900 px-3 py-1 rounded-xl text-xs font-bold flex items-center gap-1 transition-all"
-                    >
-                      <Edit3 className="w-3.5 h-3.5" />
-                      <span>تعديل الملخص</span>
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={handleExportStudyGuidePdf}
+                        className="bg-maroon-800 hover:bg-maroon-700 text-white px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all"
+                        title="تحميل الملخص كملف PDF جاهز للطباعة والمشاركة"
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                        <span>تحميل وحفظ كـ PDF 📄</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={handleStartEditStudyGuide}
+                        className="bg-white border border-slate-200 hover:border-maroon-800 text-slate-700 hover:text-maroon-900 px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1 transition-all"
+                      >
+                        <Edit3 className="w-3.5 h-3.5" />
+                        <span>تعديل الملخص</span>
+                      </button>
+                    </div>
                   </div>
 
                   <p className="text-slate-700 leading-relaxed">{generatedStudyGuide.summary}</p>
