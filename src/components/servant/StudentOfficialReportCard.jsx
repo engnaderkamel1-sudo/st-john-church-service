@@ -76,24 +76,29 @@ export default function StudentOfficialReportCard({
     presentDays.reduce((acc, curr) => acc + (curr.pointsAwarded === 2 ? 2 : 3), 0)
   );
 
-  // 2. Calculate Bible Reading Score from Spiritual Diary (3 pts * weeks, max 141)
-  const bibleDays = diaries.filter(d => d.bible).length;
-  // Approximately 47 weeks equivalent: (logged bible days / 7) * 3 or direct scaled
-  const bibleScore = Math.min(141, Math.round((bibleDays / 7) * 3 * 7) || Math.min(141, bibleDays * 3));
+  // 2. Calculate Bible Reading Score from Spiritual Diary:
+  // Each day read = (3 / 7) points towards the weekly 3 marks.
+  // Total possible across 47 weeks = 47 * 3 = 141 marks.
+  const bibleDaysCount = diaries.filter(d => d.bible).length;
+  const rawBibleScore = bibleDaysCount * (3 / 7);
+  const bibleScore = Math.min(141, Number(rawBibleScore.toFixed(1)));
 
   // 3. Liturgy (القداس): 2 pts * 47 = 94
-  const communionDays = diaries.filter(d => d.communion).length;
-  const liturgyScore = Math.min(94, communionDays * 2);
+  const liturgyDaysCount = diaries.filter(d => d.communion).length;
+  const liturgyScore = Math.min(94, liturgyDaysCount * 2);
 
   // 4. Eucharist (التناول): 2 pts * 47 = 94
-  const eucharistScore = Math.min(94, communionDays * 2);
+  const eucharistScore = Math.min(94, liturgyDaysCount * 2);
 
   // 5. Fasting (الصوم): 2 pts * 47 = 94
   const fastingScore = Math.min(94, (diaries.filter(d => d.baker && d.ghoroub).length) * 2);
 
-  // 6. Spiritual Diary Daily Prayers (النوتة): 2 pts * 47 = 94
-  const diaryPrayerDays = diaries.filter(d => d.baker || d.nowm).length;
-  const diaryScore = Math.min(94, diaryPrayerDays * 2);
+  // 6. Spiritual Diary Daily Prayers (النوتة والصلوات):
+  // Each day with prayers (baker, ghoroub, or nowm) = (2 / 7) points towards the weekly 2 marks.
+  // Total possible across 47 weeks = 47 * 2 = 94 marks.
+  const prayerDaysCount = diaries.filter(d => d.baker || d.ghoroub || d.nowm).length;
+  const rawDiaryScore = prayerDaysCount * (2 / 7);
+  const diaryScore = Math.min(94, Number(rawDiaryScore.toFixed(1)));
 
   // 7. Stage Meeting (اجتماع المرحلة): 1 pt * 47 = 47
   const stageMeetingScore = Number(reportData.stageMeetingScore || 47);
@@ -207,9 +212,14 @@ export default function StudentOfficialReportCard({
               {/* 2. قراءة الكتاب المقدس */}
               <tr className="hover:bg-slate-50/70">
                 <td className="p-3 text-center font-bold">2</td>
-                <td className="p-3 font-bold text-slate-900">قراءة الكتاب المقدس</td>
+                <td className="p-3 font-bold text-slate-900">
+                  قراءة الكتاب المقدس
+                  <span className="block text-[10px] text-slate-400 font-normal">
+                    {bibleDaysCount} يوم مسجل (نسبة يومية: {(3/7).toFixed(2)} د/يوم)
+                  </span>
+                </td>
                 <td className="p-3 text-center text-slate-500">أسبوعي</td>
-                <td className="p-3 text-slate-600">3 درجات × 47 أسبوع</td>
+                <td className="p-3 text-slate-600">3 درجات للأسبوع (حساب نسبي يومي بمعدل 3/7 درجة لكل يوم قراءة)</td>
                 <td className="p-3 text-center font-bold font-mono">141</td>
                 <td className="p-3 text-center font-black font-mono text-emerald-700 text-sm">{bibleScore}</td>
                 <td className="p-3 text-center text-[10px] bg-emerald-50 text-emerald-800 font-bold rounded-lg">تلقائي من النوتة الروحية ✓</td>
