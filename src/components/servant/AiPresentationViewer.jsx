@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChevronRight, ChevronLeft, Maximize2, Minimize2, Copy, Check, BookOpen, Sparkles, MessageCircle, X } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Maximize2, Minimize2, Copy, Check, BookOpen, Sparkles, MessageCircle, X, Edit3 } from 'lucide-react';
 
 export default function AiPresentationViewer({ presentation, onClose }) {
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
@@ -7,12 +7,36 @@ export default function AiPresentationViewer({ presentation, onClose }) {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [copied, setCopied] = useState(false);
 
+  // In-place slide editing state
+  const [isEditingSlide, setIsEditingSlide] = useState(false);
+  const [editSlideData, setEditSlideData] = useState(null);
+
   if (!presentation || !presentation.slides || presentation.slides.length === 0) {
     return null;
   }
 
   const slides = presentation.slides;
   const currentSlide = slides[currentSlideIndex];
+
+  const handleStartEdit = () => {
+    setEditSlideData({
+      ...currentSlide,
+      bullets: [...(currentSlide.bullets || [])]
+    });
+    setIsEditingSlide(true);
+  };
+
+  const handleSaveEdit = () => {
+    if (!editSlideData) return;
+    presentation.slides[currentSlideIndex] = editSlideData;
+    setIsEditingSlide(false);
+    setEditSlideData(null);
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditingSlide(false);
+    setEditSlideData(null);
+  };
 
   const handleNext = () => {
     if (currentSlideIndex < slides.length - 1) {
@@ -56,6 +80,15 @@ export default function AiPresentationViewer({ presentation, onClose }) {
 
         <div className="flex items-center gap-2">
           <button
+            onClick={handleStartEdit}
+            className="px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300"
+            title="تعديل هذه الشريحة"
+          >
+            <Edit3 className="w-3.5 h-3.5 text-gold-400" />
+            <span>تعديل الشريحة</span>
+          </button>
+
+          <button
             onClick={() => setShowSpeakerNotes(!showSpeakerNotes)}
             className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 border ${
               showSpeakerNotes ? 'bg-maroon-900/60 border-maroon-700 text-gold-300' : 'bg-slate-800 border-slate-700 text-slate-400'
@@ -93,47 +126,141 @@ export default function AiPresentationViewer({ presentation, onClose }) {
       {/* Main Slide Card Area */}
       <div className="flex-1 my-3 flex flex-col justify-center items-center overflow-y-auto px-2">
         <div className="w-full max-w-4xl bg-gradient-to-br from-slate-900 via-slate-900 to-maroon-950/70 border border-slate-800 rounded-3xl p-6 sm:p-10 shadow-2xl flex flex-col justify-between min-h-[50vh] sm:min-h-[60vh]">
-          {/* Slide Title & Scripture */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-800/80 pb-3">
-              <span className="text-xs font-extrabold text-gold-400 bg-gold-400/10 border border-gold-400/20 px-3 py-1 rounded-full">
-                نقطة {currentSlide.slideNumber || currentSlideIndex + 1}
-              </span>
-              <span className="text-xs text-slate-500 font-mono">{currentSlideIndex + 1} / {slides.length}</span>
-            </div>
-
-            <h2 className="text-xl sm:text-3xl font-extrabold text-white leading-tight">
-              {currentSlide.title}
-            </h2>
-
-            {currentSlide.keyScripture && (
-              <div className="bg-amber-950/30 border border-amber-500/30 rounded-2xl p-3.5 flex items-start gap-2.5 text-amber-200 text-xs sm:text-sm">
-                <BookOpen className="w-5 h-5 text-gold-400 shrink-0 mt-0.5" />
-                <span className="font-medium italic leading-relaxed">«{currentSlide.keyScripture}»</span>
+          {isEditingSlide && editSlideData ? (
+            <div className="space-y-4 text-right text-white">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                <span className="font-extrabold text-gold-400 text-sm">تعديل الشريحة {currentSlideIndex + 1}</span>
+                <span className="text-xs text-slate-400">تحديث المحتوى للشاشة</span>
               </div>
-            )}
 
-            {/* Bullets */}
-            <div className="space-y-3 pt-2">
-              {currentSlide.bullets?.map((bullet, idx) => (
-                <div key={idx} className="flex items-start gap-3 text-slate-200 text-sm sm:text-base leading-relaxed bg-slate-800/40 p-3.5 rounded-2xl border border-slate-800/60">
-                  <span className="w-2 h-2 rounded-full bg-gold-400 mt-2 shrink-0"></span>
-                  <p className="font-medium">{bullet}</p>
+              <div>
+                <label className="block text-xs font-bold text-slate-300 mb-1">عنوان الشريحة:</label>
+                <input
+                  type="text"
+                  value={editSlideData.title || ''}
+                  onChange={(e) => setEditSlideData({ ...editSlideData, title: e.target.value })}
+                  className="w-full bg-slate-800/80 border border-slate-700 rounded-xl px-3.5 py-2 text-sm text-white font-bold focus:outline-none focus:border-gold-400"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-300 mb-1">الآية المحورية / الشاهد:</label>
+                <input
+                  type="text"
+                  value={editSlideData.keyScripture || ''}
+                  onChange={(e) => setEditSlideData({ ...editSlideData, keyScripture: e.target.value })}
+                  className="w-full bg-slate-800/80 border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-amber-200 focus:outline-none focus:border-gold-400"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-slate-300">نقاط الشرح:</label>
+                  <button
+                    type="button"
+                    onClick={() => setEditSlideData({ ...editSlideData, bullets: [...(editSlideData.bullets || []), 'نقطة جديدة'] })}
+                    className="text-xs bg-slate-800 hover:bg-slate-700 text-gold-300 px-2.5 py-1 rounded-lg border border-slate-700 font-bold"
+                  >
+                    + إضافة نقطة
+                  </button>
                 </div>
-              ))}
-            </div>
-
-            {/* Interactive Group Question */}
-            {currentSlide.groupQuestion && (
-              <div className="mt-3 bg-emerald-950/30 border border-emerald-500/30 rounded-2xl p-3 flex items-center gap-2 text-emerald-300 text-xs sm:text-sm">
-                <MessageCircle className="w-4 h-4 shrink-0 text-emerald-400" />
-                <span><strong>سؤال تفاعلي للمجموعات:</strong> {currentSlide.groupQuestion}</span>
+                {(editSlideData.bullets || []).map((b, idx) => (
+                  <div key={idx} className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={b}
+                      onChange={(e) => {
+                        const updated = [...editSlideData.bullets];
+                        updated[idx] = e.target.value;
+                        setEditSlideData({ ...editSlideData, bullets: updated });
+                      }}
+                      className="flex-1 bg-slate-800/80 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-gold-400"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const updated = editSlideData.bullets.filter((_, i) => i !== idx);
+                        setEditSlideData({ ...editSlideData, bullets: updated });
+                      }}
+                      className="p-1.5 text-red-400 hover:text-red-300 hover:bg-red-950/40 rounded-lg"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
               </div>
-            )}
-          </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-300 mb-1">ملاحظات وتأملات الخادم (Speaker Notes):</label>
+                <textarea
+                  rows={2}
+                  value={editSlideData.speakerNotes || ''}
+                  onChange={(e) => setEditSlideData({ ...editSlideData, speakerNotes: e.target.value })}
+                  className="w-full bg-slate-800/80 border border-slate-700 rounded-xl p-2.5 text-xs text-gold-200 focus:outline-none focus:border-gold-400"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-800">
+                <button
+                  type="button"
+                  onClick={handleCancelEdit}
+                  className="px-4 py-2 text-xs text-slate-400 hover:text-white rounded-xl font-bold"
+                >
+                  إلغاء
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveEdit}
+                  className="bg-gold-400 hover:bg-gold-500 text-slate-950 px-5 py-2 text-xs rounded-xl font-extrabold flex items-center gap-1.5 shadow-md"
+                >
+                  <Check className="w-4 h-4" />
+                  <span>تحديث الشريحة فوراً</span>
+                </button>
+              </div>
+            </div>
+          ) : (
+            /* Slide Title & Scripture */
+            <div className="space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-800/80 pb-3">
+                <span className="text-xs font-extrabold text-gold-400 bg-gold-400/10 border border-gold-400/20 px-3 py-1 rounded-full">
+                  نقطة {currentSlide.slideNumber || currentSlideIndex + 1}
+                </span>
+                <span className="text-xs text-slate-500 font-mono">{currentSlideIndex + 1} / {slides.length}</span>
+              </div>
+
+              <h2 className="text-xl sm:text-3xl font-extrabold text-white leading-tight">
+                {currentSlide.title}
+              </h2>
+
+              {currentSlide.keyScripture && (
+                <div className="bg-amber-950/30 border border-amber-500/30 rounded-2xl p-3.5 flex items-start gap-2.5 text-amber-200 text-xs sm:text-sm">
+                  <BookOpen className="w-5 h-5 text-gold-400 shrink-0 mt-0.5" />
+                  <span className="font-medium italic leading-relaxed">«{currentSlide.keyScripture}»</span>
+                </div>
+              )}
+
+              {/* Bullets */}
+              <div className="space-y-3 pt-2">
+                {currentSlide.bullets?.map((bullet, idx) => (
+                  <div key={idx} className="flex items-start gap-3 text-slate-200 text-sm sm:text-base leading-relaxed bg-slate-800/40 p-3.5 rounded-2xl border border-slate-800/60">
+                    <span className="w-2 h-2 rounded-full bg-gold-400 mt-2 shrink-0"></span>
+                    <p className="font-medium">{bullet}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Interactive Group Question */}
+              {currentSlide.groupQuestion && (
+                <div className="mt-3 bg-emerald-950/30 border border-emerald-500/30 rounded-2xl p-3 flex items-center gap-2 text-emerald-300 text-xs sm:text-sm">
+                  <MessageCircle className="w-4 h-4 shrink-0 text-emerald-400" />
+                  <span><strong>سؤال تفاعلي للمجموعات:</strong> {currentSlide.groupQuestion}</span>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Speaker Notes Drawer (For Servant Only) */}
-          {showSpeakerNotes && currentSlide.speakerNotes && (
+          {!isEditingSlide && showSpeakerNotes && currentSlide.speakerNotes && (
             <div className="mt-6 pt-4 border-t border-slate-800 text-xs text-gold-300/90 bg-slate-950/60 p-3.5 rounded-2xl border border-gold-500/20">
               <strong className="text-gold-400 block mb-1">💡 تأمل وتوجيه للخادم أثناء الشرح:</strong>
               <p className="leading-relaxed">{currentSlide.speakerNotes}</p>

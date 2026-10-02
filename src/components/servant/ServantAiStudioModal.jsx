@@ -26,7 +26,77 @@ export default function ServantAiStudioModal({ isOpen, onClose, onAddQuestionsTo
   const [generatedStudyGuide, setGeneratedStudyGuide] = useState(null);
   const [addedSuccess, setAddedSuccess] = useState(false);
 
+  // Inline Editing States
+  const [editingQuestionIdx, setEditingQuestionIdx] = useState(null);
+  const [editQuestionData, setEditQuestionData] = useState(null);
+
+  const [editingSlideIdx, setEditingSlideIdx] = useState(null);
+  const [editSlideData, setEditSlideData] = useState(null);
+
+  const [isEditingStudyGuide, setIsEditingStudyGuide] = useState(false);
+  const [editStudyGuideData, setEditStudyGuideData] = useState(null);
+
   if (!isOpen) return null;
+
+  // Question Edit Handlers
+  const handleStartEditQuestion = (q, idx) => {
+    setEditingQuestionIdx(idx);
+    setEditQuestionData({ ...q, options: [...(q.options || [])] });
+  };
+
+  const handleSaveEditQuestion = (idx) => {
+    if (!editQuestionData) return;
+    setGeneratedQuestions(prev => prev.map((q, i) => i === idx ? editQuestionData : q));
+    setEditingQuestionIdx(null);
+    setEditQuestionData(null);
+  };
+
+  const handleCancelEditQuestion = () => {
+    setEditingQuestionIdx(null);
+    setEditQuestionData(null);
+  };
+
+  // Slide Edit Handlers
+  const handleStartEditSlide = (slide, idx) => {
+    setEditingSlideIdx(idx);
+    setEditSlideData({ ...slide, bullets: [...(slide.bullets || [])] });
+  };
+
+  const handleSaveEditSlide = (idx) => {
+    if (!editSlideData || !generatedPresentation) return;
+    const updatedSlides = generatedPresentation.slides.map((s, i) => i === idx ? editSlideData : s);
+    setGeneratedPresentation({ ...generatedPresentation, slides: updatedSlides });
+    setEditingSlideIdx(null);
+    setEditSlideData(null);
+  };
+
+  const handleCancelEditSlide = () => {
+    setEditingSlideIdx(null);
+    setEditSlideData(null);
+  };
+
+  // Study Guide Edit Handlers
+  const handleStartEditStudyGuide = () => {
+    if (!generatedStudyGuide) return;
+    setIsEditingStudyGuide(true);
+    setEditStudyGuideData({
+      ...generatedStudyGuide,
+      mainPoints: [...(generatedStudyGuide.mainPoints || [])],
+      spiritualApplications: [...(generatedStudyGuide.spiritualApplications || [])]
+    });
+  };
+
+  const handleSaveEditStudyGuide = () => {
+    if (!editStudyGuideData) return;
+    setGeneratedStudyGuide(editStudyGuideData);
+    setIsEditingStudyGuide(false);
+    setEditStudyGuideData(null);
+  };
+
+  const handleCancelEditStudyGuide = () => {
+    setIsEditingStudyGuide(false);
+    setEditStudyGuideData(null);
+  };
 
   const handleFileChange = (e) => {
     const file = e.target.files?.[0];
@@ -331,47 +401,147 @@ export default function ServantAiStudioModal({ isOpen, onClose, onAddQuestionsTo
               </div>
 
               <div className="space-y-3">
-                {generatedQuestions.map((q, idx) => (
-                  <div key={idx} className="bg-slate-50 border border-slate-200 p-4 rounded-2xl space-y-2 text-xs">
-                    <div className="flex items-center justify-between text-slate-500 font-bold">
-                      <span className="text-maroon-800 font-extrabold">سؤال {idx + 1} ({q.type === 'mcq' ? 'اختيار من متعدد' : q.type === 'true_false' ? 'صح وخطأ' : 'مقالي'})</span>
-                      <button onClick={() => handleDeleteGeneratedQuestion(idx)} className="text-red-500 hover:text-red-700 p-1">
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
+                {generatedQuestions.map((q, idx) => {
+                  const isEditing = editingQuestionIdx === idx;
 
-                    <p className="font-extrabold text-slate-900 text-sm leading-relaxed">{q.questionText}</p>
+                  if (isEditing && editQuestionData) {
+                    return (
+                      <div key={idx} className="bg-white border-2 border-maroon-800 p-4 rounded-2xl space-y-3 shadow-md">
+                        <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                          <span className="font-extrabold text-xs text-maroon-900">تعديل السؤال {idx + 1}</span>
+                          <span className="text-[10px] text-slate-500">حدد الإجابة الصحيحة بالضغط على الدائرة</span>
+                        </div>
 
-                    {q.options && q.options.length > 0 && (
-                      <div className="grid grid-cols-2 gap-2 pt-1">
-                        {q.options.map((opt, oIdx) => (
-                          <div
-                            key={oIdx}
-                            className={`p-2 rounded-xl border text-[11px] font-medium ${
-                              opt === q.correctAnswer ? 'bg-emerald-50 border-emerald-300 text-emerald-900 font-bold' : 'bg-white border-slate-200 text-slate-700'
-                            }`}
-                          >
-                            {opt} {opt === q.correctAnswer ? '✓ (صحيحة)' : ''}
+                        <div>
+                          <label className="block text-[11px] font-bold text-slate-700 mb-1">نص السؤال:</label>
+                          <textarea
+                            rows={2}
+                            value={editQuestionData.questionText}
+                            onChange={(e) => setEditQuestionData({ ...editQuestionData, questionText: e.target.value })}
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-900 font-bold focus:outline-none focus:border-maroon-800"
+                          />
+                        </div>
+
+                        {editQuestionData.options && editQuestionData.options.length > 0 && (
+                          <div className="space-y-2">
+                            <label className="block text-[11px] font-bold text-slate-700">خيارات الإجابة:</label>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                              {editQuestionData.options.map((opt, oIdx) => (
+                                <div key={oIdx} className="flex items-center gap-2 bg-slate-50 p-2 rounded-xl border border-slate-200">
+                                  <input
+                                    type="radio"
+                                    name={`correct_${idx}`}
+                                    checked={editQuestionData.correctAnswer === opt}
+                                    onChange={() => setEditQuestionData({ ...editQuestionData, correctAnswer: opt })}
+                                    className="accent-maroon-800"
+                                    title="تحديد كإجابة صحيحة"
+                                  />
+                                  <input
+                                    type="text"
+                                    value={opt}
+                                    onChange={(e) => {
+                                      const newOpts = [...editQuestionData.options];
+                                      const oldVal = newOpts[oIdx];
+                                      newOpts[oIdx] = e.target.value;
+                                      const newCorrect = editQuestionData.correctAnswer === oldVal ? e.target.value : editQuestionData.correctAnswer;
+                                      setEditQuestionData({ ...editQuestionData, options: newOpts, correctAnswer: newCorrect });
+                                    }}
+                                    className="flex-1 bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-xs text-slate-800 focus:outline-none focus:border-maroon-800"
+                                  />
+                                </div>
+                              ))}
+                            </div>
                           </div>
-                        ))}
-                      </div>
-                    )}
+                        )}
 
-                    {q.explanation && (
-                      <div className="text-[11px] text-slate-500 bg-white p-2.5 rounded-xl border border-slate-200 mt-1">
-                        💡 <strong>الشاهد والشرح:</strong> {q.explanation}
+                        <div>
+                          <label className="block text-[11px] font-bold text-slate-700 mb-1">الشاهد والشرح:</label>
+                          <input
+                            type="text"
+                            value={editQuestionData.explanation || ''}
+                            onChange={(e) => setEditQuestionData({ ...editQuestionData, explanation: e.target.value })}
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs text-slate-800 focus:outline-none focus:border-maroon-800"
+                            placeholder="مثال: يوحنا 15: 16"
+                          />
+                        </div>
+
+                        <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                          <button
+                            type="button"
+                            onClick={handleCancelEditQuestion}
+                            className="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded-xl font-bold transition-colors"
+                          >
+                            إلغاء
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleSaveEditQuestion(idx)}
+                            className="bg-maroon-800 hover:bg-maroon-700 text-white px-4 py-1.5 text-xs rounded-xl font-bold flex items-center gap-1 shadow-xs transition-colors"
+                          >
+                            <Check className="w-3.5 h-3.5" />
+                            <span>حفظ التعديل</span>
+                          </button>
+                        </div>
                       </div>
-                    )}
-                  </div>
-                ))}
+                    );
+                  }
+
+                  return (
+                    <div key={idx} className="bg-slate-50 border border-slate-200 p-4 rounded-2xl space-y-2 text-xs">
+                      <div className="flex items-center justify-between text-slate-500 font-bold">
+                        <span className="text-maroon-800 font-extrabold">سؤال {idx + 1} ({q.type === 'mcq' ? 'اختيار من متعدد' : q.type === 'true_false' ? 'صح وخطأ' : 'مقالي'})</span>
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => handleStartEditQuestion(q, idx)}
+                            className="text-slate-600 hover:text-maroon-800 hover:bg-white p-1 rounded-lg transition-colors flex items-center gap-1 text-[11px] font-bold border border-slate-200"
+                            title="تعديل السؤال"
+                          >
+                            <Edit3 className="w-3.5 h-3.5" />
+                            <span>تعديل</span>
+                          </button>
+                          <button
+                            onClick={() => handleDeleteGeneratedQuestion(idx)}
+                            className="text-red-500 hover:text-red-700 hover:bg-red-50 p-1 rounded-lg transition-colors"
+                            title="حذف"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+
+                      <p className="font-extrabold text-slate-900 text-sm leading-relaxed">{q.questionText}</p>
+
+                      {q.options && q.options.length > 0 && (
+                        <div className="grid grid-cols-2 gap-2 pt-1">
+                          {q.options.map((opt, oIdx) => (
+                            <div
+                              key={oIdx}
+                              className={`p-2 rounded-xl border text-[11px] font-medium ${
+                                opt === q.correctAnswer ? 'bg-emerald-50 border-emerald-300 text-emerald-900 font-bold' : 'bg-white border-slate-200 text-slate-700'
+                              }`}
+                            >
+                              {opt} {opt === q.correctAnswer ? '✓ (صحيحة)' : ''}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {q.explanation && (
+                        <div className="text-[11px] text-slate-500 bg-white p-2.5 rounded-xl border border-slate-200 mt-1">
+                          💡 <strong>الشاهد والشرح:</strong> {q.explanation}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
 
           {/* Results: Presentation Preview */}
           {activeMode === 'presentation' && generatedPresentation && (
-            <div className="space-y-4 pt-4 border-t border-slate-200 text-center">
-              <div className="p-6 bg-gradient-to-br from-slate-900 to-maroon-950 text-white rounded-3xl space-y-3">
+            <div className="space-y-4 pt-4 border-t border-slate-200">
+              <div className="p-6 bg-gradient-to-br from-slate-900 to-maroon-950 text-white rounded-3xl space-y-3 text-center">
                 <Presentation className="w-10 h-10 text-gold-400 mx-auto" />
                 <h4 className="text-lg font-extrabold">{generatedPresentation.title}</h4>
                 <p className="text-xs text-slate-300">
@@ -385,40 +555,296 @@ export default function ServantAiStudioModal({ isOpen, onClose, onAddQuestionsTo
                   <span>بدء العرض التقديمي الآن ملء الشاشة 🖥️</span>
                 </button>
               </div>
+
+              {/* Editable Slides List */}
+              <div className="space-y-3 pt-2 text-right">
+                <h5 className="font-extrabold text-xs text-slate-800">مراجعة وتعديل الشرائح قبل العرض:</h5>
+                {(generatedPresentation.slides || []).map((slide, sIdx) => {
+                  const isEditingSlide = editingSlideIdx === sIdx;
+
+                  if (isEditingSlide && editSlideData) {
+                    return (
+                      <div key={sIdx} className="bg-white border-2 border-maroon-800 p-4 rounded-2xl space-y-3 shadow-md text-right text-xs">
+                        <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                          <span className="font-extrabold text-maroon-900">تعديل الشريحة {sIdx + 1}</span>
+                        </div>
+
+                        <div>
+                          <label className="block text-[11px] font-bold text-slate-700 mb-1">عنوان الشريحة:</label>
+                          <input
+                            type="text"
+                            value={editSlideData.title || ''}
+                            onChange={(e) => setEditSlideData({ ...editSlideData, title: e.target.value })}
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-900 font-bold focus:outline-none focus:border-maroon-800"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-[11px] font-bold text-slate-700 mb-1">الآية المحورية / الشاهد:</label>
+                          <input
+                            type="text"
+                            value={editSlideData.keyScripture || ''}
+                            onChange={(e) => setEditSlideData({ ...editSlideData, keyScripture: e.target.value })}
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-maroon-800"
+                            placeholder="مثال: يوحنا 1: 1"
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <label className="text-[11px] font-bold text-slate-700">نقاط الشرح (Bullets):</label>
+                            <button
+                              type="button"
+                              onClick={() => setEditSlideData({ ...editSlideData, bullets: [...(editSlideData.bullets || []), 'نقطة جديدة'] })}
+                              className="text-[10px] bg-slate-100 hover:bg-slate-200 text-slate-700 px-2 py-0.5 rounded-lg font-bold"
+                            >
+                              + إضافة نقطة
+                            </button>
+                          </div>
+                          {(editSlideData.bullets || []).map((bullet, bIdx) => (
+                            <div key={bIdx} className="flex items-center gap-2">
+                              <input
+                                type="text"
+                                value={bullet}
+                                onChange={(e) => {
+                                  const updatedBullets = [...editSlideData.bullets];
+                                  updatedBullets[bIdx] = e.target.value;
+                                  setEditSlideData({ ...editSlideData, bullets: updatedBullets });
+                                }}
+                                className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1 text-xs text-slate-800 focus:outline-none focus:border-maroon-800"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const updatedBullets = editSlideData.bullets.filter((_, i) => i !== bIdx);
+                                  setEditSlideData({ ...editSlideData, bullets: updatedBullets });
+                                }}
+                                className="text-red-500 hover:text-red-700 p-1"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+
+                        <div>
+                          <label className="block text-[11px] font-bold text-slate-700 mb-1">تأمل وملاحظات الخادم (Speaker Notes):</label>
+                          <textarea
+                            rows={2}
+                            value={editSlideData.speakerNotes || ''}
+                            onChange={(e) => setEditSlideData({ ...editSlideData, speakerNotes: e.target.value })}
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-xs text-slate-800 focus:outline-none focus:border-maroon-800"
+                          />
+                        </div>
+
+                        <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                          <button
+                            type="button"
+                            onClick={handleCancelEditSlide}
+                            className="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded-xl font-bold"
+                          >
+                            إلغاء
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleSaveEditSlide(sIdx)}
+                            className="bg-maroon-800 hover:bg-maroon-700 text-white px-4 py-1.5 text-xs rounded-xl font-bold flex items-center gap-1 shadow-xs"
+                          >
+                            <Check className="w-3.5 h-3.5" />
+                            <span>حفظ الشريحة</span>
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div key={sIdx} className="bg-slate-50 border border-slate-200 p-3.5 rounded-2xl flex items-start justify-between gap-3 text-xs">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-extrabold text-maroon-900">شريحة {sIdx + 1}: {slide.title}</span>
+                          {slide.keyScripture && <span className="text-[10px] text-amber-800 bg-amber-50 px-2 py-0.5 rounded border border-amber-200 font-medium">«{slide.keyScripture}»</span>}
+                        </div>
+                        <p className="text-slate-500 text-[11px]">
+                          {(slide.bullets || []).length} نقاط شرح • {slide.speakerNotes ? 'يوجد ملاحظات إلقاء' : 'بدون ملاحظات'}
+                        </p>
+                      </div>
+
+                      <button
+                        onClick={() => handleStartEditSlide(slide, sIdx)}
+                        className="text-slate-600 hover:text-maroon-800 hover:bg-white p-1.5 rounded-lg transition-colors flex items-center gap-1 text-[11px] font-bold border border-slate-200 shrink-0"
+                      >
+                        <Edit3 className="w-3.5 h-3.5" />
+                        <span>تعديل</span>
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )}
 
-          {/* Results: Study Guide Preview */}
+          {/* Results: Study Guide Preview & Edit */}
           {activeMode === 'study_guide' && generatedStudyGuide && (
-            <div className="space-y-4 pt-4 border-t border-slate-200">
-              <div className="bg-slate-50 border border-slate-200 p-5 rounded-2xl space-y-3 text-xs">
-                <h4 className="font-extrabold text-slate-900 text-base">{generatedStudyGuide.title}</h4>
-                <p className="text-slate-700 leading-relaxed">{generatedStudyGuide.summary}</p>
-                
-                {generatedStudyGuide.mainPoints && (
-                  <div className="space-y-1.5 pt-2">
-                    <strong className="text-maroon-800 block">📌 الأفكار الرئيسية:</strong>
-                    {generatedStudyGuide.mainPoints.map((p, idx) => (
-                      <div key={idx} className="flex items-start gap-2 text-slate-800">
-                        <span className="text-gold-500 font-bold">•</span>
-                        <span>{p}</span>
-                      </div>
-                    ))}
+            <div className="space-y-4 pt-4 border-t border-slate-200 text-right text-xs">
+              {isEditingStudyGuide && editStudyGuideData ? (
+                <div className="bg-white border-2 border-maroon-800 p-5 rounded-2xl space-y-4 shadow-md">
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                    <span className="font-extrabold text-maroon-900 text-sm">تعديل كبسولة وملخص الدرس</span>
                   </div>
-                )}
 
-                {generatedStudyGuide.spiritualApplications && (
-                  <div className="space-y-1.5 pt-2">
-                    <strong className="text-emerald-700 block">🕊️ التطبيق الروحي لحياة الخادم:</strong>
-                    {generatedStudyGuide.spiritualApplications.map((app, idx) => (
-                      <div key={idx} className="flex items-start gap-2 text-slate-800">
-                        <span className="text-emerald-500 font-bold">✓</span>
-                        <span>{app}</span>
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">عنوان الموضوع:</label>
+                    <input
+                      type="text"
+                      value={editStudyGuideData.title || ''}
+                      onChange={(e) => setEditStudyGuideData({ ...editStudyGuideData, title: e.target.value })}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:border-maroon-800"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">فقرة الملخص العام:</label>
+                    <textarea
+                      rows={3}
+                      value={editStudyGuideData.summary || ''}
+                      onChange={(e) => setEditStudyGuideData({ ...editStudyGuideData, summary: e.target.value })}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800 focus:outline-none focus:border-maroon-800"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[11px] font-bold text-slate-700">الأفكار الرئيسية:</label>
+                      <button
+                        type="button"
+                        onClick={() => setEditStudyGuideData({ ...editStudyGuideData, mainPoints: [...(editStudyGuideData.mainPoints || []), 'فكرة جديدة'] })}
+                        className="text-[10px] bg-slate-100 hover:bg-slate-200 text-slate-700 px-2 py-0.5 rounded font-bold"
+                      >
+                        + إضافة فكرة
+                      </button>
+                    </div>
+                    {(editStudyGuideData.mainPoints || []).map((pt, pIdx) => (
+                      <div key={pIdx} className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={pt}
+                          onChange={(e) => {
+                            const updated = [...editStudyGuideData.mainPoints];
+                            updated[pIdx] = e.target.value;
+                            setEditStudyGuideData({ ...editStudyGuideData, mainPoints: updated });
+                          }}
+                          className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1 text-xs text-slate-800 focus:outline-none focus:border-maroon-800"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const updated = editStudyGuideData.mainPoints.filter((_, i) => i !== pIdx);
+                            setEditStudyGuideData({ ...editStudyGuideData, mainPoints: updated });
+                          }}
+                          className="text-red-500 hover:text-red-700 p-1"
+                        >
+                          ✕
+                        </button>
                       </div>
                     ))}
                   </div>
-                )}
-              </div>
+
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[11px] font-bold text-slate-700">التطبيقات الروحية:</label>
+                      <button
+                        type="button"
+                        onClick={() => setEditStudyGuideData({ ...editStudyGuideData, spiritualApplications: [...(editStudyGuideData.spiritualApplications || []), 'تطبيق روحي جديد'] })}
+                        className="text-[10px] bg-slate-100 hover:bg-slate-200 text-slate-700 px-2 py-0.5 rounded font-bold"
+                      >
+                        + إضافة تطبيق
+                      </button>
+                    </div>
+                    {(editStudyGuideData.spiritualApplications || []).map((app, aIdx) => (
+                      <div key={aIdx} className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={app}
+                          onChange={(e) => {
+                            const updated = [...editStudyGuideData.spiritualApplications];
+                            updated[aIdx] = e.target.value;
+                            setEditStudyGuideData({ ...editStudyGuideData, spiritualApplications: updated });
+                          }}
+                          className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1 text-xs text-slate-800 focus:outline-none focus:border-maroon-800"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const updated = editStudyGuideData.spiritualApplications.filter((_, i) => i !== aIdx);
+                            setEditStudyGuideData({ ...editStudyGuideData, spiritualApplications: updated });
+                          }}
+                          className="text-red-500 hover:text-red-700 p-1"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                    <button
+                      type="button"
+                      onClick={handleCancelEditStudyGuide}
+                      className="px-3.5 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded-xl font-bold"
+                    >
+                      إلغاء
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleSaveEditStudyGuide}
+                      className="bg-maroon-800 hover:bg-maroon-700 text-white px-4 py-1.5 text-xs rounded-xl font-bold flex items-center gap-1 shadow-xs"
+                    >
+                      <Check className="w-3.5 h-3.5" />
+                      <span>حفظ التعديلات</span>
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-slate-50 border border-slate-200 p-5 rounded-2xl space-y-3">
+                  <div className="flex items-center justify-between border-b border-slate-200/80 pb-2">
+                    <h4 className="font-extrabold text-slate-900 text-base">{generatedStudyGuide.title}</h4>
+                    <button
+                      onClick={handleStartEditStudyGuide}
+                      className="bg-white border border-slate-200 hover:border-maroon-800 text-slate-700 hover:text-maroon-900 px-3 py-1 rounded-xl text-xs font-bold flex items-center gap-1 transition-all"
+                    >
+                      <Edit3 className="w-3.5 h-3.5" />
+                      <span>تعديل الملخص</span>
+                    </button>
+                  </div>
+
+                  <p className="text-slate-700 leading-relaxed">{generatedStudyGuide.summary}</p>
+                  
+                  {generatedStudyGuide.mainPoints && (
+                    <div className="space-y-1.5 pt-2">
+                      <strong className="text-maroon-800 block font-extrabold">📌 الأفكار الرئيسية:</strong>
+                      {generatedStudyGuide.mainPoints.map((p, idx) => (
+                        <div key={idx} className="flex items-start gap-2 text-slate-800">
+                          <span className="text-gold-500 font-bold">•</span>
+                          <span>{p}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {generatedStudyGuide.spiritualApplications && (
+                    <div className="space-y-1.5 pt-2">
+                      <strong className="text-emerald-700 block font-extrabold">🕊️ التطبيق الروحي لحياة الخادم:</strong>
+                      {generatedStudyGuide.spiritualApplications.map((app, idx) => (
+                        <div key={idx} className="flex items-start gap-2 text-slate-800">
+                          <span className="text-emerald-500 font-bold">✓</span>
+                          <span>{app}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </div>
