@@ -33,6 +33,7 @@ export default function ServantCurriculum({
   const [showAiStudioModal, setShowAiStudioModal] = useState(false);
   const [aiStudioMode, setAiStudioMode] = useState('presentation'); // 'presentation' | 'study_guide'
   const [activePresentation, setActivePresentation] = useState(null);
+  const [targetRefForAi, setTargetRefForAi] = useState(null);
 
   const allCurrentGradeSubjects = subjectsByGrade[selectedGrade] || [];
   const currentGradeSubjects = allCurrentGradeSubjects.filter(
@@ -697,6 +698,36 @@ export default function ServantCurriculum({
                         </a>
                       )}
 
+                      {/* Direct AI Presentation from this file */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setTargetRefForAi(rf);
+                          setAiStudioMode('presentation');
+                          setShowAiStudioModal(true);
+                        }}
+                        className="bg-amber-100/70 hover:bg-amber-200 text-amber-900 border border-amber-300 font-bold px-2.5 py-1 rounded-lg text-[10px] flex items-center gap-1 transition-all"
+                        title="إنشاء عرض تقديمي (Presentation Data Show) من هذا الملف مباشرة"
+                      >
+                        <Presentation className="w-3 h-3 text-amber-700" />
+                        <span>Presentation 📽️</span>
+                      </button>
+
+                      {/* Direct AI Summary from this file */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setTargetRefForAi(rf);
+                          setAiStudioMode('study_guide');
+                          setShowAiStudioModal(true);
+                        }}
+                        className="bg-purple-100/70 hover:bg-purple-200 text-purple-900 border border-purple-300 font-bold px-2.5 py-1 rounded-lg text-[10px] flex items-center gap-1 transition-all"
+                        title="توليد ملخص ودليل دراسي كنسي من هذا الملف مباشرة"
+                      >
+                        <Sparkles className="w-3 h-3 text-purple-700" />
+                        <span>ملخص 📖</span>
+                      </button>
+
                       {/* Toggle Visibility for Students */}
                       {curriculumTarget === 'students' ? (
                         <button
@@ -754,15 +785,21 @@ export default function ServantCurriculum({
       {/* AI Studio Modal for Presentations & Study Guides */}
       <ServantAiStudioModal
         isOpen={showAiStudioModal}
-        onClose={() => setShowAiStudioModal(false)}
+        onClose={() => {
+          setShowAiStudioModal(false);
+          setTargetRefForAi(null);
+        }}
         initialGrade={selectedGrade}
         initialMode={aiStudioMode}
+        initialText={targetRefForAi ? `محتوى خاص بمادة (${activeSubject?.name || ''}):\nعنوان الملف أو المحاضرة: ${targetRefForAi.title}\nالنوع: ${targetRefForAi.type}\nرابط المرجع: ${targetRefForAi.url || ''}` : ''}
         onOpenPresentation={(pres) => {
           setActivePresentation(pres);
           setShowAiStudioModal(false);
+          setTargetRefForAi(null);
         }}
         onAddQuestionsToBank={() => {
           setShowAiStudioModal(false);
+          setTargetRefForAi(null);
         }}
       />
     </div>

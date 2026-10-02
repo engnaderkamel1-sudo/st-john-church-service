@@ -93,7 +93,7 @@ async function callGemini({ prompt, fileBase64, mimeType, systemInstruction = CH
 }
 
 // 1. Generate Church Exam Questions
-export async function generateChurchQuestions({ fileBase64, mimeType, textContent = '', grade = 'first', count = 5, questionTypes = ['mcq', 'true_false'] }) {
+export async function generateChurchQuestions({ fileBase64, mimeType, textContent = '', grade = 'first', count = 5, questionTypes = ['mcq', 'true_false'], customInstructions = '' }) {
   const gradeLabel = {
     first: 'سنة أولى ثانوي',
     second: 'سنة ثانية ثانوي',
@@ -112,6 +112,7 @@ export async function generateChurchQuestions({ fileBase64, mimeType, textConten
 بناءً على المحتوى المرفق (ملف، صورة، أو نص: ${textContent}):
 قم باستخراج وتوليد عدد (${count}) أسئلة تعليمية وروحية متميزة لمرحلة (${gradeLabel}).
 الأنواع المطلوبة: ${typesDesc}.
+${customInstructions ? `\nتوجيهات وملاحظات إضافية هامة من الخادم المسؤول يجب الالتزام بها بدقة:\n"${customInstructions}"\n` : ''}
 
 يجب أن يكون الرد بتنسيق JSON حصراً كـ Array من الكائنات بالمفتاح "questions":
 {
@@ -135,7 +136,7 @@ export async function generateChurchQuestions({ fileBase64, mimeType, textConten
 }
 
 // 2. Generate Church Interactive Presentation Slides
-export async function generateChurchPresentation({ fileBase64, mimeType, textContent = '', grade = 'first', slideCount = 6 }) {
+export async function generateChurchPresentation({ fileBase64, mimeType, textContent = '', grade = 'first', slideCount = 6, customInstructions = '' }) {
   const gradeLabel = {
     first: 'سنة أولى ثانوي',
     second: 'سنة ثانية ثانوي',
@@ -147,6 +148,7 @@ export async function generateChurchPresentation({ fileBase64, mimeType, textCon
 بناءً على المحتوى المرفق (ملف، صورة، أو نص: ${textContent}):
 قم بإعداد وتلخيص هذا الدرس في شكل عرض تقديمي تفاعلي ملخص وممتع (Presentation Slides) لمرحلة (${gradeLabel}).
 العدد المطلوب: حوالي (${slideCount}) شرائح متسلسلة لشرح الدرس على شاشة العرض (Data Show).
+${customInstructions ? `\nتوجيهات وملاحظات إضافية هامة من الخادم المسؤول (مثل التركيز على نقاط معينة أو حذف نقاط):\n"${customInstructions}"\n` : ''}
 
 أخرج النتيجة كـ JSON كائن بالمفتاح "presentation":
 {
@@ -176,7 +178,7 @@ export async function generateChurchPresentation({ fileBase64, mimeType, textCon
 }
 
 // 3. Generate Church Study Guide & Capsule
-export async function generateChurchStudyGuide({ fileBase64, mimeType, textContent = '', grade = 'first' }) {
+export async function generateChurchStudyGuide({ fileBase64, mimeType, textContent = '', grade = 'first', customInstructions = '' }) {
   const gradeLabel = {
     first: 'سنة أولى ثانوي',
     second: 'سنة ثانية ثانوي',
@@ -186,6 +188,7 @@ export async function generateChurchStudyGuide({ fileBase64, mimeType, textConte
 
   const prompt = `
 بناءً على المحتوى المرفق: قم بعمل كبسولة وملخص دراسي شامل ومرتب لمرحلة (${gradeLabel}).
+${customInstructions ? `\nتوجيهات وملاحظات إضافية هامة من الخادم المسؤول (التركيز على شواهد أو تفاصيل معينة):\n"${customInstructions}"\n` : ''}
 أخرج النتيجة كـ JSON كائن بالمفتاح "studyGuide":
 {
   "studyGuide": {

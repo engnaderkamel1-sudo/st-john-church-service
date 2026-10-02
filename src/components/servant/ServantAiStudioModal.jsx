@@ -6,17 +6,27 @@ import {
 } from 'lucide-react';
 import { generateChurchQuestions, generateChurchPresentation, generateChurchStudyGuide } from '../../services/geminiService';
 
-export default function ServantAiStudioModal({ isOpen, onClose, onAddQuestionsToBank, onOpenPresentation, initialGrade = 'first', initialMode = 'questions' }) {
+export default function ServantAiStudioModal({ 
+  isOpen, 
+  onClose, 
+  onAddQuestionsToBank, 
+  onOpenPresentation, 
+  initialGrade = 'first', 
+  initialMode = 'questions',
+  initialFile = null,
+  initialText = ''
+}) {
   const [activeMode, setActiveMode] = useState(initialMode); // 'questions' | 'presentation' | 'study_guide'
   const [selectedGrade, setSelectedGrade] = useState(initialGrade);
   const [questionCount, setQuestionCount] = useState(5);
   const [slideCount, setSlideCount] = useState(6);
   
-  // Input File & Text State
-  const [selectedFile, setSelectedFile] = useState(null);
+  // Input File, Text & Custom Prompt State
+  const [selectedFile, setSelectedFile] = useState(initialFile);
   const [fileBase64, setFileBase64] = useState('');
   const [fileMimeType, setFileMimeType] = useState('');
-  const [manualText, setManualText] = useState('');
+  const [manualText, setManualText] = useState(initialText);
+  const [customInstructions, setCustomInstructions] = useState('');
   
   // Status & Generated Data State
   const [loading, setLoading] = useState(false);
@@ -145,7 +155,8 @@ export default function ServantAiStudioModal({ isOpen, onClose, onAddQuestionsTo
           mimeType: fileMimeType,
           textContent: manualText,
           grade: selectedGrade,
-          count: questionCount
+          count: questionCount,
+          customInstructions: customInstructions.trim()
         });
         setGeneratedQuestions(questions || []);
       } else if (activeMode === 'presentation') {
@@ -154,7 +165,8 @@ export default function ServantAiStudioModal({ isOpen, onClose, onAddQuestionsTo
           mimeType: fileMimeType,
           textContent: manualText,
           grade: selectedGrade,
-          slideCount
+          slideCount,
+          customInstructions: customInstructions.trim()
         });
         setGeneratedPresentation(pres);
       } else if (activeMode === 'study_guide') {
@@ -162,7 +174,8 @@ export default function ServantAiStudioModal({ isOpen, onClose, onAddQuestionsTo
           fileBase64,
           mimeType: fileMimeType,
           textContent: manualText,
-          grade: selectedGrade
+          grade: selectedGrade,
+          customInstructions: customInstructions.trim()
         });
         setGeneratedStudyGuide(guide);
       }
@@ -353,6 +366,29 @@ export default function ServantAiStudioModal({ isOpen, onClose, onAddQuestionsTo
                 placeholder="الصق نص المحاضرة أو أصحاح الكتاب المقدس أو ملخص الدرس هنا..."
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-800 focus:outline-none focus:border-maroon-800"
               />
+            </div>
+
+            {/* Custom Instructions / Prompt Input Field (توجيهات الخادم الإضافية) */}
+            <div className="bg-amber-50/60 border border-amber-200/80 rounded-2xl p-3.5 space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-amber-950 flex items-center gap-1.5">
+                  <Edit3 className="w-3.5 h-3.5 text-amber-700" />
+                  <span>توجيهات وملاحظات إضافية للخادم (Prompt مخصص) ✍️</span>
+                </label>
+                <span className="text-[10px] text-amber-800 font-medium bg-amber-100/70 px-2 py-0.5 rounded-md">
+                  اختياري
+                </span>
+              </div>
+              <textarea
+                rows={2}
+                value={customInstructions}
+                onChange={(e) => setCustomInstructions(e.target.value)}
+                placeholder="مثال: ركز على المعنى الروحي للطقس وأهمل التواريخ، أو احذف النقطة الفلانية، أو اجعل الشرائح مركزة على الآيات والشواهد..."
+                className="w-full bg-white border border-amber-300 rounded-xl p-2.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-maroon-800 focus:ring-1 focus:ring-maroon-800"
+              />
+              <span className="text-[10px] text-slate-500 block">
+                💡 يمكنك كتابة أي تعليمات للذكاء الاصطناعي (مثل: إبراز نقاط معينة، حذف محاور، توجيه الأسلوب لمرحلة سنية معينة).
+              </span>
             </div>
           </div>
 
