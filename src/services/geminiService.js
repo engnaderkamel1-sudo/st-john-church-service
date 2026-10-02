@@ -27,20 +27,12 @@ export async function saveGeminiApiKey(apiKey) {
   await setDoc(docRef, { geminiApiKey: apiKey.trim(), updatedAt: new Date().toISOString() }, { merge: true });
 }
 
-// Helper to call Gemini REST API with fallback to supported models
+// Helper to call Gemini REST API with automatic model discovery
 async function callGemini({ prompt, fileBase64, mimeType, systemInstruction = CHURCH_SYSTEM_INSTRUCTION }) {
   const apiKey = await getGeminiApiKey();
   if (!apiKey) {
     throw new Error('لم يتم تعيين مفتاح Gemini API في إعدادات المنصة. يرجى من أمين الخدمة أو المشرف إدخال المفتاح في لوحة التحكم.');
   }
-
-  // Resilient model list fallback matching Google's latest recommendations
-  const candidateModels = [
-    'gemini-2.5-flash',
-    'gemini-1.5-flash',
-    'gemini-1.5-flash-latest',
-    'gemini-pro'
-  ];
 
   const parts = [];
   if (fileBase64 && mimeType) {
@@ -70,9 +62,38 @@ async function callGemini({ prompt, fileBase64, mimeType, systemInstruction = CH
     }
   };
 
+  // 1. First, dynamically discover the exact models supported for this API Key
+  let activeModels = [];
+  try {
+    const listRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
+    if (listRes.ok) {
+      const listData = await listRes.json();
+      if (Array.isArray(listData.models)) {
+        activeModels = listData.models
+          .filter(m => (m.supportedGenerationMethods || []).includes('generateContent'))
+          .map(m => m.name.replace('models/', ''));
+      }
+    }
+  } catch (discoveryErr) {
+    console.warn('Could not list models, falling back to static list:', discoveryErr);
+  }
+
+  // 2. Sort preferred models (flash variants first, then pro)
+  const preferredOrder = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-2.5-flash', 'gemini-1.5-flash-8b', 'gemini-1.5-pro'];
+  const sortedCandidateModels = [
+    ...preferredOrder.filter(m => activeModels.includes(m)),
+    ...activeModels.filter(m => !preferredOrder.includes(m)),
+    // Fallback if listModels didn't return or was blocked
+    'gemini-1.5-flash',
+    'gemini-2.0-flash'
+  ];
+
+  // Remove duplicates
+  const finalCandidates = [...new Set(sortedCandidateModels)];
+
   let lastError = null;
 
-  for (const model of candidateModels) {
+  for (const model of finalCandidates) {
     try {
       const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
       const response = await fetch(endpoint, {
