@@ -34,8 +34,13 @@ async function callGemini({ prompt, fileBase64, mimeType, systemInstruction = CH
     throw new Error('لم يتم تعيين مفتاح Gemini API في إعدادات المنصة. يرجى من أمين الخدمة أو المشرف إدخال المفتاح في لوحة التحكم.');
   }
 
-  // Resilient model list fallback (gemini-2.0-flash, gemini-1.5-flash-latest, gemini-1.5-flash)
-  const candidateModels = ['gemini-2.0-flash', 'gemini-1.5-flash-latest', 'gemini-1.5-flash', 'gemini-2.5-flash'];
+  // Resilient model list fallback matching Google's latest recommendations
+  const candidateModels = [
+    'gemini-2.5-flash',
+    'gemini-1.5-flash',
+    'gemini-1.5-flash-latest',
+    'gemini-pro'
+  ];
 
   const parts = [];
   if (fileBase64 && mimeType) {

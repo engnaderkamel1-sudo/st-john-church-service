@@ -425,7 +425,7 @@ export default function ServantAiStudioModal({
               <>
                 <Sparkles className="w-4 h-4 text-gold-400" />
                 <span>
-                  {activeMode === 'questions' ? 'توليد بنك الأسئلة الآن 🪄' : activeMode === 'presentation' ? 'توليد عرض الشرائح للـ Data Show 📊' : 'توليد كبسولة الدرس 📖'}
+                  {activeMode === 'questions' ? 'توليد بنك الأسئلة الآن 🪄' : activeMode === 'presentation' ? 'توليد عرض الشرائح للـ Data Show 📊' : 'توليد ملخص الدرس 📖'}
                 </span>
               </>
             )}
