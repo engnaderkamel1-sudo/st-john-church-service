@@ -1,5 +1,6 @@
-import React from 'react';
-import { Users, History, RefreshCw, Activity, UserPlus, UserX, Check } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Users, History, RefreshCw, Activity, UserPlus, UserX, Check, Sparkles, Key, ExternalLink, Save, Eye, EyeOff } from 'lucide-react';
+import { getGeminiApiKey, saveGeminiApiKey } from '../../services/geminiService';
 
 export default function ServantUsersHub({
   user,
@@ -23,9 +24,34 @@ export default function ServantUsersHub({
   handleUpdateUserRole,
   roleUpdatingId
 }) {
+  const [apiKeyInput, setApiKeyInput] = useState('');
+  const [apiKeyLoading, setApiKeyLoading] = useState(false);
+  const [apiKeySaved, setApiKeySaved] = useState(false);
+  const [showKeyText, setShowKeyText] = useState(false);
+
+  useEffect(() => {
+    getGeminiApiKey().then(k => {
+      if (k) setApiKeyInput(k);
+    });
+  }, []);
+
+  const handleSaveApiKey = async (e) => {
+    e?.preventDefault();
+    if (!apiKeyInput.trim()) return;
+    setApiKeyLoading(true);
+    try {
+      await saveGeminiApiKey(apiKeyInput);
+      setApiKeySaved(true);
+      setTimeout(() => setApiKeySaved(false), 3000);
+    } catch (err) {
+      console.error('Error saving API Key:', err);
+    } finally {
+      setApiKeyLoading(false);
+    }
+  };
   return (
     <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-6">
-      {/* Subtabs Switcher: الحسابات والأدوار vs سجل دخول المستخدمين */}
+      {/* Subtabs Switcher: الحسابات والأدوار vs سجل دخول المستخدمين vs إعدادات الذكاء الاصطناعي */}
       <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
         <button
           type="button"
@@ -52,9 +78,22 @@ export default function ServantUsersHub({
           <History className="w-4 h-4 text-gold-400" />
           <span>سجل النشاط والدخول ({loginLogs.length})</span>
         </button>
+
+        <button
+          type="button"
+          onClick={() => setUserHubSubTab('ai_settings')}
+          className={`py-2 px-4 rounded-xl font-bold text-xs transition-all flex items-center gap-1.5 ${
+            userHubSubTab === 'ai_settings'
+              ? 'bg-maroon-800 text-white shadow-xs'
+              : 'bg-slate-100 text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          <Sparkles className="w-4 h-4 text-gold-400" />
+          <span>إعدادات الذكاء الاصطناعي (AI) 🤖</span>
+        </button>
       </div>
 
-      {userHubSubTab === 'accounts' ? (
+      {userHubSubTab === 'accounts' && (
         <>
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
             <div>
@@ -280,9 +319,10 @@ export default function ServantUsersHub({
                 </tbody>
               </table>
             </div>
-          )}
         </>
-      ) : (
+      )}
+
+      {userHubSubTab === 'login_history' && (
         /* Login History View (سجل دخول المستخدمين) */
         <div className="space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
@@ -375,6 +415,93 @@ export default function ServantUsersHub({
               </table>
             </div>
           )}
+        </div>
+      )}
+
+      {/* 3. AI Studio Configuration View (إعدادات مفتاح الذكاء الاصطناعي للمنظومة) */}
+      {userHubSubTab === 'ai_settings' && (
+        <div className="space-y-6">
+          <div className="border-b border-slate-100 pb-4">
+            <div className="flex items-center gap-2">
+              <h3 className="font-extrabold text-slate-900 text-base">إعدادات الذكاء الاصطناعي (Google Gemini AI)</h3>
+              <span className="text-[11px] bg-purple-100 text-purple-900 font-bold px-2.5 py-0.5 rounded-full">
+                إعدادات مركزية لجميع الخدام
+              </span>
+            </div>
+            <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+              المفتاح الموحد المسجل هنا يُمكّن جميع الخدام تلقائياً من استخدام "الاستوديو الذكي" لتحويل كتب المسابقات والمذكرات لامتحانات وشرائح تفاعلية وملخصات كنسية.
+            </p>
+          </div>
+
+          <div className="bg-slate-50 border border-slate-200 rounded-3xl p-6 space-y-5">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-maroon-800 text-gold-400 flex items-center justify-center font-bold shadow-xs">
+                <Key className="w-5 h-5" />
+              </div>
+              <div>
+                <h4 className="font-extrabold text-sm text-slate-900">مفتاح Google AI Studio (Gemini API Key)</h4>
+                <span className="text-[11px] text-slate-500">حساب الخدمة الموحد (مجاني تماماً حتى 1500 طلب يومياً)</span>
+              </div>
+            </div>
+
+            <form onSubmit={handleSaveApiKey} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">أدخل أو حدث مفتاح الـ API:</label>
+                <div className="relative flex items-center">
+                  <input
+                    type={showKeyText ? 'text' : 'password'}
+                    value={apiKeyInput}
+                    onChange={(e) => setApiKeyInput(e.target.value)}
+                    placeholder="AIzaSy..."
+                    dir="ltr"
+                    className="w-full bg-white border border-slate-300 rounded-2xl px-4 py-3 text-xs font-mono font-bold text-slate-900 focus:outline-none focus:border-maroon-800 pr-12 shadow-xs"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowKeyText(!showKeyText)}
+                    className="absolute left-3 p-1.5 text-slate-400 hover:text-slate-600 transition-colors"
+                    title={showKeyText ? 'إخفاء المفتاح' : 'إظهار المفتاح'}
+                  >
+                    {showKeyText ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
+                <button
+                  type="submit"
+                  disabled={apiKeyLoading || !apiKeyInput.trim()}
+                  className="bg-maroon-800 hover:bg-maroon-700 text-white font-bold text-xs py-2.5 px-6 rounded-xl transition-all shadow-xs flex items-center justify-center gap-2 disabled:opacity-60"
+                >
+                  <Save className="w-4 h-4" />
+                  <span>{apiKeyLoading ? 'جاري الحفظ...' : 'حفظ وتفعيل المفتاح لجميع الخدام'}</span>
+                </button>
+
+                {apiKeySaved && (
+                  <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold px-3.5 py-2 rounded-xl flex items-center gap-2">
+                    <Check className="w-4 h-4 text-emerald-600" />
+                    <span>تم حفظ وتفعيل مفتاح الـ API بنجاح في قاعدة البيانات! ✓</span>
+                  </div>
+                )}
+              </div>
+            </form>
+
+            <div className="bg-white border border-slate-200/80 rounded-2xl p-4 text-xs space-y-2 text-slate-600">
+              <span className="font-extrabold text-slate-800 block">💡 كيف تحصل على المفتاح المجاني لحساب الخدمة؟</span>
+              <p className="leading-relaxed text-[11px]">
+                ادخل على منصة Google AI Studio وسجل بحساب جوجل المخصص للخدمة، ثم اضغط على "Get API Key" وأنشئ مفتاحاً جديداً وضعه هنا.
+              </p>
+              <a
+                href="https://aistudio.google.com/app/apikey"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-maroon-800 hover:text-maroon-900 font-bold inline-flex items-center gap-1.5 pt-1 text-xs"
+              >
+                <span>فتح Google AI Studio لإنشاء المفتاح</span>
+                <ExternalLink className="w-3.5 h-3.5" />
+              </a>
+            </div>
+          </div>
         </div>
       )}
     </div>

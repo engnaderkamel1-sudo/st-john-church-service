@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
-import { Plus, FileText } from 'lucide-react';
+import { Plus, FileText, Sparkles, Presentation } from 'lucide-react';
 import { db } from '../../firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import ServantAiStudioModal from './ServantAiStudioModal';
+import AiPresentationViewer from './AiPresentationViewer';
 
 export default function ServantExamsBank({
   selectedGrade,
@@ -14,6 +16,8 @@ export default function ServantExamsBank({
 }) {
   const [examSubSection, setExamSubSection] = useState('bank'); // 'bank' | 'assign'
   const [showAddQuestionModal, setShowAddQuestionModal] = useState(false);
+  const [showAiStudioModal, setShowAiStudioModal] = useState(false);
+  const [activePresentation, setActivePresentation] = useState(null);
   const [newQuestion, setNewQuestion] = useState({
     subject: '',
     type: 'mcq',
@@ -99,6 +103,20 @@ export default function ServantExamsBank({
     setShowCreateExamModal(false);
   };
 
+  const handleBatchAddAiQuestions = async (newQuestions) => {
+    setQuestionBank(prev => [...newQuestions, ...(prev || [])]);
+    try {
+      for (const q of newQuestions) {
+        await addDoc(collection(db, 'service_questions'), {
+          ...q,
+          createdAt: serverTimestamp()
+        });
+      }
+    } catch (err) {
+      console.error('Error saving batch AI questions:', err);
+    }
+  };
+
   return (
     <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-6">
       <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
@@ -127,13 +145,25 @@ export default function ServantExamsBank({
               <h4 className="font-extrabold text-slate-900 text-base">بنك الأسئلة: {getGradeTitle(selectedGrade)}</h4>
               <p className="text-xs text-slate-500 mt-0.5">يضيف خدام المواد الأسئلة مصنفة حسب الصعوبة والنوع ليتم توليد الامتحانات منها.</p>
             </div>
-            <button
-              onClick={() => setShowAddQuestionModal(true)}
-              className="bg-maroon-800 hover:bg-maroon-700 text-white font-bold text-xs py-2 px-4 rounded-xl transition-all shadow-xs flex items-center justify-center gap-1.5"
-            >
-              <Plus className="w-4 h-4" />
-              <span>إضافة سؤال لبنك الأسئلة</span>
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setShowAiStudioModal(true)}
+                className="bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white font-extrabold text-xs py-2 px-3.5 rounded-xl transition-all shadow-xs flex items-center justify-center gap-1.5"
+              >
+                <Sparkles className="w-4 h-4 text-gold-300" />
+                <span>الاستوديو الذكي (AI) 🪄</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setShowAddQuestionModal(true)}
+                className="bg-maroon-800 hover:bg-maroon-700 text-white font-bold text-xs py-2 px-4 rounded-xl transition-all shadow-xs flex items-center justify-center gap-1.5"
+              >
+                <Plus className="w-4 h-4" />
+                <span>إضافة سؤال يدوياً</span>
+              </button>
+            </div>
           </div>
 
           {showAddQuestionModal && (
@@ -315,6 +345,26 @@ export default function ServantExamsBank({
             </div>
           )}
         </div>
+      )}
+
+      {/* AI Studio Modal for Servants */}
+      <ServantAiStudioModal
+        isOpen={showAiStudioModal}
+        onClose={() => setShowAiStudioModal(false)}
+        initialGrade={selectedGrade}
+        onAddQuestionsToBank={handleBatchAddAiQuestions}
+        onOpenPresentation={(pres) => {
+          setActivePresentation(pres);
+          setShowAiStudioModal(false);
+        }}
+      />
+
+      {/* Interactive Presentation Slides Viewer */}
+      {activePresentation && (
+        <AiPresentationViewer
+          presentation={activePresentation}
+          onClose={() => setActivePresentation(null)}
+        />
       )}
     </div>
   );
