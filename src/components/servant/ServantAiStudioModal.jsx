@@ -239,7 +239,7 @@ export default function ServantAiStudioModal({
                 الاستوديو الذكي للخادم (AI Assistant)
               </h3>
               <p className="text-xs text-maroon-200 mt-0.5">
-                توليد امتحانات، شرائح Data Show، وكبسولات الدروس مباشرة من كتب ومذكرات الخدمة.
+                توليد امتحانات، شرائح Data Show، وملخصات الدروس مباشرة من كتب ومذكرات الخدمة.
               </p>
             </div>
           </div>
@@ -279,7 +279,7 @@ export default function ServantAiStudioModal({
               }`}
             >
               <BookOpen className="w-4 h-4" />
-              <span>كبسولة الدرس 📖</span>
+              <span>ملخص الدرس 📖</span>
             </button>
           </div>
 
@@ -737,7 +737,7 @@ export default function ServantAiStudioModal({
               {isEditingStudyGuide && editStudyGuideData ? (
                 <div className="bg-white border-2 border-maroon-800 p-5 rounded-2xl space-y-4 shadow-md">
                   <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-                    <span className="font-extrabold text-maroon-900 text-sm">تعديل كبسولة وملخص الدرس</span>
+                    <span className="font-extrabold text-maroon-900 text-sm">تعديل ملخص ودليل الدرس</span>
                   </div>
 
                   <div>

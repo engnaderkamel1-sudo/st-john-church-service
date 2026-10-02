@@ -27,15 +27,15 @@ export async function saveGeminiApiKey(apiKey) {
   await setDoc(docRef, { geminiApiKey: apiKey.trim(), updatedAt: new Date().toISOString() }, { merge: true });
 }
 
-// Helper to call Gemini 1.5 / 2.0 Flash REST API
+// Helper to call Gemini REST API with fallback to supported models
 async function callGemini({ prompt, fileBase64, mimeType, systemInstruction = CHURCH_SYSTEM_INSTRUCTION }) {
   const apiKey = await getGeminiApiKey();
   if (!apiKey) {
     throw new Error('لم يتم تعيين مفتاح Gemini API في إعدادات المنصة. يرجى من أمين الخدمة أو المشرف إدخال المفتاح في لوحة التحكم.');
   }
 
-  // Use gemini-1.5-flash which is stable and widely available on free tier
-  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+  // Resilient model list fallback (gemini-2.0-flash, gemini-1.5-flash-latest, gemini-1.5-flash)
+  const candidateModels = ['gemini-2.0-flash', 'gemini-1.5-flash-latest', 'gemini-1.5-flash', 'gemini-2.5-flash'];
 
   const parts = [];
   if (fileBase64 && mimeType) {
@@ -65,31 +65,43 @@ async function callGemini({ prompt, fileBase64, mimeType, systemInstruction = CH
     }
   };
 
-  const response = await fetch(endpoint, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(requestBody)
-  });
+  let lastError = null;
 
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    const errorMsg = errorData.error?.message || response.statusText;
-    throw new Error(`خطأ في الاتصال بالذكاء الاصطناعي (${response.status}): ${errorMsg}`);
+  for (const model of candidateModels) {
+    try {
+      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        const errorMsg = errorData.error?.message || response.statusText;
+        lastError = new Error(`خطأ في النموذج (${model}): ${errorMsg}`);
+        continue; // Try next candidate model
+      }
+
+      const result = await response.json();
+      const rawText = result.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (!rawText) {
+        lastError = new Error('لم يتم استلام رد من النموذج');
+        continue;
+      }
+
+      try {
+        return JSON.parse(rawText);
+      } catch (err) {
+        const cleaned = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
+        return JSON.parse(cleaned);
+      }
+    } catch (err) {
+      lastError = err;
+    }
   }
 
-  const result = await response.json();
-  const rawText = result.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!rawText) {
-    throw new Error('لم يتم استلام رد من النموذج، يرجى المحاولة مرة أخرى.');
-  }
-
-  try {
-    return JSON.parse(rawText);
-  } catch (err) {
-    // Clean potential markdown fences
-    const cleaned = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
-    return JSON.parse(cleaned);
-  }
+  throw lastError || new Error('فشل الاتصال بنماذج الذكاء الاصطناعي. يرجى التأكد من صلاحية مفتاح الـ API.');
 }
 
 // 1. Generate Church Exam Questions
