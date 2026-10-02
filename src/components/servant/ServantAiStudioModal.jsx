@@ -6,8 +6,8 @@ import {
 } from 'lucide-react';
 import { generateChurchQuestions, generateChurchPresentation, generateChurchStudyGuide } from '../../services/geminiService';
 
-export default function ServantAiStudioModal({ isOpen, onClose, onAddQuestionsToBank, onOpenPresentation, initialGrade = 'first' }) {
-  const [activeMode, setActiveMode] = useState('questions'); // 'questions' | 'presentation' | 'study_guide'
+export default function ServantAiStudioModal({ isOpen, onClose, onAddQuestionsToBank, onOpenPresentation, initialGrade = 'first', initialMode = 'questions' }) {
+  const [activeMode, setActiveMode] = useState(initialMode); // 'questions' | 'presentation' | 'study_guide'
   const [selectedGrade, setSelectedGrade] = useState(initialGrade);
   const [questionCount, setQuestionCount] = useState(5);
   const [slideCount, setSlideCount] = useState(6);

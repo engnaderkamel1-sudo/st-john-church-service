@@ -2,10 +2,12 @@ import React, { useState } from 'react';
 import { 
   BookOpen, ShieldCheck, Plus, Trash2, ChevronLeft, UploadCloud, 
   FileText, Music, Video, Check, ExternalLink, Eye, EyeOff,
-  FileSpreadsheet, File, Image as ImageIcon
+  FileSpreadsheet, File, Image as ImageIcon, Sparkles, Presentation
 } from 'lucide-react';
 import { db } from '../../firebase';
 import { collection, doc, addDoc, updateDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
+import ServantAiStudioModal from './ServantAiStudioModal';
+import AiPresentationViewer from './AiPresentationViewer';
 
 export default function ServantCurriculum({
   user,
@@ -28,6 +30,9 @@ export default function ServantCurriculum({
   const [refSaving, setRefSaving] = useState(false);
   const [selectedUploadFile, setSelectedUploadFile] = useState(null);
   const [uploadStatusText, setUploadStatusText] = useState('');
+  const [showAiStudioModal, setShowAiStudioModal] = useState(false);
+  const [aiStudioMode, setAiStudioMode] = useState('presentation'); // 'presentation' | 'study_guide'
+  const [activePresentation, setActivePresentation] = useState(null);
 
   const allCurrentGradeSubjects = subjectsByGrade[selectedGrade] || [];
   const currentGradeSubjects = allCurrentGradeSubjects.filter(
@@ -344,7 +349,33 @@ export default function ServantCurriculum({
                 إدارة المواد ورفع الملفات (PDF، Word، Excel، صور، تسجيلات) إلى Google Drive مباشرة.
               </p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setAiStudioMode('presentation');
+                  setShowAiStudioModal(true);
+                }}
+                className="bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white font-extrabold text-xs py-2 px-3.5 rounded-xl transition-all shadow-xs flex items-center justify-center gap-1.5"
+                title="توليد عرض تقديمي للشرائح Data Show من كتاب أو مذكرة الدرس بالذكاء الاصطناعي"
+              >
+                <Presentation className="w-4 h-4 text-gold-300" />
+                <span>إنشاء Presentation (Data Show) 📽️</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setAiStudioMode('study_guide');
+                  setShowAiStudioModal(true);
+                }}
+                className="bg-purple-700 hover:bg-purple-800 text-white font-extrabold text-xs py-2 px-3.5 rounded-xl transition-all shadow-xs flex items-center justify-center gap-1.5"
+                title="توليد ملخص ودليل دراسي كنسي شامل للدرس مع الشواهد والأسئلة"
+              >
+                <Sparkles className="w-4 h-4 text-purple-200" />
+                <span>توليد ملخص الدرس كنسياً 📖</span>
+              </button>
+
               <button
                 onClick={() => setShowAddSubjectModal(true)}
                 className="bg-maroon-800 hover:bg-maroon-700 text-white font-bold text-xs py-2 px-4 rounded-xl transition-all shadow-xs flex items-center justify-center gap-1.5"
@@ -446,7 +477,33 @@ export default function ServantCurriculum({
               <h4 className="font-extrabold text-slate-900 text-lg">{activeSubject.name}</h4>
               <span className="text-xs text-maroon-800 font-semibold">المسئول: {activeSubject.teacher}</span>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setAiStudioMode('presentation');
+                  setShowAiStudioModal(true);
+                }}
+                className="bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white font-extrabold text-xs py-2 px-3 rounded-xl transition-all shadow-xs flex items-center justify-center gap-1.5"
+                title="توليد عرض تقديمي للشرائح Data Show لهذه المادة بالذكاء الاصطناعي"
+              >
+                <Presentation className="w-4 h-4 text-gold-300" />
+                <span>Presentation 📽️</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setAiStudioMode('study_guide');
+                  setShowAiStudioModal(true);
+                }}
+                className="bg-purple-700 hover:bg-purple-800 text-white font-extrabold text-xs py-2 px-3 rounded-xl transition-all shadow-xs flex items-center justify-center gap-1.5"
+                title="توليد ملخص ودليل دراسي كنسي شامل لهذه المادة"
+              >
+                <Sparkles className="w-4 h-4 text-purple-200" />
+                <span>ملخص المادة 📖</span>
+              </button>
+
               <button
                 onClick={() => setShowAddRefModal(true)}
                 className="bg-maroon-800 hover:bg-maroon-700 text-white font-bold text-xs py-2 px-3.5 rounded-xl transition-all shadow-xs flex items-center gap-1.5"
@@ -685,6 +742,29 @@ export default function ServantCurriculum({
           </div>
         </div>
       )}
+
+      {/* Presentation Fullscreen / Data Show Viewer Modal */}
+      {activePresentation && (
+        <AiPresentationViewer
+          presentation={activePresentation}
+          onClose={() => setActivePresentation(null)}
+        />
+      )}
+
+      {/* AI Studio Modal for Presentations & Study Guides */}
+      <ServantAiStudioModal
+        isOpen={showAiStudioModal}
+        onClose={() => setShowAiStudioModal(false)}
+        initialGrade={selectedGrade}
+        initialMode={aiStudioMode}
+        onOpenPresentation={(pres) => {
+          setActivePresentation(pres);
+          setShowAiStudioModal(false);
+        }}
+        onAddQuestionsToBank={() => {
+          setShowAiStudioModal(false);
+        }}
+      />
     </div>
   );
 }

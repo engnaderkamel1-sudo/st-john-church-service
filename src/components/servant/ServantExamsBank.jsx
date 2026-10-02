@@ -150,9 +150,10 @@ export default function ServantExamsBank({
                 type="button"
                 onClick={() => setShowAiStudioModal(true)}
                 className="bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white font-extrabold text-xs py-2 px-3.5 rounded-xl transition-all shadow-xs flex items-center justify-center gap-1.5"
+                title="توليد أسئلة امتحانات تلقائياً من المستندات والصور بالذكاء الاصطناعي وإضافتها لبنك الأسئلة"
               >
                 <Sparkles className="w-4 h-4 text-gold-300" />
-                <span>الاستوديو الذكي (AI) 🪄</span>
+                <span>توليد أسئلة بالذكاء الاصطناعي (AI) 🪄</span>
               </button>
 
               <button
