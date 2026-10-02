@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase/app";
-import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from "firebase/firestore";
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, getFirestore } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 
 const firebaseConfig = {
@@ -24,7 +24,6 @@ try {
   });
 } catch (e) {
   console.warn("Firestore offline persistence already active or fallback used:", e);
-  const { getFirestore } = await import("firebase/firestore");
   firestoreDb = getFirestore(app);
 }
 
