@@ -1036,21 +1036,6 @@ export default function ServantDashboard({ user }) {
             </div>
           </div>
         </div>
-
-        {/* Grade Switcher */}
-        <div className="flex items-center gap-1.5 bg-slate-100 p-1.5 rounded-2xl w-full sm:w-auto overflow-x-auto">
-          {['first', 'second', 'third', 'elisha'].map((g) => (
-            <button
-              key={g}
-              onClick={() => { setSelectedGrade(g); setActiveSubject(null); }}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 ${
-                selectedGrade === g ? 'bg-white text-maroon-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              {getGradeTitle(g)}
-            </button>
-          ))}
-        </div>
       </div>
 
       {/* Top Floating Appbar with Menu Trigger and Active Tab Pill */}
