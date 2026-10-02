@@ -29,6 +29,10 @@ export async function saveGeminiApiKey(apiKey) {
   await setDoc(docRef, { geminiApiKey: apiKey.trim(), updatedAt: new Date().toISOString() }, { merge: true });
 }
 
+// In-memory cache for working model to reduce latency
+let cachedWorkingModel = null;
+let cachedActiveModels = null;
+
 // Helper to call Gemini REST API with automatic model discovery
 async function callGemini({ prompt, fileBase64, mimeType, systemInstruction = CHURCH_SYSTEM_INSTRUCTION }) {
   const apiKey = await getGeminiApiKey();
@@ -64,38 +68,20 @@ async function callGemini({ prompt, fileBase64, mimeType, systemInstruction = CH
     }
   };
 
-  // 1. First, dynamically discover the exact models supported for this API Key
-  let activeModels = [];
-  try {
-    const listRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
-    if (listRes.ok) {
-      const listData = await listRes.json();
-      if (Array.isArray(listData.models)) {
-        activeModels = listData.models
-          .filter(m => (m.supportedGenerationMethods || []).includes('generateContent'))
-          .map(m => m.name.replace('models/', ''));
-      }
-    }
-  } catch (discoveryErr) {
-    console.warn('Could not list models, falling back to static list:', discoveryErr);
+  // Cache for confirmed working model and available models to eliminate redundant roundtrips
+  const candidates = [];
+  if (cachedWorkingModel) {
+    candidates.push(cachedWorkingModel);
   }
-
-  // 2. Sort preferred models (flash variants first, then pro)
-  const preferredOrder = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-2.5-flash', 'gemini-1.5-flash-8b', 'gemini-1.5-pro'];
-  const sortedCandidateModels = [
-    ...preferredOrder.filter(m => activeModels.includes(m)),
-    ...activeModels.filter(m => !preferredOrder.includes(m)),
-    // Fallback if listModels didn't return or was blocked
-    'gemini-1.5-flash',
-    'gemini-2.0-flash'
-  ];
-
-  // Remove duplicates
-  const finalCandidates = [...new Set(sortedCandidateModels)];
+  // Fast default candidates
+  ['gemini-1.5-flash', 'gemini-2.0-flash', 'gemini-2.5-flash'].forEach(m => {
+    if (!candidates.includes(m)) candidates.push(m);
+  });
 
   let lastError = null;
 
-  for (const model of finalCandidates) {
+  // Step 1: Try fast candidates first
+  for (const model of candidates) {
     try {
       const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
       const response = await fetch(endpoint, {
@@ -108,7 +94,7 @@ async function callGemini({ prompt, fileBase64, mimeType, systemInstruction = CH
         const errorData = await response.json().catch(() => ({}));
         const errorMsg = errorData.error?.message || response.statusText;
         lastError = new Error(`خطأ في النموذج (${model}): ${errorMsg}`);
-        continue; // Try next candidate model
+        continue; // Try next fast candidate
       }
 
       const result = await response.json();
@@ -117,6 +103,69 @@ async function callGemini({ prompt, fileBase64, mimeType, systemInstruction = CH
         lastError = new Error('لم يتم استلام رد من النموذج');
         continue;
       }
+
+      cachedWorkingModel = model; // Cache confirmed working model
+
+      try {
+        return JSON.parse(rawText);
+      } catch (err) {
+        const cleaned = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
+        return JSON.parse(cleaned);
+      }
+    } catch (err) {
+      lastError = err;
+    }
+  }
+
+  // Step 2: If fast candidates failed, dynamically discover supported models via API
+  let activeModels = cachedActiveModels || [];
+  if (activeModels.length === 0) {
+    try {
+      const listRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
+      if (listRes.ok) {
+        const listData = await listRes.json();
+        if (Array.isArray(listData.models)) {
+          activeModels = listData.models
+            .filter(m => (m.supportedGenerationMethods || []).includes('generateContent'))
+            .map(m => m.name.replace('models/', ''));
+          cachedActiveModels = activeModels;
+        }
+      }
+    } catch (discoveryErr) {
+      console.warn('Could not list models:', discoveryErr);
+    }
+  }
+
+  const preferredOrder = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-2.5-flash', 'gemini-1.5-flash-8b', 'gemini-1.5-pro'];
+  const remainingCandidates = [
+    ...preferredOrder.filter(m => activeModels.includes(m)),
+    ...activeModels.filter(m => !preferredOrder.includes(m))
+  ].filter(m => !candidates.includes(m));
+
+  for (const model of remainingCandidates) {
+    try {
+      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        const errorMsg = errorData.error?.message || response.statusText;
+        lastError = new Error(`خطأ في النموذج (${model}): ${errorMsg}`);
+        continue;
+      }
+
+      const result = await response.json();
+      const rawText = result.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (!rawText) {
+        lastError = new Error('لم يتم استلام رد من النموذج');
+        continue;
+      }
+
+      cachedWorkingModel = model;
 
       try {
         return JSON.parse(rawText);

@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { 
   Sparkles, Upload, FileText, Image as ImageIcon, CheckCircle, 
   AlertCircle, X, ChevronRight, BookOpen, Layers, Presentation, 
-  Trash2, Plus, Edit3, Send, Play, Copy, Check, Download, Printer
+  Trash2, Plus, Edit3, Send, Play, Copy, Check, Download, Printer,
+  RotateCcw, Info
 } from 'lucide-react';
 import { generateChurchQuestions, generateChurchPresentation, generateChurchStudyGuide } from '../../services/geminiService';
 
@@ -14,8 +15,10 @@ export default function ServantAiStudioModal({
   initialGrade = 'first', 
   initialMode = 'questions',
   initialFile = null,
-  initialText = ''
+  initialText = '',
+  targetReference = null
 }) {
+  const resultsRef = useRef(null);
   const [activeMode, setActiveMode] = useState(initialMode); // 'questions' | 'presentation' | 'study_guide'
   const [selectedGrade, setSelectedGrade] = useState(initialGrade);
   const [questionCount, setQuestionCount] = useState(5);
@@ -58,6 +61,11 @@ export default function ServantAiStudioModal({
   }, [isOpen, initialText, initialMode, initialGrade]);
 
   if (!isOpen) return null;
+
+  const hasCurrentResults = 
+    (activeMode === 'questions' && generatedQuestions.length > 0) ||
+    (activeMode === 'presentation' && Boolean(generatedPresentation)) ||
+    (activeMode === 'study_guide' && Boolean(generatedStudyGuide));
 
   // Question Edit Handlers
   const handleStartEditQuestion = (q, idx) => {
@@ -270,7 +278,11 @@ export default function ServantAiStudioModal({
 
   const handleGenerate = async () => {
     if (!fileBase64 && (!manualText || manualText.trim().length < 15)) {
-      setError('يرجى رفع ملف (PDF أو صورة) أو كتابة نص الدرس المطلوب (15 حرفاً على الأقل).');
+      setError(
+        targetReference 
+          ? `يرجى إرفاق ملف (${targetReference.title}) من جهازك عبر زر الرفع أدناه، أو كتابة نص الدرس المطلوب للتحليل (15 حرفاً على الأقل).`
+          : 'يرجى رفع ملف (PDF أو صورة) أو كتابة نص الدرس المطلوب (15 حرفاً على الأقل).'
+      );
       return;
     }
 
@@ -309,6 +321,11 @@ export default function ServantAiStudioModal({
         });
         setGeneratedStudyGuide(guide);
       }
+
+      // Smooth auto-scroll to results so user sees the output immediately
+      setTimeout(() => {
+        resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 150);
     } catch (err) {
       console.error('AI Generation Error:', err);
       setError(err.message || 'حدث خطأ أثناء معالجة المستند بالذكاء الاصطناعي.');
@@ -454,6 +471,28 @@ export default function ServantAiStudioModal({
 
           {/* File Upload & Input Area */}
           <div className="space-y-3">
+            {/* Target Reference Info (عند فتح الاستوديو من مادة دراسية محددة) */}
+            {targetReference && (
+              <div className="bg-amber-50/90 border border-amber-300 rounded-2xl p-3.5 flex items-start gap-3 text-xs text-amber-950">
+                <Info className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" />
+                <div className="space-y-1">
+                  <div className="font-extrabold flex items-center gap-1.5 flex-wrap">
+                    <span>أنت تقوم بإعداد محتوى للمرجع:</span>
+                    <span className="text-maroon-900 bg-amber-100/80 px-2 py-0.5 rounded-md font-mono">{targetReference.title}</span>
+                  </div>
+                  <p className="text-[11px] text-amber-900 leading-relaxed">
+                    {selectedFile ? (
+                      <span className="text-emerald-800 font-bold">✓ تم إرفاق ملف المحتوى بنجاح وهو جاهز للتحليل الفوري بدقة 100%.</span>
+                    ) : (
+                      <span>
+                        💡 <strong>تنبيه هام للأمانة والدقة:</strong> لقراءة هذا الملف واستخراج محتواه بنسبة 100% دون تخمين، يرجى <strong>سحب أو رفع الملف نفسه (PDF أو صورة)</strong> عبر الخانة أدناه، حيث لا يمكن للذكاء الاصطناعي تصفح محتوى روابط Google Drive مباشرة لأسباب تتعلق بالخصوصية والأمان.
+                      </span>
+                    )}
+                  </p>
+                </div>
+              </div>
+            )}
+
             <label className="text-xs font-bold text-slate-700 block">مصدر الدرس (ارفع ملف أو الصق النص):</label>
             
             {!selectedFile ? (
@@ -529,26 +568,59 @@ export default function ServantAiStudioModal({
             </div>
           )}
 
-          {/* Action Trigger Button */}
-          <button
-            onClick={handleGenerate}
-            disabled={loading}
-            className="w-full bg-gradient-to-r from-maroon-900 to-maroon-800 hover:from-maroon-800 hover:to-maroon-700 text-white font-extrabold py-3.5 px-4 rounded-2xl text-xs sm:text-sm shadow-md flex items-center justify-center gap-2 transition-all disabled:opacity-70 disabled:cursor-not-allowed"
-          >
-            {loading ? (
-              <>
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                <span>جاري قراءة وتحليل المستند بالذكاء الاصطناعي الأرثوذكسي...</span>
-              </>
-            ) : (
-              <>
-                <Sparkles className="w-4 h-4 text-gold-400" />
-                <span>
-                  {activeMode === 'questions' ? 'توليد بنك الأسئلة الآن 🪄' : activeMode === 'presentation' ? 'توليد عرض الشرائح للـ Data Show 📊' : 'توليد ملخص الدرس 📖'}
-                </span>
-              </>
-            )}
-          </button>
+          {/* Action Trigger Button / Status */}
+          {hasCurrentResults ? (
+            <div className="space-y-2.5">
+              <div className="bg-emerald-50 border border-emerald-300 p-3.5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs text-emerald-950 font-bold shadow-xs">
+                <div className="flex items-center gap-2">
+                  <CheckCircle className="w-5 h-5 text-emerald-600 shrink-0" />
+                  <span>
+                    تم التوليد بنجاح! المحتوى المستخرج جاهز للمراجعة والحفظ بالأسفل.
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                  className="bg-emerald-700 hover:bg-emerald-800 text-white text-[11px] font-extrabold px-3.5 py-2 rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5 shrink-0"
+                >
+                  <span>عرض ومراجعة النتائج بالأسفل 👇</span>
+                </button>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleGenerate}
+                disabled={loading}
+                className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 font-bold py-2.5 px-4 rounded-xl text-xs transition-all flex items-center justify-center gap-2"
+              >
+                <RotateCcw className="w-3.5 h-3.5 text-slate-500" />
+                <span>إعادة التوليد بملاحظات جديدة أو ملف آخر 🔄</span>
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={handleGenerate}
+              disabled={loading}
+              className="w-full bg-gradient-to-r from-maroon-900 to-maroon-800 hover:from-maroon-800 hover:to-maroon-700 text-white font-extrabold py-3.5 px-4 rounded-2xl text-xs sm:text-sm shadow-md flex items-center justify-center gap-2 transition-all disabled:opacity-70 disabled:cursor-not-allowed"
+            >
+              {loading ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  <span>جاري قراءة وتحليل المستند بالذكاء الاصطناعي الأرثوذكسي...</span>
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-4 h-4 text-gold-400" />
+                  <span>
+                    {activeMode === 'questions' ? 'توليد بنك الأسئلة الآن 🪄' : activeMode === 'presentation' ? 'توليد عرض الشرائح للـ Data Show 📊' : 'توليد ملخص الدرس 📖'}
+                  </span>
+                </>
+              )}
+            </button>
+          )}
+
+          {/* Results Anchor */}
+          <div ref={resultsRef} />
 
           {/* Results: Questions Review */}
           {activeMode === 'questions' && generatedQuestions.length > 0 && (

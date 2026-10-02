@@ -801,7 +801,8 @@ export default function ServantCurriculum({
         }}
         initialGrade={selectedGrade}
         initialMode={aiStudioMode}
-        initialText={targetRefForAi ? `محتوى خاص بمادة (${activeSubject?.name || ''}):\nعنوان الملف أو المحاضرة: ${targetRefForAi.title}\nالنوع: ${targetRefForAi.type}\nرابط المرجع: ${targetRefForAi.url || ''}` : ''}
+        targetReference={targetRefForAi}
+        initialText=""
         onOpenPresentation={(pres) => {
           setActivePresentation(pres);
           setShowAiStudioModal(false);
