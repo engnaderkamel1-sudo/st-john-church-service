@@ -401,7 +401,7 @@ export default function StudentDashboard({ user }) {
     }
   };
 
-  const handleSubmitExam = (exam) => {
+  const handleSubmitExam = async (exam) => {
     let autoScore = 0;
     exam.questions.forEach(q => {
       if ((q.type === 'mcq' || q.type === 'true_false') && examAnswers[q.id] === q.correctAnswer) {
@@ -409,10 +409,36 @@ export default function StudentDashboard({ user }) {
       }
     });
 
-    const result = { examId: exam.id, autoScore, essayPending: true, submittedAt: new Date().toLocaleTimeString('ar-EG') };
+    const result = { 
+      examId: exam.id, 
+      examTitle: exam.title || 'امتحان بدون عنوان',
+      subject: exam.subject || 'عام',
+      grade: user.grade || 'first',
+      userId: user.id,
+      userName: user.fullName || 'مخدوم',
+      userPhone: user.phone || '',
+      autoScore, 
+      totalScore: exam.totalScore || 30,
+      essayPending: true, 
+      submittedAt: new Date().toLocaleTimeString('ar-EG'),
+      date: new Date().toISOString().split('T')[0]
+    };
+
     setExamResult(result);
     setCompletedExams(prev => ({ ...prev, [exam.id]: result }));
     setPoints(p => p + autoScore);
+
+    try {
+      await addDoc(collection(db, 'exam_submissions'), {
+        ...result,
+        createdAt: serverTimestamp()
+      });
+      await updateDoc(doc(db, 'users', user.id), {
+        points: (points || 0) + autoScore
+      });
+    } catch (err) {
+      console.log('Error saving exam submission to Firestore:', err);
+    }
   };
 
   const handleCompleteTask = (taskId, pts) => {

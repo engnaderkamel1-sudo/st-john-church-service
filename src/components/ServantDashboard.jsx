@@ -15,6 +15,7 @@ import ServantExamsBank from './servant/ServantExamsBank';
 import ServantAnalytics from './servant/ServantAnalytics';
 import ServantAttendanceQR from './servant/ServantAttendanceQR';
 import ServantUsersHub from './servant/ServantUsersHub';
+import StudentProfileModal from './servant/StudentProfileModal';
 import { collection, getDocs, doc, updateDoc, setDoc, addDoc, deleteDoc, query, where, orderBy, serverTimestamp, limit, onSnapshot } from 'firebase/firestore';
 
 export default function ServantDashboard({ user }) {
@@ -330,6 +331,7 @@ export default function ServantDashboard({ user }) {
   const [studentTrackingMonth, setStudentTrackingMonth] = useState(currentMonthStr);
   const [studentsDiariesList, setStudentsDiariesList] = useState([]);
   const [selectedStudentDetail, setSelectedStudentDetail] = useState(null);
+  const [student360Profile, setStudent360Profile] = useState(null);
 
   const [servantDiary, setServantDiary] = useState({
     [todayDateStr]: {
@@ -1298,6 +1300,7 @@ export default function ServantDashboard({ user }) {
           manualAbsenceSuccessId={manualAbsenceSuccessId}
           handleUpdateUserRole={handleUpdateUserRole}
           roleUpdatingId={roleUpdatingId}
+          onSelectStudent={(st) => setStudent360Profile(st)}
         />
       )}
 
@@ -1344,6 +1347,7 @@ export default function ServantDashboard({ user }) {
           handleCommentChange={handleCommentChange}
           handleSaveComment={handleSaveComment}
           savedCommentId={savedCommentId}
+          onSelectStudent={(st) => setStudent360Profile(st)}
         />
       )}
 
@@ -1389,6 +1393,16 @@ export default function ServantDashboard({ user }) {
           studentsDiariesList={studentsDiariesList}
           selectedStudentDetail={selectedStudentDetail}
           setSelectedStudentDetail={setSelectedStudentDetail}
+          onSelectStudent={(st) => setStudent360Profile(st)}
+        />
+      )}
+
+      {/* 6. Comprehensive Student 360° Profile Modal */}
+      {student360Profile && (
+        <StudentProfileModal
+          student={student360Profile}
+          getGradeTitle={getGradeTitle}
+          onClose={() => setStudent360Profile(null)}
         />
       )}
       </main>

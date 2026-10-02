@@ -23,7 +23,8 @@ export default function ServantSpiritualDiary({
   allUsers,
   studentsDiariesList,
   selectedStudentDetail,
-  setSelectedStudentDetail
+  setSelectedStudentDetail,
+  onSelectStudent
 }) {
   const [myDiarySubTab, setMyDiarySubTab] = useState('entry'); // 'entry' | 'history'
 
@@ -555,11 +556,24 @@ export default function ServantSpiritualDiary({
                   )}
                 </div>
 
-                <div className="pt-2">
+                <div className="pt-2 flex items-center gap-2">
+                  {onSelectStudent && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const targetStudent = selectedStudentDetail.student;
+                        setSelectedStudentDetail(null);
+                        onSelectStudent(targetStudent);
+                      }}
+                      className="flex-1 py-2.5 bg-gradient-to-r from-maroon-900 to-maroon-800 text-white font-bold rounded-xl text-xs shadow-xs hover:from-maroon-950 hover:to-maroon-900 transition-all cursor-pointer ring-1 ring-gold-400/30"
+                    >
+                      فتح الملف الشامل (360°) 🔍
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={() => setSelectedStudentDetail(null)}
-                    className="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition-colors"
+                    className="py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition-colors cursor-pointer"
                   >
                     إغلاق
                   </button>

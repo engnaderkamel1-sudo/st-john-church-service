@@ -24,7 +24,8 @@ export default function ServantUsersHub({
   manualAbsenceLoadingId,
   manualAbsenceSuccessId,
   handleUpdateUserRole,
-  roleUpdatingId
+  roleUpdatingId,
+  onSelectStudent
 }) {
   const [apiKeyInput, setApiKeyInput] = useState('');
   const [apiKeyLoading, setApiKeyLoading] = useState(false);
@@ -344,6 +345,17 @@ export default function ServantUsersHub({
                             <span>تغيير السر 🔑</span>
                           </button>
                         </div>
+
+                        {item.role === 'student' && onSelectStudent && (
+                          <button
+                            type="button"
+                            onClick={() => onSelectStudent(item)}
+                            className="w-full min-h-[44px] bg-gradient-to-r from-maroon-900 via-maroon-800 to-maroon-900 text-white rounded-xl font-bold text-xs shadow-xs flex items-center justify-center gap-2 cursor-pointer active:scale-95 ring-1 ring-gold-400/40"
+                          >
+                            <Eye className="w-4 h-4 text-gold-300" />
+                            <span>عرض الملف الشامل للمخدوم (360°) 🔍</span>
+                          </button>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -355,6 +367,7 @@ export default function ServantUsersHub({
                   <thead className="bg-slate-50 border-b border-slate-200 text-slate-600">
                     <tr>
                       <th className="py-3 px-3">الاسم والبيانات</th>
+                      <th className="py-3 px-2 text-center">الملف 360°</th>
                       <th className="py-3 px-3">رقم الهاتف</th>
                       <th className="py-3 px-3">الصفة الحالية</th>
                       <th className="py-3 px-3">المرحلة / النطاق</th>
@@ -388,6 +401,21 @@ export default function ServantUsersHub({
                                 )}
                               </div>
                             </div>
+                          </td>
+                          <td className="py-3.5 px-2 text-center">
+                            {item.role === 'student' && onSelectStudent ? (
+                              <button
+                                type="button"
+                                onClick={() => onSelectStudent(item)}
+                                className="px-2.5 py-1.5 bg-gradient-to-r from-maroon-800 to-maroon-900 hover:from-maroon-900 hover:to-maroon-950 text-white rounded-xl font-bold text-[11px] shadow-2xs flex items-center gap-1.5 transition-all cursor-pointer ring-1 ring-gold-400/30 active:scale-95"
+                                title="عرض الملف الشامل للمخدوم"
+                              >
+                                <Eye className="w-3.5 h-3.5 text-gold-300" />
+                                <span>الملف 360°</span>
+                              </button>
+                            ) : (
+                              <span className="text-slate-300 text-[10px]">—</span>
+                            )}
                           </td>
                           <td className="py-3.5 px-3 font-mono text-slate-600" dir="ltr">{item.phone}</td>
                           <td className="py-3.5 px-3">
