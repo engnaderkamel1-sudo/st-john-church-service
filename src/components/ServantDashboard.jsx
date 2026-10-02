@@ -16,6 +16,7 @@ import ServantAnalytics from './servant/ServantAnalytics';
 import ServantAttendanceQR from './servant/ServantAttendanceQR';
 import ServantUsersHub from './servant/ServantUsersHub';
 import ServantStudentsHub from './servant/ServantStudentsHub';
+import ServantManualAttendance from './servant/ServantManualAttendance';
 import StudentProfileModal from './servant/StudentProfileModal';
 import { collection, getDocs, doc, updateDoc, setDoc, addDoc, deleteDoc, query, where, orderBy, serverTimestamp, limit, onSnapshot } from 'firebase/firestore';
 
@@ -155,11 +156,12 @@ export default function ServantDashboard({ user }) {
     }
   };
 
-  // 1. Manual Attendance (لو نسي التليفون أو لتسجيله حاضراً)
-  const handleManualAttendance = async (targetUser) => {
+  // 1. Manual Attendance (لو نسي التليفون أو لتسجيله حاضراً مع تحديد وقت الوصول)
+  const handleManualAttendance = async (targetUser, customTime = null) => {
     setManualAttendLoadingId(targetUser.id);
     try {
       const todayDateOnly = new Date().toISOString().split('T')[0];
+      const recordedTime = customTime || new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
       // Record attendance in Firestore
       await addDoc(collection(db, 'attendance'), {
         userId: targetUser.id,
@@ -168,7 +170,7 @@ export default function ServantDashboard({ user }) {
         grade: targetUser.grade || 'first',
         date: todayDateOnly,
         dateFormatted: todayStr,
-        time: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }),
+        time: recordedTime,
         type: 'manual_by_servant',
         status: 'حاضر',
         servantName: user.fullName || 'الخادم المسؤول',
@@ -1031,6 +1033,7 @@ export default function ServantDashboard({ user }) {
             <span className="w-2 h-2 rounded-full bg-gold-500 inline-block animate-pulse shrink-0"></span>
             <span className="truncate">
               {mainTab === 'students_hub' && 'بيانات المخدومين'}
+              {mainTab === 'manual_attendance' && 'تسجيل حضور يدوي ✍️'}
               {mainTab === 'users_hub' && userHubSubTab === 'accounts' && 'المستخدمين والأدوار'}
               {mainTab === 'users_hub' && userHubSubTab === 'login_history' && 'سجل الدخول'}
               {mainTab === 'subjects_hub' && (curriculumTarget === 'students' ? 'مناهج المخدومين' : 'مناهج الخدام 🔒')}
@@ -1100,6 +1103,31 @@ export default function ServantDashboard({ user }) {
                 mainTab === 'students_hub' ? 'bg-gold-400 text-maroon-950' : 'bg-slate-100 text-slate-600'
               }`}>
                 {(allUsers || []).filter(u => u.role === 'student').length}
+              </span>
+            </button>
+
+            {/* 0.1 All Servants: Manual Attendance with Arrival Time */}
+            <button
+              type="button"
+              onClick={() => {
+                setMainTab('manual_attendance');
+                setActiveSubject(null);
+                setMobileSidebarOpen(false);
+              }}
+              className={`w-full text-right py-2.5 px-3 rounded-2xl flex items-center justify-between text-xs font-bold transition-all ${
+                mainTab === 'manual_attendance'
+                  ? 'bg-maroon-800 text-white shadow-sm'
+                  : 'text-slate-700 hover:bg-slate-50 hover:text-slate-900'
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                <UserCheck className={`w-4 h-4 ${mainTab === 'manual_attendance' ? 'text-gold-300' : 'text-emerald-700'}`} />
+                <span>تسجيل حضور يدوي</span>
+              </div>
+              <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                mainTab === 'manual_attendance' ? 'bg-gold-400 text-maroon-950' : 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+              }`}>
+                يدوي ✍️
               </span>
             </button>
 
@@ -1314,6 +1342,21 @@ export default function ServantDashboard({ user }) {
           setSelectedGrade={setSelectedGrade}
           getGradeTitle={getGradeTitle}
           onSelectStudent={(st) => setStudent360Profile(st)}
+        />
+      )}
+
+      {/* Direct Servant Manual Attendance with Custom Arrival Time (All Servants) */}
+      {mainTab === 'manual_attendance' && (
+        <ServantManualAttendance
+          allUsers={allUsers}
+          getGradeTitle={getGradeTitle}
+          handleManualAttendanceWithTime={handleManualAttendance}
+          handleManualAbsence={handleManualAbsence}
+          manualAttendLoadingId={manualAttendLoadingId}
+          manualAttendSuccessId={manualAttendSuccessId}
+          manualAbsenceLoadingId={manualAbsenceLoadingId}
+          manualAbsenceSuccessId={manualAbsenceSuccessId}
+          todayStr={todayStr}
         />
       )}
 

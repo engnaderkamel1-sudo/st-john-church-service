@@ -59,6 +59,47 @@ export default function StudentDashboard({ user }) {
   const [attendanceStatus, setAttendanceStatus] = useState(null);
   const [scanning, setScanning] = useState(false);
   const [attendanceRecords, setAttendanceRecords] = useState([]);
+  const [isOffline, setIsOffline] = useState(!navigator.onLine);
+  const [offlineSyncMessage, setOfflineSyncMessage] = useState('');
+
+  // Offline / Online Connection Event Listeners
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOffline(false);
+      setOfflineSyncMessage('تمت استعادة الاتصال بالإنترنت! جاري مزامنة بيانات الحضور تلقائياً... 📡✓');
+      // Sync any pending localStorage attendance
+      try {
+        const pendingQueue = JSON.parse(localStorage.getItem('offline_attendance_queue') || '[]');
+        if (pendingQueue.length > 0) {
+          pendingQueue.forEach(async (item) => {
+            await addDoc(collection(db, 'attendance'), item);
+            const userRef = doc(db, 'users', item.userId);
+            await updateDoc(userRef, { points: (user.points || 0) + (item.pointsAwarded || 10) });
+          });
+          localStorage.removeItem('offline_attendance_queue');
+          setOfflineSyncMessage('تمت مزامنة حضورك ورفع النقاط بنجاح عبر الإنترنت! 🎉');
+          setTimeout(() => setOfflineSyncMessage(''), 5000);
+        } else {
+          setTimeout(() => setOfflineSyncMessage(''), 4000);
+        }
+      } catch (err) {
+        console.error('Offline queue sync error:', err);
+      }
+    };
+
+    const handleOffline = () => {
+      setIsOffline(true);
+      setOfflineSyncMessage('');
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, [user]);
 
   // Spiritual Diary State (Today & Yesterday allowed + History Analytics)
   const todayDateStr = new Date().toISOString().split('T')[0];
@@ -337,26 +378,80 @@ export default function StudentDashboard({ user }) {
       setInputPinCode('');
     } catch (err) {
       console.error('Error submitting pin attendance:', err);
-      // Fallback local registration if offline or testing
+      // Fallback local registration if offline: Save to offline queue
+      const offlineItem = {
+        userId: user.id,
+        userName: user.fullName,
+        phone: user.phone,
+        grade: user.grade || 'first',
+        date: new Date().toISOString().split('T')[0],
+        dateFormatted: new Date().toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
+        time: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }),
+        type: 'offline_numeric_pin',
+        pinUsed: inputPinCode.trim(),
+        status: 'حاضر',
+        pointsAwarded: 10,
+        createdAt: new Date().toISOString()
+      };
+      try {
+        const queue = JSON.parse(localStorage.getItem('offline_attendance_queue') || '[]');
+        queue.push(offlineItem);
+        localStorage.setItem('offline_attendance_queue', JSON.stringify(queue));
+      } catch (storageErr) {
+        console.error('Storage queue err:', storageErr);
+      }
+
       setAttendanceStatus('success');
       setPoints(p => p + 10);
       setAttendanceRecords(prev => [
-        { id: Date.now().toString(), date: 'اليوم (بالكود الرقمي)', status: 'حاضر', time: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }), points: 10 },
+        { id: Date.now().toString(), date: 'اليوم (حفظ محلي أوفلاين 📡)', status: 'حاضر', time: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }), points: 10 },
         ...prev
       ]);
+      setOfflineSyncMessage('تم حفظ حضورك في ذاكرة الهاتف! سيتم المزامنة تلقائياً عند الاتصال بالإنترنت 📡');
     } finally {
       setPinLoading(false);
     }
   };
 
-  const handleSimulateScan = () => {
+  const handleSimulateScan = async () => {
     setScanning(true);
     setAttendanceStatus(null);
-    setTimeout(() => {
+    setTimeout(async () => {
+      // Record scan in Firestore or offline queue
+      const todayDateOnly = new Date().toISOString().split('T')[0];
+      const todayFormatted = new Date().toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+      const recordPayload = {
+        userId: user.id,
+        userName: user.fullName,
+        phone: user.phone,
+        grade: user.grade || 'first',
+        date: todayDateOnly,
+        dateFormatted: todayFormatted,
+        time: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }),
+        type: 'qr_scan',
+        status: 'حاضر',
+        pointsAwarded: 10,
+        createdAt: serverTimestamp()
+      };
+
+      try {
+        await addDoc(collection(db, 'attendance'), recordPayload);
+        const userRef = doc(db, 'users', user.id);
+        await updateDoc(userRef, { points: (user.points || 0) + 10 });
+      } catch (e) {
+        console.warn('QR scan saved offline:', e);
+        try {
+          const queue = JSON.parse(localStorage.getItem('offline_attendance_queue') || '[]');
+          queue.push({ ...recordPayload, createdAt: new Date().toISOString() });
+          localStorage.setItem('offline_attendance_queue', JSON.stringify(queue));
+          setOfflineSyncMessage('تم حفظ الحضور بالكاميرا محلياً! سيتم الرفع تلقائياً عند عودة النت 📡');
+        } catch (err) {}
+      }
+
       setAttendanceStatus('success');
       setPoints(p => p + 10);
       setAttendanceRecords(prev => [
-        { id: Date.now().toString(), date: 'اليوم', status: 'حاضر', time: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }), points: 10 },
+        { id: Date.now().toString(), date: 'اليوم (مسح QR)', status: 'حاضر', time: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }), points: 10 },
         ...prev
       ]);
       setScanning(false);
@@ -670,6 +765,8 @@ export default function StudentDashboard({ user }) {
           pinLoading={pinLoading}
           pinError={pinError}
           attendanceRecords={attendanceRecords}
+          isOffline={isOffline}
+          offlineSyncMessage={offlineSyncMessage}
         />
       )}
 

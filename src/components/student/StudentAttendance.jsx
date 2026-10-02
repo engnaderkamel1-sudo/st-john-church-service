@@ -1,5 +1,5 @@
 import React from 'react';
-import { Camera, Clock, CheckCircle2, AlertTriangle, QrCode, CheckCircle, KeyRound } from 'lucide-react';
+import { Camera, Clock, CheckCircle2, AlertTriangle, QrCode, CheckCircle, KeyRound, Wifi, WifiOff } from 'lucide-react';
 
 export default function StudentAttendance({
   currentTimeStr,
@@ -14,7 +14,9 @@ export default function StudentAttendance({
   handlePinAttendance,
   pinLoading,
   pinError,
-  attendanceRecords
+  attendanceRecords,
+  isOffline = false,
+  offlineSyncMessage = ''
 }) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-5 text-right">
@@ -30,6 +32,25 @@ export default function StudentAttendance({
               الوقت الآن: {currentTimeStr}
             </span>
           </div>
+
+          {/* Offline Sync Banner */}
+          {isOffline && (
+            <div className="p-3 rounded-2xl border text-xs mb-3 flex items-center gap-2.5 bg-sky-50 border-sky-200 text-sky-800 animate-pulse">
+              <WifiOff className="w-4 h-4 text-sky-600 shrink-0" />
+              <div className="font-bold">
+                أنت الآن غير متصل بالإنترنت (وضع أوفلاين) 📡 يمكنك التسجيل بشكل طبيعي وسيتم رفع حضورك تلقائياً فور توفر الشبكة!
+              </div>
+            </div>
+          )}
+
+          {offlineSyncMessage && (
+            <div className="p-3 rounded-2xl border text-xs mb-3 flex items-center gap-2.5 bg-emerald-50 border-emerald-200 text-emerald-800">
+              <Wifi className="w-4 h-4 text-emerald-600 shrink-0" />
+              <div className="font-bold">
+                {offlineSyncMessage}
+              </div>
+            </div>
+          )}
 
           <div className={`p-3.5 rounded-2xl border text-xs mb-4 flex items-center gap-2.5 ${
             isWithinTime || bypassTime
