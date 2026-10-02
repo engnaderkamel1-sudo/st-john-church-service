@@ -93,11 +93,27 @@ export default function StudentOfficialReportCard({
   // 5. Fasting (الصوم): 2 pts * 47 = 94
   const fastingScore = Math.min(94, (diaries.filter(d => d.baker && d.ghoroub).length) * 2);
 
-  // 6. Spiritual Diary Daily Prayers (النوتة والصلوات):
-  // Each day with prayers (baker, ghoroub, or nowm) = (2 / 7) points towards the weekly 2 marks.
-  // Total possible across 47 weeks = 47 * 2 = 94 marks.
-  const prayerDaysCount = diaries.filter(d => d.baker || d.ghoroub || d.nowm).length;
-  const rawDiaryScore = prayerDaysCount * (2 / 7);
+  // 6. Spiritual Diary & Daily Prayers (النوتة والصلوات الشخصية):
+  // 2 marks/week * 47 weeks = 94 marks max.
+  // Each day is worth up to (2 / 7) marks:
+  // - 50% for keeping & recording the diary for that day: (1 / 7) marks
+  // - 50% divided equally between the 3 prayers (baker, ghoroub, nowm): (1 / 21) marks each.
+  let rawDiaryScore = 0;
+  let recordedDaysCount = 0;
+  let totalPrayersCount = 0;
+
+  diaries.forEach(d => {
+    const hasActivity = d.baker || d.ghoroub || d.nowm || d.bible || d.communion || d.confession || d.notes;
+    if (hasActivity) {
+      recordedDaysCount += 1;
+      const dayPrayers = (d.baker ? 1 : 0) + (d.ghoroub ? 1 : 0) + (d.nowm ? 1 : 0);
+      totalPrayersCount += dayPrayers;
+      // Base: (1 / 7) for recording the day + (dayPrayers / 21) for prayers
+      const dayScore = (1 / 7) + (dayPrayers * (1 / 21));
+      rawDiaryScore += dayScore;
+    }
+  });
+
   const diaryScore = Math.min(94, Number(rawDiaryScore.toFixed(1)));
 
   // 7. Stage Meeting (اجتماع المرحلة): 1 pt * 47 = 47
@@ -261,9 +277,14 @@ export default function StudentOfficialReportCard({
               {/* 6. النوتة */}
               <tr className="hover:bg-slate-50/70">
                 <td className="p-3 text-center font-bold">6</td>
-                <td className="p-3 font-bold text-slate-900">النوتة والصلوات الشخصية</td>
+                <td className="p-3 font-bold text-slate-900">
+                  النوتة والصلوات الشخصية
+                  <span className="block text-[10px] text-slate-400 font-normal">
+                    {recordedDaysCount} يوم تدوين • {totalPrayersCount} صلاة منفذة (50% تدوين + 50% صلوات)
+                  </span>
+                </td>
                 <td className="p-3 text-center text-slate-500">أسبوعي</td>
-                <td className="p-3 text-slate-600">درجتان × 47 أسبوع</td>
+                <td className="p-3 text-slate-600">درجتان للأسبوع (حساب نسبي يومي: 50% لأمانة التدوين + 50% لصلوات الأجبية)</td>
                 <td className="p-3 text-center font-bold font-mono">94</td>
                 <td className="p-3 text-center font-black font-mono text-emerald-700 text-sm">{diaryScore}</td>
                 <td className="p-3 text-center text-[10px] bg-emerald-50 text-emerald-800 font-bold rounded-lg">تلقائي من النوتة الروحية ✓</td>
