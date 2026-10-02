@@ -14,8 +14,13 @@ export default function ServantAttendanceQR({
   setSelectedStudentForAccess,
   handleOpenCodeAccess,
   remoteAccessLoading,
-  allUsers
+  allUsers,
+  serviceStartTime = '10:30',
+  handleUpdateServiceStartTime
 }) {
+  const [isEditingStartTime, setIsEditingStartTime] = React.useState(false);
+  const [inputStartTime, setInputStartTime] = React.useState(serviceStartTime);
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
       <div className="md:col-span-2 bg-white border border-slate-200 rounded-3xl p-6 shadow-sm flex flex-col items-center justify-center text-center">
@@ -24,7 +29,62 @@ export default function ServantAttendanceQR({
             كود حضور خدمة اليوم
           </span>
           <h3 className="text-base font-extrabold text-slate-900 mt-2">{todayStr}</h3>
-          <p className="text-xs text-slate-500">ساري من 10:30 صباحاً حتى 02:00 ظهراً</p>
+          
+          {/* Dynamic Service Start Time Setting */}
+          <div className="mt-2 flex items-center justify-center gap-2">
+            <span className="text-xs text-slate-600 font-bold">موعد بدء الخدمة:</span>
+            {isEditingStartTime ? (
+              <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 p-1 rounded-xl">
+                <input
+                  type="time"
+                  value={inputStartTime}
+                  onChange={(e) => setInputStartTime(e.target.value)}
+                  className="bg-white border border-slate-300 rounded-lg px-2 py-0.5 text-xs font-mono font-bold text-slate-800 focus:outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (inputStartTime && handleUpdateServiceStartTime) {
+                      handleUpdateServiceStartTime(inputStartTime);
+                    }
+                    setIsEditingStartTime(false);
+                  }}
+                  className="bg-maroon-800 text-white text-[10px] font-bold px-2 py-1 rounded-lg cursor-pointer"
+                >
+                  حفظ ✓
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsEditingStartTime(false)}
+                  className="text-slate-400 text-[10px] px-1 cursor-pointer"
+                >
+                  إلغاء
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  setInputStartTime(serviceStartTime);
+                  setIsEditingStartTime(true);
+                }}
+                className="bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 px-3 py-1 rounded-xl text-xs font-bold font-mono flex items-center gap-1 cursor-pointer shadow-2xs"
+                title="اضغط لتعديل موعد بدء خدمة اليوم (مثلاً 10:45 أو 11:00)"
+              >
+                <Clock className="w-3.5 h-3.5 text-amber-700" />
+                <span>{serviceStartTime} ص</span>
+                <span className="text-[10px]">✏️</span>
+              </button>
+            )}
+          </div>
+          <p className="text-[11px] text-slate-400 mt-1">
+            أول ربع ساعة (حتى {serviceStartTime ? (() => {
+              const [h, m] = serviceStartTime.split(':').map(Number);
+              const endM = (m + 15) % 60;
+              const endH = endM < m ? h + 1 : h;
+              return `${endH}:${endM < 10 ? '0' + endM : endM}`;
+            })() : '10:45'} ص) = 3 درجات، وبعدها درجتان طبقاً للائحة.
+          </p>
         </div>
 
         <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col items-center justify-center">

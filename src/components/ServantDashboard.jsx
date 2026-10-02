@@ -85,6 +85,9 @@ export default function ServantDashboard({ user }) {
         if (data.activeCode) {
           setQrCodeData(data.activeCode);
         }
+        if (data.serviceStartTime) {
+          setServiceStartTime(data.serviceStartTime);
+        }
       }
     });
 
@@ -106,6 +109,22 @@ export default function ServantDashboard({ user }) {
       unsubCycle();
     };
   }, [isAppAdmin]);
+
+  // Dynamic Service Start Time (Default: 10:30)
+  const [serviceStartTime, setServiceStartTime] = useState('10:30');
+
+  const handleUpdateServiceStartTime = async (newTime) => {
+    setServiceStartTime(newTime);
+    try {
+      await setDoc(doc(db, 'service_settings', 'attendance_window'), {
+        serviceStartTime: newTime,
+        updatedBy: user.fullName || 'الخادم المسؤول',
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+    } catch (e) {
+      console.error('Error updating service start time:', e);
+    }
+  };
 
   // Active academic cycle state (default: cycle_1 for 2026-2027)
   const [activeAcademicCycle, setActiveAcademicCycle] = useState('cycle_1'); // 'cycle_1' (المرحلة الأولى) | 'cycle_2' (المرحلة الثانية)
@@ -197,6 +216,24 @@ export default function ServantDashboard({ user }) {
     try {
       const todayDateOnly = new Date().toISOString().split('T')[0];
       const recordedTime = customTime || new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
+
+      // Calculate Official Regulation Attendance Points:
+      // Early (within first 15 mins of service start) = 3 marks, Late = 2 marks
+      let pointsAwarded = 3;
+      let punctualityStatus = 'حضور مبكر في الموعد (3 درجات)';
+      try {
+        const [startH, startM] = (serviceStartTime || '10:30').split(':').map(Number);
+        const startTimeInMinutes = startH * 60 + startM;
+        const now = new Date();
+        const currentTotalMinutes = now.getHours() * 60 + now.getMinutes();
+        if (currentTotalMinutes > startTimeInMinutes + 15) {
+          pointsAwarded = 2;
+          punctualityStatus = 'حضور متأخر بعد ربع ساعة (درجتان)';
+        }
+      } catch (calcErr) {
+        pointsAwarded = 3;
+      }
+
       // Record attendance in Firestore
       await addDoc(collection(db, 'attendance'), {
         userId: targetUser.id,
@@ -209,14 +246,15 @@ export default function ServantDashboard({ user }) {
         type: 'manual_by_servant',
         status: 'حاضر',
         servantName: user.fullName || 'الخادم المسؤول',
-        pointsAwarded: 10,
+        pointsAwarded: pointsAwarded,
+        punctualityStatus: punctualityStatus,
         createdAt: serverTimestamp()
       });
 
       // Update user points in users collection
       const userRef = doc(db, 'users', targetUser.id);
       await updateDoc(userRef, {
-        points: (targetUser.points || 0) + 10
+        points: (targetUser.points || 0) + pointsAwarded
       });
 
       // Send in-app notification to the student
@@ -1478,6 +1516,8 @@ export default function ServantDashboard({ user }) {
           handleOpenCodeAccess={handleOpenCodeAccess}
           remoteAccessLoading={remoteAccessLoading}
           allUsers={allUsers}
+          serviceStartTime={serviceStartTime}
+          handleUpdateServiceStartTime={handleUpdateServiceStartTime}
         />
       )}
 

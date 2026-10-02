@@ -5,9 +5,10 @@ import {
 } from 'lucide-react';
 import { db } from '../../firebase';
 import { collection, query, where, onSnapshot, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import StudentOfficialReportCard from './StudentOfficialReportCard';
 
 export default function StudentProfileModal({ student, onClose, getGradeTitle }) {
-  const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'attendance' | 'exams' | 'diary' | 'notes'
+  const [activeTab, setActiveTab] = useState('official_report'); // 'official_report' | 'overview' | 'attendance' | 'exams' | 'diary' | 'notes'
   const [attendanceRecords, setAttendanceRecords] = useState([]);
   const [examSubmissions, setExamSubmissions] = useState([]);
   const [diaries, setDiaries] = useState([]);
@@ -145,6 +146,15 @@ export default function StudentProfileModal({ student, onClose, getGradeTitle })
         {/* Tab Switcher (Horizontally scrollable with smooth touch) */}
         <div className="flex items-center gap-1 border-b border-slate-200 bg-slate-50 p-1.5 text-xs font-bold overflow-x-auto shrink-0 scrollbar-none">
           <button
+            onClick={() => setActiveTab('official_report')}
+            className={`py-2 px-3 rounded-xl transition-all cursor-pointer whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
+              activeTab === 'official_report' ? 'bg-gradient-to-r from-maroon-900 to-maroon-800 text-white shadow-xs ring-1 ring-gold-400/40' : 'text-slate-700 hover:text-slate-900 hover:bg-slate-200/50'
+            }`}
+          >
+            <Award className="w-3.5 h-3.5 text-gold-300" />
+            <span>شيت اللائحة والدرجات 📜</span>
+          </button>
+          <button
             onClick={() => setActiveTab('overview')}
             className={`py-2 px-3 rounded-xl transition-all cursor-pointer whitespace-nowrap shrink-0 ${
               activeTab === 'overview' ? 'bg-maroon-800 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
@@ -188,6 +198,16 @@ export default function StudentProfileModal({ student, onClose, getGradeTitle })
 
         {/* Modal Body */}
         <div className="p-5 overflow-y-auto space-y-4 flex-1">
+          {/* 0. OFFICIAL REGULATION REPORT CARD (13 ITEMS) */}
+          {activeTab === 'official_report' && (
+            <StudentOfficialReportCard
+              student={student}
+              attendanceRecords={attendanceRecords}
+              examSubmissions={examSubmissions}
+              diaries={diaries}
+            />
+          )}
+
           {/* 1. OVERVIEW */}
           {activeTab === 'overview' && (
             <div className="space-y-4">
