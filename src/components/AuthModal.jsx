@@ -7,7 +7,8 @@ import { sendPasswordResetEmail } from 'firebase/auth';
 export default function AuthModal({ isOpen, onClose, initialRole = 'student', initialMode = 'login', onLoginSuccess }) {
   const [isLogin, setIsLogin] = useState(initialMode !== 'register');
   const [isForgot, setIsForgot] = useState(false);
-  const [resetSuccess, setResetSuccess] = useState('');
+  const [resetIdentifier, setResetIdentifier] = useState('');
+  const [resetSuccess, setResetSuccess] = useState(null);
   const [role, setRole] = useState(initialRole);
   const [grade, setGrade] = useState('first');
   const [servantScope, setServantScope] = useState('all');
@@ -26,7 +27,8 @@ export default function AuthModal({ isOpen, onClose, initialRole = 'student', in
       setIsForgot(false);
       setRole(initialRole);
       setError('');
-      setResetSuccess('');
+      setResetSuccess(null);
+      setResetIdentifier('');
     }
   }, [isOpen, initialMode, initialRole]);
 
@@ -35,39 +37,68 @@ export default function AuthModal({ isOpen, onClose, initialRole = 'student', in
   const handleResetPassword = async (e) => {
     e.preventDefault();
     setError('');
-    setResetSuccess('');
+    setResetSuccess(null);
     setLoading(true);
 
     try {
-      const emailVal = email.trim();
-      if (!emailVal) {
-        setError('يرجى كتابة البريد الإلكتروني المسجل');
+      const inputVal = resetIdentifier.trim();
+      if (!inputVal) {
+        setError('يرجى كتابة رقم الهاتف أو البريد الإلكتروني المسجل');
         setLoading(false);
         return;
       }
 
-      // Check if email exists in users collection
       const usersRef = collection(db, 'users');
-      const q = query(usersRef, where('email', '==', emailVal.toLowerCase()));
-      const snap = await getDocs(q);
+      let userData = null;
 
-      if (snap.empty) {
-        setError('هذا البريد الإلكتروني غير مسجل في الخدمة');
+      if (inputVal.includes('@')) {
+        // Query by email
+        const q = query(usersRef, where('email', '==', inputVal.toLowerCase()));
+        const snap = await getDocs(q);
+        if (!snap.empty) {
+          userData = { id: snap.docs[0].id, ...snap.docs[0].data() };
+        }
+      } else {
+        // Query by phone
+        const q = query(usersRef, where('phone', '==', inputVal));
+        const snap = await getDocs(q);
+        if (!snap.empty) {
+          userData = { id: snap.docs[0].id, ...snap.docs[0].data() };
+        }
+      }
+
+      if (!userData) {
+        setError('لم يتم العثور على أي حساب مسجل بهذا الرقم أو البريد الإلكتروني');
         setLoading(false);
         return;
       }
 
-      // Try sending via Firebase Auth reset
-      try {
-        await sendPasswordResetEmail(auth, emailVal);
-        setResetSuccess(`تم إرسال رابط استعادة كلمة السر بنجاح إلى: ${emailVal}. تفقد بريدك الإلكتروني.`);
-      } catch (authErr) {
-        // Fallback info if Firebase Auth email user is handled via phone/direct Firestore
-        setResetSuccess(`تم التحقق من بريدك (${emailVal}). يرجى التواصل مع أمين الخدمة أو تفقد صندوق الوارد لإتمام الاستعادة.`);
+      // If user has email registered
+      if (userData.email) {
+        try {
+          await sendPasswordResetEmail(auth, userData.email);
+          setResetSuccess({
+            type: 'email',
+            message: `تم إرسال رابط استعادة كلمة السر بنجاح إلى بريدك: (${userData.email}). يرجى تفقد صندوق الوارد.`
+          });
+        } catch (authErr) {
+          setResetSuccess({
+            type: 'contact',
+            fullName: userData.fullName || 'الخادم / المخدوم',
+            phone: userData.phone
+          });
+        }
+      } else {
+        // Registered with phone only (elderly servant or student without email)
+        setResetSuccess({
+          type: 'phone_only',
+          fullName: userData.fullName || 'الخادم / المخدوم',
+          phone: userData.phone
+        });
       }
     } catch (err) {
       console.error(err);
-      setError('حدث خطأ أثناء إرسال طلب استعادة كلمة المرور');
+      setError('حدث خطأ أثناء معالجة طلب استعادة كلمة المرور');
     } finally {
       setLoading(false);
     }
@@ -220,7 +251,7 @@ export default function AuthModal({ isOpen, onClose, initialRole = 'student', in
               </div>
               <h3 className="font-bold text-sm text-slate-800">نسيت كلمة السر؟</h3>
               <p className="text-xs text-slate-500 mt-1">
-                اكتب بريدك الإلكتروني المسجل لدينا وسنرسل لك رابط إعادة تعيين كلمة المرور فوراً.
+                اكتب رقم هاتفك أو بريدك الإلكتروني المسجل لدينا وسنساعدك في استعادة كلمة المرور فوراً.
               </p>
             </div>
 
@@ -232,25 +263,48 @@ export default function AuthModal({ isOpen, onClose, initialRole = 'student', in
             )}
 
             {resetSuccess && (
-              <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs p-3.5 rounded-xl flex items-start gap-2.5">
-                <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600 mt-0.5" />
-                <span className="leading-relaxed font-medium">{resetSuccess}</span>
-              </div>
+              resetSuccess.type === 'email' ? (
+                <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs p-3.5 rounded-xl flex items-start gap-2.5">
+                  <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600 mt-0.5" />
+                  <span className="leading-relaxed font-medium">{resetSuccess.message}</span>
+                </div>
+              ) : (
+                <div className="bg-amber-50 border border-amber-300 text-amber-950 text-xs p-4 rounded-2xl space-y-2.5">
+                  <div className="flex items-center gap-2 font-bold text-sm text-maroon-900">
+                    <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+                    <span>أهلاً بك يا {resetSuccess.fullName} 👋</span>
+                  </div>
+                  <p className="text-[11px] text-slate-700 leading-relaxed">
+                    حسابك مسجل برقم الهاتف ({resetSuccess.phone}) بدون بريد إلكتروني.
+                    لإعادة تعيين كلمة المرور فوراً، يمكنك التواصل مباشرة مع أمين الخدمة أو المشرف:
+                  </p>
+                  <a
+                    href={`https://wa.me/201275571569?text=${encodeURIComponent(`سلام ونعمة، أنا الخادم/المخدوم (${resetSuccess.fullName}) ورقم هاتفي هو (${resetSuccess.phone})، نسيت كلمة المرور الخاصة بحسابي وأحتاج إعادة تعيينها.`)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-3 rounded-xl flex items-center justify-center gap-2 text-xs transition-all shadow-xs"
+                  >
+                    <span>تواصل مع أمين الخدمة عبر واتساب لإعادة التعيين 💬</span>
+                  </a>
+                </div>
+              )
             )}
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">البريد الإلكتروني المسجل</label>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                رقم الهاتف أو البريد الإلكتروني المسجل
+              </label>
               <div className="relative">
                 <input
-                  type="email"
+                  type="text"
                   required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="name@example.com"
+                  value={resetIdentifier}
+                  onChange={(e) => setResetIdentifier(e.target.value)}
+                  placeholder="01XXXXXXXXX أو name@example.com"
                   dir="ltr"
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 pl-10 text-xs text-right focus:outline-none focus:border-maroon-700 focus:bg-white transition-colors"
                 />
-                <Mail className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
+                <KeyRound className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
               </div>
             </div>
 
@@ -259,13 +313,13 @@ export default function AuthModal({ isOpen, onClose, initialRole = 'student', in
               disabled={loading}
               className="w-full bg-maroon-800 hover:bg-maroon-700 text-white font-bold py-3 px-4 rounded-xl shadow-md transition-all flex items-center justify-center gap-2 mt-4 text-xs"
             >
-              {loading ? <span>جاري الإرسال...</span> : <span>إرسال رابط استعادة كلمة السر</span>}
+              {loading ? <span>جاري البحث والتحقق...</span> : <span>استعادة كلمة المرور</span>}
             </button>
 
             <div className="text-center pt-2">
               <button
                 type="button"
-                onClick={() => { setIsForgot(false); setError(''); setResetSuccess(''); }}
+                onClick={() => { setIsForgot(false); setError(''); setResetSuccess(null); setResetIdentifier(''); }}
                 className="text-xs text-slate-600 hover:text-maroon-800 font-bold flex items-center justify-center gap-1 mx-auto transition-colors"
               >
                 <ArrowRight className="w-3.5 h-3.5" />
@@ -335,16 +389,17 @@ export default function AuthModal({ isOpen, onClose, initialRole = 'student', in
             {!isLogin && (
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="block text-xs font-bold text-slate-700">البريد الإلكتروني</label>
-                  <span className="text-[10px] text-amber-700 font-medium">لاستعادة كلمة السر في أي وقت</span>
+                  <label className="block text-xs font-bold text-slate-700">
+                    البريد الإلكتروني <span className="text-[10px] text-slate-400 font-normal">(اختياري)</span>
+                  </label>
+                  <span className="text-[10px] text-amber-700 font-medium">مفيد لاستعادة الحساب</span>
                 </div>
                 <div className="relative">
                   <input
                     type="email"
-                    required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="example@domain.com"
+                    placeholder="example@domain.com (اختياري)"
                     dir="ltr"
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 pl-10 text-xs text-right focus:outline-none focus:border-maroon-700 focus:bg-white transition-colors"
                   />

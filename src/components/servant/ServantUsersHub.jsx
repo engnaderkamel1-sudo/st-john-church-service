@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Users, History, RefreshCw, Activity, UserPlus, UserX, Check, Sparkles, Key, ExternalLink, Save, Eye, EyeOff } from 'lucide-react';
+import { Users, History, RefreshCw, Activity, UserPlus, UserX, Check, Sparkles, Key, ExternalLink, Save, Eye, EyeOff, Lock, X } from 'lucide-react';
 import { getGeminiApiKey, saveGeminiApiKey } from '../../services/geminiService';
+import { db } from '../../firebase';
+import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 
 export default function ServantUsersHub({
   user,
@@ -29,6 +31,12 @@ export default function ServantUsersHub({
   const [apiKeySaved, setApiKeySaved] = useState(false);
   const [showKeyText, setShowKeyText] = useState(false);
 
+  // Admin User Password Reset States
+  const [resettingUser, setResettingUser] = useState(null);
+  const [newPassInput, setNewPassInput] = useState('');
+  const [resetPassLoading, setResetPassLoading] = useState(false);
+  const [resetPassSuccess, setResetPassSuccess] = useState(false);
+
   useEffect(() => {
     getGeminiApiKey().then(k => {
       if (k) setApiKeyInput(k);
@@ -49,6 +57,29 @@ export default function ServantUsersHub({
       setApiKeyLoading(false);
     }
   };
+
+  const handleAdminSavePassword = async () => {
+    if (!resettingUser || !newPassInput.trim()) return;
+    setResetPassLoading(true);
+    try {
+      await updateDoc(doc(db, 'users', resettingUser.id), {
+        password: newPassInput.trim(),
+        updatedAt: serverTimestamp()
+      });
+      setResetPassSuccess(true);
+      if (fetchAllUsers) fetchAllUsers();
+      setTimeout(() => {
+        setResettingUser(null);
+        setResetPassSuccess(false);
+      }, 1500);
+    } catch (err) {
+      console.error('Error updating user password:', err);
+      alert('حدث خطأ أثناء حفظ كلمة المرور');
+    } finally {
+      setResetPassLoading(false);
+    }
+  };
+
   return (
     <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-6">
       {/* Subtabs Switcher: الحسابات والأدوار vs سجل دخول المستخدمين vs إعدادات الذكاء الاصطناعي */}
@@ -174,6 +205,7 @@ export default function ServantUsersHub({
                     <th className="py-3 px-3">تسجيل الحضور / الغياب اليدوي</th>
                     <th className="py-3 px-3">تعديل الصفة (خادم / مخدوم)</th>
                     <th className="py-3 px-3">تعديل المرحلة</th>
+                    <th className="py-3 px-3">إعادة تعيين السر 🔑</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -313,6 +345,21 @@ export default function ServantUsersHub({
                               <option value="elisha">فصل أليشع (إعداد خدام)</option>
                             </select>
                           )}
+                        </td>
+                        <td className="py-3 px-3">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setResettingUser(item);
+                              setNewPassInput('123456');
+                              setResetPassSuccess(false);
+                            }}
+                            className="bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 font-bold text-[11px] px-2.5 py-1.5 rounded-xl transition-all shadow-2xs flex items-center gap-1 shrink-0"
+                            title="تغيير أو إعادة تعيين كلمة المرور لهذا المستخدم فوراً"
+                          >
+                            <Key className="w-3.5 h-3.5 text-amber-700" />
+                            <span>تغيير السر 🔑</span>
+                          </button>
                         </td>
                       </tr>
                     ))}
@@ -501,6 +548,75 @@ export default function ServantUsersHub({
                 <span>فتح Google AI Studio لإنشاء المفتاح</span>
                 <ExternalLink className="w-3.5 h-3.5" />
               </a>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Admin Password Reset */}
+      {resettingUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+          <div className="bg-white rounded-3xl p-6 max-w-sm w-full space-y-4 shadow-xl border border-slate-200 text-right">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-xl bg-amber-100 text-amber-800">
+                  <Key className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="font-extrabold text-sm text-slate-900">إعادة تعيين كلمة المرور</h4>
+                  <p className="text-[11px] text-slate-500 font-mono" dir="ltr">{resettingUser.phone}</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setResettingUser(null)}
+                className="text-slate-400 hover:text-slate-700 p-1 rounded-lg"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-1 bg-slate-50 p-3 rounded-2xl border border-slate-200">
+              <span className="text-xs font-bold text-slate-500 block">المستخدم:</span>
+              <p className="text-sm font-extrabold text-maroon-900">{resettingUser.fullName || 'بدون اسم'}</p>
+              <span className="text-[10px] text-slate-400 block font-mono" dir="ltr">{resettingUser.phone}</span>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">كلمة المرور الجديدة:</label>
+              <input
+                type="text"
+                value={newPassInput}
+                onChange={(e) => setNewPassInput(e.target.value)}
+                placeholder="أدخل كلمة المرور الجديدة"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold font-mono focus:outline-none focus:border-maroon-800"
+              />
+              <span className="text-[10px] text-slate-400 mt-1 block">يمكنك كتابة كلمة مرور سهلة (مثل 123456) وإعطاؤها للخادم.</span>
+            </div>
+
+            {resetPassSuccess && (
+              <div className="bg-emerald-50 border border-emerald-300 text-emerald-800 text-xs p-2.5 rounded-xl font-bold flex items-center gap-1.5">
+                <Check className="w-4 h-4 text-emerald-600" />
+                <span>تم تحديث كلمة المرور بنجاح ✓</span>
+              </div>
+            )}
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setResettingUser(null)}
+                className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl"
+              >
+                إلغاء
+              </button>
+              <button
+                type="button"
+                onClick={handleAdminSavePassword}
+                disabled={resetPassLoading || !newPassInput.trim()}
+                className="bg-maroon-800 hover:bg-maroon-700 text-white px-5 py-2 text-xs font-bold rounded-xl shadow-xs transition-all flex items-center gap-1.5 disabled:opacity-50"
+              >
+                {resetPassLoading ? 'جاري الحفظ...' : 'حفظ كلمة المرور 💾'}
+              </button>
             </div>
           </div>
         </div>
