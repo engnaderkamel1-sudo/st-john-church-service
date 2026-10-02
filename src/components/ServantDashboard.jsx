@@ -15,6 +15,7 @@ import ServantExamsBank from './servant/ServantExamsBank';
 import ServantAnalytics from './servant/ServantAnalytics';
 import ServantAttendanceQR from './servant/ServantAttendanceQR';
 import ServantUsersHub from './servant/ServantUsersHub';
+import ServantStudentsHub from './servant/ServantStudentsHub';
 import StudentProfileModal from './servant/StudentProfileModal';
 import { collection, getDocs, doc, updateDoc, setDoc, addDoc, deleteDoc, query, where, orderBy, serverTimestamp, limit, onSnapshot } from 'firebase/firestore';
 
@@ -1013,21 +1014,43 @@ export default function ServantDashboard({ user }) {
         </div>
       </div>
 
-      {/* Top Floating Appbar with Menu Trigger and Active Tab Pill */}
+      {/* Top Floating Appbar with Direct 'بيانات المخدومين' Button & Menu Trigger */}
       <div className="bg-white border border-slate-200/90 rounded-2xl p-3 shadow-xs flex items-center justify-between gap-3 sticky top-16 z-30 backdrop-blur-md">
-        <button
-          type="button"
-          onClick={() => setMobileSidebarOpen(true)}
-          className="px-3.5 py-2.5 bg-gradient-to-r from-maroon-900 to-maroon-800 text-white rounded-xl flex items-center gap-2.5 text-xs font-bold shadow-sm hover:from-maroon-950 hover:to-maroon-900 active:scale-95 transition-all cursor-pointer ring-1 ring-gold-400/30"
-          title="فتح قائمة الأقسام"
-        >
-          <Menu className="w-4 h-4 text-gold-300 shrink-0" />
-          <span>القائمة الرئيسية</span>
-        </button>
+        <div className="flex items-center gap-2">
+          {/* Main Drawer Menu Button */}
+          <button
+            type="button"
+            onClick={() => setMobileSidebarOpen(true)}
+            className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl flex items-center gap-2 text-xs font-bold transition-all cursor-pointer border border-slate-200"
+            title="فتح قائمة الأقسام الكاملة"
+          >
+            <Menu className="w-4 h-4 text-maroon-800 shrink-0" />
+            <span>القائمة ☰</span>
+          </button>
+
+          {/* Prominent Direct Button: بيانات المخدومين */}
+          <button
+            type="button"
+            onClick={() => {
+              setMainTab('students_hub');
+              setActiveSubject(null);
+            }}
+            className={`px-3.5 py-2 rounded-xl flex items-center gap-2 text-xs font-black shadow-xs transition-all cursor-pointer ring-1 ring-gold-400/40 active:scale-95 ${
+              mainTab === 'students_hub'
+                ? 'bg-gradient-to-r from-maroon-950 via-maroon-900 to-maroon-950 text-white'
+                : 'bg-gradient-to-r from-maroon-900 to-maroon-800 hover:from-maroon-950 hover:to-maroon-900 text-white'
+            }`}
+            title="عرض وبحث بيانات وسنوات المخدومين والملف الشامل"
+          >
+            <Users className="w-4 h-4 text-gold-300 shrink-0" />
+            <span>بيانات المخدومين 👤</span>
+          </button>
+        </div>
 
         <div className="flex items-center gap-2">
           <span className="text-xs font-extrabold text-maroon-950 bg-maroon-50/80 border border-maroon-200/70 px-3.5 py-1.5 rounded-xl shadow-2xs flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-gold-500 inline-block animate-pulse"></span>
+            {mainTab === 'students_hub' && 'بيانات المخدومين والملف الشامل'}
             {mainTab === 'users_hub' && userHubSubTab === 'accounts' && 'المستخدمين والأدوار'}
             {mainTab === 'users_hub' && userHubSubTab === 'login_history' && 'سجل النشاط والدخول'}
             {mainTab === 'subjects_hub' && (curriculumTarget === 'students' ? 'مناهج ومراجع المخدومين' : 'مناهج ومراجع الخدام 🔒')}
@@ -1074,6 +1097,31 @@ export default function ServantDashboard({ user }) {
 
               {/* Navigation Items */}
               <nav className="p-3 space-y-1.5 overflow-y-auto max-h-[calc(100vh-140px)]">
+            {/* 0. All Servants & Admins: Direct Student Data Hub */}
+            <button
+              type="button"
+              onClick={() => {
+                setMainTab('students_hub');
+                setActiveSubject(null);
+                setMobileSidebarOpen(false);
+              }}
+              className={`w-full text-right py-2.5 px-3 rounded-2xl flex items-center justify-between text-xs font-bold transition-all ${
+                mainTab === 'students_hub'
+                  ? 'bg-maroon-800 text-white shadow-sm'
+                  : 'text-slate-700 hover:bg-slate-50 hover:text-slate-900'
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                <Users className={`w-4 h-4 ${mainTab === 'students_hub' ? 'text-gold-300' : 'text-maroon-700'}`} />
+                <span>بيانات المخدومين والملف الشامل</span>
+              </div>
+              <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                mainTab === 'students_hub' ? 'bg-gold-400 text-maroon-950' : 'bg-slate-100 text-slate-600'
+              }`}>
+                {(allUsers || []).filter(u => u.role === 'student').length}
+              </span>
+            </button>
+
             {/* 1. App Admin only: Users & Roles */}
             {isAppAdmin && (
               <button
@@ -1276,6 +1324,17 @@ export default function ServantDashboard({ user }) {
 
       {/* Main Content Area (100% Full Width Real Estate) */}
       <main className="w-full space-y-6">
+
+      {/* Direct Students Data Hub & 360° Profile */}
+      {mainTab === 'students_hub' && (
+        <ServantStudentsHub
+          allUsers={allUsers}
+          selectedGrade={selectedGrade}
+          setSelectedGrade={setSelectedGrade}
+          getGradeTitle={getGradeTitle}
+          onSelectStudent={(st) => setStudent360Profile(st)}
+        />
+      )}
 
       {/* 0. Users & Roles Management Hub (Admin Only: Admin Approvals & Activity Logs) */}
       {isAppAdmin && mainTab === 'users_hub' && (

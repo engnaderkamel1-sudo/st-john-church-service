@@ -234,6 +234,40 @@ export default function StudentProfileModal({ student, onClose, getGradeTitle })
                 </p>
               </div>
 
+              {/* Personal Data & Stage Card (البيانات الخاصة به وفي سنة كام) */}
+              <div className="bg-white border border-slate-200 rounded-2xl p-4 space-y-3">
+                <h4 className="text-xs font-extrabold text-slate-900 flex items-center gap-2">
+                  <User className="w-4 h-4 text-maroon-800" />
+                  <span>البيانات الشخصية والتعليمية:</span>
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
+                  <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 flex items-center justify-between">
+                    <span className="text-slate-500 font-medium">السنة الدراسية / المرحلة:</span>
+                    <strong className="text-maroon-900 bg-maroon-50 px-2.5 py-0.5 rounded-lg border border-maroon-200 font-extrabold">
+                      {getGradeTitle ? getGradeTitle(student.grade || 'first') : student.grade}
+                    </strong>
+                  </div>
+                  <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 flex items-center justify-between">
+                    <span className="text-slate-500 font-medium">رقم التليفون:</span>
+                    <strong className="text-slate-900 font-mono" dir="ltr">{student.phone || 'غير مسجل'}</strong>
+                  </div>
+                  {student.email && (
+                    <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 flex items-center justify-between col-span-1 sm:col-span-2">
+                      <span className="text-slate-500 font-medium">البريد الإلكتروني:</span>
+                      <strong className="text-slate-700 font-mono text-[11px]" dir="ltr">{student.email}</strong>
+                    </div>
+                  )}
+                  <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 flex items-center justify-between">
+                    <span className="text-slate-500 font-medium">الصفة في المنظومة:</span>
+                    <strong className="text-emerald-800 font-bold">مخدوم بالخدمة</strong>
+                  </div>
+                  <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 flex items-center justify-between">
+                    <span className="text-slate-500 font-medium">تاريخ التسجيل:</span>
+                    <span className="text-slate-600 font-mono">{student.createdAt?.toDate ? student.createdAt.toDate().toLocaleDateString('ar-EG') : 'مسجل'}</span>
+                  </div>
+                </div>
+              </div>
+
               {/* Recent Activity Mini-List */}
               <div className="space-y-2">
                 <h4 className="text-xs font-extrabold text-slate-900">آخر أنشطة مسجلة للمخدوم:</h4>
