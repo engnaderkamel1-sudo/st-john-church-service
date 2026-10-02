@@ -46,6 +46,17 @@ export default function ServantAiStudioModal({
   const [isEditingStudyGuide, setIsEditingStudyGuide] = useState(false);
   const [editStudyGuideData, setEditStudyGuideData] = useState(null);
 
+  // Sync state whenever modal is opened with new props
+  React.useEffect(() => {
+    if (isOpen) {
+      if (initialText) setManualText(initialText);
+      if (initialMode) setActiveMode(initialMode);
+      if (initialGrade) setSelectedGrade(initialGrade);
+      setError('');
+      setAddedSuccess(false);
+    }
+  }, [isOpen, initialText, initialMode, initialGrade]);
+
   if (!isOpen) return null;
 
   // Question Edit Handlers

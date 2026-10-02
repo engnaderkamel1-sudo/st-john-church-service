@@ -482,6 +482,11 @@ export default function ServantCurriculum({
               <button
                 type="button"
                 onClick={() => {
+                  setTargetRefForAi({
+                    title: `منهج ومحاضرات مادة: ${activeSubject.name}`,
+                    type: 'مادة تعليمية',
+                    url: (activeSubject.references && activeSubject.references.length > 0) ? activeSubject.references[0].url : ''
+                  });
                   setAiStudioMode('presentation');
                   setShowAiStudioModal(true);
                 }}
@@ -495,6 +500,11 @@ export default function ServantCurriculum({
               <button
                 type="button"
                 onClick={() => {
+                  setTargetRefForAi({
+                    title: `منهج ومحاضرات مادة: ${activeSubject.name}`,
+                    type: 'مادة تعليمية',
+                    url: (activeSubject.references && activeSubject.references.length > 0) ? activeSubject.references[0].url : ''
+                  });
                   setAiStudioMode('study_guide');
                   setShowAiStudioModal(true);
                 }}
