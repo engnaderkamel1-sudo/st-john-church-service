@@ -299,7 +299,24 @@ export default function ServantCurriculum({
     setLoadingRefAiId(rf.id);
 
     try {
-      // Direct fetch from Google Drive CDN (with open Access-Control-Allow-Origin: *)
+      // 1. Primary: Fetch via Google Apps Script (bypasses browser CORS & CORP restrictions completely)
+      const scriptEndpoint = `https://script.google.com/macros/s/AKfycbxhdl_hk5vB7NLLL7zdPmVXlwvAOiZYVLsrk5T73UdJpJJM9JpU74p0DexpSch7gI4I/exec?action=getFile&fileId=${fileId}`;
+      const scriptRes = await fetch(scriptEndpoint);
+      if (scriptRes.ok) {
+        const data = await scriptRes.json();
+        if (data.status === 'success' && data.base64) {
+          setLoadedAiFile({
+            base64: data.base64,
+            mimeType: data.mimeType || 'application/pdf',
+            fileName: data.fileName || rf.fileName || rf.title || 'مستند الدرس',
+            fileSize: data.base64 ? Math.round((data.base64.length * 3) / 4) : 0
+          });
+          setShowAiStudioModal(true);
+          return;
+        }
+      }
+
+      // 2. Secondary fallback: Direct fetch from Google Drive CDN
       const downloadUrl = `https://drive.usercontent.google.com/download?id=${fileId}&export=download`;
       const res = await fetch(downloadUrl);
       if (!res.ok) throw new Error('فشل جلب الملف من خوادم Google Drive');
