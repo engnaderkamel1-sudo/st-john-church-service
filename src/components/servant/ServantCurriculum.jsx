@@ -12,13 +12,17 @@ import AiPresentationViewer from './AiPresentationViewer';
 export default function ServantCurriculum({
   user,
   selectedGrade,
+  setSelectedGrade,
   getGradeTitle,
   curriculumTarget,
   setCurriculumTarget,
   activeSubject,
   setActiveSubject,
   subjectsByGrade,
-  setSubjectsByGrade
+  setSubjectsByGrade,
+  activeAcademicCycle = 'cycle_1',
+  academicYear = '2026-2027',
+  handleUpdateAcademicCycle
 }) {
   const [showAddSubjectModal, setShowAddSubjectModal] = useState(false);
   const [newSubjectName, setNewSubjectName] = useState('');
@@ -393,6 +397,81 @@ export default function ServantCurriculum({
 
   return (
     <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-6">
+      {/* Academic Cycle Banner & Yearly Selector */}
+      <div className="bg-gradient-to-r from-slate-900 to-maroon-950 text-white p-3.5 sm:p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm border border-gold-400/30">
+        <div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] bg-gold-400 text-maroon-950 font-black px-2 py-0.5 rounded-full">
+              نظام السنتين التبادلية
+            </span>
+            <span className="text-xs text-slate-300 font-bold">العام الدراسي: {academicYear}</span>
+          </div>
+          <h4 className="text-sm font-extrabold text-gold-300 mt-1">
+            المنهج الفعّال حالياً لقاعة إعداد خدام: {activeAcademicCycle === 'cycle_1' ? 'منهج المرحلة الأولى (الدورة أ)' : 'منهج المرحلة الثانية (الدورة ب)'}
+          </h4>
+          <p className="text-[11px] text-slate-300 mt-0.5">
+            يتم بث هذا المنهج تلقائياً لطلاب سنة أولى وسنة ثانية معاً خلال العام الدراسي الحالي.
+          </p>
+        </div>
+
+        {/* Quick Cycle Switcher for Servants */}
+        <div className="flex items-center gap-1.5 bg-black/30 p-1.5 rounded-xl border border-white/10 shrink-0">
+          <button
+            type="button"
+            onClick={() => handleUpdateAcademicCycle && handleUpdateAcademicCycle('cycle_1', '2026-2027')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              activeAcademicCycle === 'cycle_1'
+                ? 'bg-gold-400 text-maroon-950 shadow'
+                : 'text-slate-300 hover:text-white'
+            }`}
+          >
+            المرحلة الأولى (2026-2027)
+          </button>
+          <button
+            type="button"
+            onClick={() => handleUpdateAcademicCycle && handleUpdateAcademicCycle('cycle_2', '2027-2028')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              activeAcademicCycle === 'cycle_2'
+                ? 'bg-gold-400 text-maroon-950 shadow'
+                : 'text-slate-300 hover:text-white'
+            }`}
+          >
+            المرحلة الثانية (2027-2028)
+          </button>
+        </div>
+      </div>
+
+      {/* Curriculum Grade / Stage Tabs (فصل أليشع | منهج المرحلة الأولى | منهج المرحلة الثانية) */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+        <span className="text-xs font-extrabold text-slate-700 shrink-0">اختر محتوى المنهج:</span>
+        {[
+          { key: 'elisha', label: 'فصل أليشع (تمهيدي)', badge: 'تحضيري' },
+          { key: 'cycle_1', label: 'منهج المرحلة الأولى', badge: activeAcademicCycle === 'cycle_1' ? 'نشط حالياً ⭐' : 'الدورة أ' },
+          { key: 'cycle_2', label: 'منهج المرحلة الثانية', badge: activeAcademicCycle === 'cycle_2' ? 'نشط حالياً ⭐' : 'الدورة ب' }
+        ].map(item => (
+          <button
+            key={item.key}
+            type="button"
+            onClick={() => {
+              if (setSelectedGrade) setSelectedGrade(item.key);
+              setActiveSubject(null);
+            }}
+            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer flex items-center gap-1.5 ${
+              selectedGrade === item.key
+                ? 'bg-maroon-800 text-white shadow-sm ring-1 ring-gold-400/40'
+                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+            }`}
+          >
+            <span>{item.label}</span>
+            <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+              selectedGrade === item.key ? 'bg-gold-400 text-maroon-950' : 'bg-slate-200 text-slate-700'
+            }`}>
+              {item.badge}
+            </span>
+          </button>
+        ))}
+      </div>
+
       {/* Audience Switcher Tabs: Students vs Servants */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
         <div className="flex items-center gap-2">
@@ -424,7 +503,7 @@ export default function ServantCurriculum({
         </div>
 
         <div className="text-[11px] font-bold text-slate-500 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl">
-          المرحلة المحددة: <strong className="text-maroon-900">{getGradeTitle(selectedGrade)}</strong>
+          المنهج المعروض: <strong className="text-maroon-900">{getGradeTitle(selectedGrade)}</strong>
         </div>
       </div>
 
@@ -500,13 +579,25 @@ export default function ServantCurriculum({
               <h4 className="font-extrabold text-xs text-maroon-900">
                 إضافة مادة جديدة ({curriculumTarget === 'students' ? 'للمخدومين' : 'للخدام فقط'}) - {getGradeTitle(selectedGrade)}
               </h4>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">المنهج المستهدف</label>
+                  <select
+                    value={selectedGrade}
+                    onChange={(e) => setSelectedGrade && setSelectedGrade(e.target.value)}
+                    className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:outline-none focus:border-maroon-800"
+                  >
+                    <option value="cycle_1">منهج المرحلة الأولى (الدورة أ)</option>
+                    <option value="cycle_2">منهج المرحلة الثانية (الدورة ب)</option>
+                    <option value="elisha">فصل أليشع (تمهيدي إعداد خدام)</option>
+                  </select>
+                </div>
                 <div>
                   <label className="block text-[11px] font-bold text-slate-700 mb-1">اسم المادة</label>
                   <input
                     type="text"
                     required
-                    placeholder="مثال: طقوس الكنيسة، تاريخ كنيسة، عقيدة، إعداد درس"
+                    placeholder="مثال: طقوس الكنيسة، تاريخ كنيسة، عقيدة"
                     value={newSubjectName}
                     onChange={(e) => setNewSubjectName(e.target.value)}
                     className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-maroon-800"

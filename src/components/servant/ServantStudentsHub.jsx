@@ -6,10 +6,23 @@ export default function ServantStudentsHub({
   selectedGrade,
   setSelectedGrade,
   getGradeTitle,
+  activeAcademicCycle = 'cycle_1',
+  academicYear = '2026-2027',
   onSelectStudent
 }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilterGrade, setActiveFilterGrade] = useState(selectedGrade || 'all');
+
+  // Helper: Get enrolled curriculum title for student
+  const getEnrolledCurriculumBadge = (grade) => {
+    if (grade === 'elisha') {
+      return { text: 'منهج فصل أليشع (تمهيدي)', color: 'bg-amber-50 text-amber-900 border-amber-200' };
+    }
+    if (activeAcademicCycle === 'cycle_2') {
+      return { text: `يدرس: المرحلة الثانية (${academicYear})`, color: 'bg-purple-50 text-purple-900 border-purple-200' };
+    }
+    return { text: `يدرس: المرحلة الأولى (${academicYear})`, color: 'bg-sky-50 text-sky-900 border-sky-200' };
+  };
 
   // Filter only students
   const studentsList = (allUsers || []).filter(u => u.role === 'student');
@@ -106,6 +119,7 @@ export default function ServantStudentsHub({
             const gradeName = getGradeTitle(st.grade || 'first');
             const points = st.points || 0;
             const attendRate = typeof st.attendanceRate === 'number' ? st.attendanceRate : 85;
+            const currBadge = getEnrolledCurriculumBadge(st.grade || 'first');
 
             return (
               <div 
@@ -132,6 +146,15 @@ export default function ServantStudentsHub({
                   <span className="bg-maroon-50 text-maroon-900 border border-maroon-200 font-bold px-2.5 py-1 rounded-xl text-[11px] shrink-0">
                     {gradeName}
                   </span>
+                </div>
+
+                {/* Enrolled Curriculum Badge for Current Academic Year */}
+                <div className={`p-2 rounded-xl border text-[11px] font-bold flex items-center justify-between gap-1.5 ${currBadge.color}`}>
+                  <span className="flex items-center gap-1">
+                    <BookOpen className="w-3.5 h-3.5 shrink-0" />
+                    <span>{currBadge.text}</span>
+                  </span>
+                  <span className="text-[10px] font-mono opacity-80">{academicYear}</span>
                 </div>
 
                 {/* Quick Indicators Bar */}

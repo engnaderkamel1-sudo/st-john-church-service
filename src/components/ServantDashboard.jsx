@@ -88,8 +88,43 @@ export default function ServantDashboard({ user }) {
       }
     });
 
-    return () => unsubPin();
+    // Realtime sync of active curriculum cycle (cycle_1: منهج المرحلة الأولى | cycle_2: منهج المرحلة الثانية)
+    const unsubCycle = onSnapshot(doc(db, 'service_settings', 'academic_cycle'), (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        if (data.activeCycle) {
+          setActiveAcademicCycle(data.activeCycle);
+        }
+        if (data.academicYear) {
+          setAcademicYear(data.academicYear);
+        }
+      }
+    });
+
+    return () => {
+      unsubPin();
+      unsubCycle();
+    };
   }, [isAppAdmin]);
+
+  // Active academic cycle state (default: cycle_1 for 2026-2027)
+  const [activeAcademicCycle, setActiveAcademicCycle] = useState('cycle_1'); // 'cycle_1' (المرحلة الأولى) | 'cycle_2' (المرحلة الثانية)
+  const [academicYear, setAcademicYear] = useState('2026-2027');
+
+  const handleUpdateAcademicCycle = async (newCycle, newYear = '2026-2027') => {
+    setActiveAcademicCycle(newCycle);
+    setAcademicYear(newYear);
+    try {
+      await setDoc(doc(db, 'service_settings', 'academic_cycle'), {
+        activeCycle: newCycle,
+        academicYear: newYear,
+        updatedBy: user.fullName || 'الخادم المسؤول',
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+    } catch (e) {
+      console.error('Error saving academic cycle:', e);
+    }
+  };
 
   // Update User Role & Stage in Firestore
   const handleUpdateUserRole = async (userId, newRole, newGrade = null) => {
@@ -935,7 +970,9 @@ export default function ServantDashboard({ user }) {
       first: 'سنة أولى',
       second: 'سنة ثانية',
       third: 'سنة ثالثة',
-      elisha: 'فصل أليشع (إعداد خدام)'
+      elisha: 'فصل أليشع (إعداد خدام)',
+      cycle_1: 'منهج المرحلة الأولى (الدورة أ)',
+      cycle_2: 'منهج المرحلة الثانية (الدورة ب)'
     };
     return titles[g] || g;
   };
@@ -1341,6 +1378,8 @@ export default function ServantDashboard({ user }) {
           selectedGrade={selectedGrade}
           setSelectedGrade={setSelectedGrade}
           getGradeTitle={getGradeTitle}
+          activeAcademicCycle={activeAcademicCycle}
+          academicYear={academicYear}
           onSelectStudent={(st) => setStudent360Profile(st)}
         />
       )}
@@ -1392,6 +1431,7 @@ export default function ServantDashboard({ user }) {
         <ServantCurriculum
           user={user}
           selectedGrade={selectedGrade}
+          setSelectedGrade={setSelectedGrade}
           getGradeTitle={getGradeTitle}
           curriculumTarget={curriculumTarget}
           setCurriculumTarget={setCurriculumTarget}
@@ -1399,6 +1439,9 @@ export default function ServantDashboard({ user }) {
           setActiveSubject={setActiveSubject}
           subjectsByGrade={subjectsByGrade}
           setSubjectsByGrade={setSubjectsByGrade}
+          activeAcademicCycle={activeAcademicCycle}
+          academicYear={academicYear}
+          handleUpdateAcademicCycle={handleUpdateAcademicCycle}
         />
       )}
 

@@ -23,16 +23,35 @@ export default function StudentDashboard({ user }) {
   const [selectedSubject, setSelectedSubject] = useState(null);
   const [activePreviewPdf, setActivePreviewPdf] = useState(null);
   const [activePreviewVideo, setActivePreviewVideo] = useState(null);
+  const [activeCycle, setActiveCycle] = useState('cycle_1');
 
-  // Sync real-time curriculum for current student grade (Excluding servants' private curriculum)
+  // Sync active academic cycle setting
+  useEffect(() => {
+    const unsubCycle = onSnapshot(doc(db, 'service_settings', 'academic_cycle'), (docSnap) => {
+      if (docSnap.exists() && docSnap.data().activeCycle) {
+        setActiveCycle(docSnap.data().activeCycle);
+      }
+    });
+    return () => unsubCycle();
+  }, []);
+
+  // Sync real-time curriculum for current student grade or active academic cycle (Excluding servants' private curriculum)
   useEffect(() => {
     const unsub = onSnapshot(collection(db, 'service_curriculum'), (snapshot) => {
       const studentGrade = user.grade || 'first';
       const list = [];
       snapshot.forEach(docSnap => {
         const data = { id: docSnap.id, ...docSnap.data() };
-        if (data.grade === studentGrade && data.targetAudience !== 'servants') {
-          list.push(data);
+        if (data.targetAudience === 'servants') return;
+
+        // Elisha students get elisha curriculum
+        if (studentGrade === 'elisha') {
+          if (data.grade === 'elisha') list.push(data);
+        } else {
+          // First and second year prep students get the active academic cycle curriculum (or legacy first/second match)
+          if (data.grade === activeCycle || data.grade === studentGrade) {
+            list.push(data);
+          }
         }
       });
       setSubjectsData(list);
@@ -46,7 +65,7 @@ export default function StudentDashboard({ user }) {
     });
 
     return () => unsub();
-  }, [user.grade, selectedSubject?.id]);
+  }, [user.grade, selectedSubject?.id, activeCycle]);
 
   // Dynamic Numeric PIN Code Attendance State
   const [inputPinCode, setInputPinCode] = useState('');
