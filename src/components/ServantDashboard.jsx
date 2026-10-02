@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   ShieldCheck, Users, QrCode, BookOpen, CheckCircle, Clock, 
   Printer, UserCheck, Search, Award, FileCheck, Edit3, Save, Check, 
@@ -1011,47 +1011,67 @@ export default function ServantDashboard({ user }) {
         </div>
       </div>
 
-      {/* Mobile Top Navigation & Menu Trigger */}
-      <div className="md:hidden flex items-center justify-between bg-white border border-slate-200 rounded-2xl p-3 shadow-xs">
+      {/* Top Floating Appbar with Menu Trigger and Active Tab Pill */}
+      <div className="bg-white border border-slate-200/90 rounded-2xl p-3 shadow-xs flex items-center justify-between gap-3 sticky top-16 z-30 backdrop-blur-md">
         <button
           type="button"
-          onClick={() => setMobileSidebarOpen(prev => !prev)}
-          className="p-2 bg-maroon-800 text-white rounded-xl flex items-center gap-2 text-xs font-bold shadow-xs hover:bg-maroon-900 transition-colors"
+          onClick={() => setMobileSidebarOpen(true)}
+          className="px-3.5 py-2.5 bg-gradient-to-r from-maroon-900 to-maroon-800 text-white rounded-xl flex items-center gap-2.5 text-xs font-bold shadow-sm hover:from-maroon-950 hover:to-maroon-900 active:scale-95 transition-all cursor-pointer ring-1 ring-gold-400/30"
+          title="فتح قائمة الأقسام"
         >
-          <Menu className="w-4 h-4" />
-          <span>القائمة وأقسام المنظومة</span>
+          <Menu className="w-4 h-4 text-gold-300 shrink-0" />
+          <span>القائمة الرئيسية</span>
         </button>
 
-        <span className="text-xs font-bold text-maroon-950 bg-maroon-50 px-3 py-1.5 rounded-xl border border-maroon-100">
-          {mainTab === 'users_hub' && userHubSubTab === 'accounts' && 'المستخدمين والأدوار'}
-          {mainTab === 'users_hub' && userHubSubTab === 'login_history' && 'سجل النشاط والدخول'}
-          {mainTab === 'subjects_hub' && (curriculumTarget === 'students' ? 'مناهج ومراجع المخدومين' : 'مناهج ومراجع الخدام 🔒')}
-          {mainTab === 'exams_bank_hub' && 'بنك الأسئلة والامتحانات'}
-          {mainTab === 'analytics_hub' && 'الإحصائيات والأوائل'}
-          {mainTab === 'spiritual_diary' && 'النوتة الروحية ومتابعة المخدومين'}
-          {mainTab === 'attendance_qr' && 'كود الحضور (QR)'}
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-extrabold text-maroon-950 bg-maroon-50/80 border border-maroon-200/70 px-3.5 py-1.5 rounded-xl shadow-2xs flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-gold-500 inline-block animate-pulse"></span>
+            {mainTab === 'users_hub' && userHubSubTab === 'accounts' && 'المستخدمين والأدوار'}
+            {mainTab === 'users_hub' && userHubSubTab === 'login_history' && 'سجل النشاط والدخول'}
+            {mainTab === 'subjects_hub' && (curriculumTarget === 'students' ? 'مناهج ومراجع المخدومين' : 'مناهج ومراجع الخدام 🔒')}
+            {mainTab === 'exams_bank_hub' && 'بنك الأسئلة والامتحانات'}
+            {mainTab === 'analytics_hub' && 'الإحصائيات والأوائل'}
+            {mainTab === 'spiritual_diary' && 'النوتة الروحية ومتابعة المخدومين'}
+            {mainTab === 'attendance_qr' && 'كود الحضور (QR)'}
+          </span>
+        </div>
       </div>
 
-      {/* Main Grid: Sidebar (Right in RTL) + Main Content (Left in RTL) */}
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
-        {/* Sidebar Navigation */}
-        <aside className={`
-          md:col-span-3 bg-white border border-slate-200 rounded-3xl p-3 shadow-sm space-y-2
-          ${mobileSidebarOpen ? 'block' : 'hidden md:block'}
-        `}>
-          <div className="flex items-center justify-between px-3 py-2 border-b border-slate-100">
-            <span className="text-[11px] font-extrabold text-slate-400 uppercase tracking-wider">أقسام الخدمة واللوحة</span>
-            <button
-              type="button"
-              onClick={() => setMobileSidebarOpen(false)}
-              className="md:hidden text-slate-400 hover:text-slate-600 p-1"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
+      {/* Slide-Over Navigation Drawer (Overlay & Drawer for both Desktop & Mobile) */}
+      {mobileSidebarOpen && (
+        <div className="fixed inset-0 z-50 overflow-hidden font-cairo">
+          {/* Backdrop Blur Overlay */}
+          <div 
+            onClick={() => setMobileSidebarOpen(false)}
+            className="fixed inset-0 bg-slate-950/40 backdrop-blur-xs transition-opacity duration-300"
+          />
 
-          <nav className="space-y-1 pt-1">
+          {/* Drawer Slide-in from Right (RTL) */}
+          <div className="fixed inset-y-0 right-0 max-w-xs w-full bg-white shadow-2xl z-50 flex flex-col justify-between border-l border-slate-200 animate-in slide-in-from-right duration-250">
+            {/* Drawer Header */}
+            <div>
+              <div className="flex items-center justify-between p-4 border-b border-slate-100 bg-slate-50/80">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-maroon-900 text-gold-300 flex items-center justify-center font-bold">
+                    <ShieldCheck className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <span className="text-xs font-bold text-slate-800 block">أقسام الخدمة واللوحة</span>
+                    <span className="text-[10px] text-slate-400 font-medium">لوحة الخدام المركزية</span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setMobileSidebarOpen(false)}
+                  className="w-8 h-8 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 flex items-center justify-center transition-colors"
+                  title="إغلاق القائمة"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Navigation Items */}
+              <nav className="p-3 space-y-1.5 overflow-y-auto max-h-[calc(100vh-140px)]">
             {/* 1. App Admin only: Users & Roles */}
             {isAppAdmin && (
               <button
@@ -1242,10 +1262,18 @@ export default function ServantDashboard({ user }) {
               <span>كود الحضور (QR)</span>
             </button>
           </nav>
-        </aside>
+            </div>
 
-        {/* Content Area (col-span-9 on desktop) */}
-        <main className="md:col-span-9 space-y-6">
+            {/* Drawer Footer */}
+            <div className="p-4 border-t border-slate-100 bg-slate-50/50 text-center text-[11px] text-slate-400">
+              كنيسة القديس ماريوحنا المعمدان بالمعراج
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Main Content Area (100% Full Width Real Estate) */}
+      <main className="w-full space-y-6">
 
       {/* 0. Users & Roles Management Hub (Admin Only: Admin Approvals & Activity Logs) */}
       {isAppAdmin && mainTab === 'users_hub' && (
@@ -1363,8 +1391,7 @@ export default function ServantDashboard({ user }) {
           setSelectedStudentDetail={setSelectedStudentDetail}
         />
       )}
-        </main>
-      </div>
+      </main>
     </div>
   );
 }

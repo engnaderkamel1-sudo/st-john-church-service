@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Award, QrCode, Sun, BookOpen, FileText, CheckSquare, Bell, Check 
+  Award, QrCode, Sun, BookOpen, FileText, CheckSquare, Bell, Check, Menu, X 
 } from 'lucide-react';
 import { db } from '../firebase';
 import { collection, addDoc, query, where, getDocs, doc, getDoc, onSnapshot, serverTimestamp, updateDoc, setDoc } from 'firebase/firestore';
@@ -12,6 +12,7 @@ import StudentExams from './student/StudentExams';
 export default function StudentDashboard({ user }) {
   // 6 Specified Tabs: 'attendance', 'spiritual_diary', 'curriculum', 'exams', 'tasks', 'announcements'
   const [activeTab, setActiveTab] = useState('attendance');
+  const [isNavDrawerOpen, setIsNavDrawerOpen] = useState(false);
   const [isWithinTime, setIsWithinTime] = useState(false);
   const [currentTimeStr, setCurrentTimeStr] = useState('');
   const [bypassTime, setBypassTime] = useState(false);
@@ -459,68 +460,171 @@ export default function StudentDashboard({ user }) {
         </div>
       </div>
 
-      {/* The 6 Specified Navigation Tabs (Light Mode) */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-1.5 flex items-center justify-around text-xs font-bold sticky top-16 z-30 shadow-xs overflow-x-auto">
+      {/* Top Floating Appbar with Menu Trigger and Active Tab Pill */}
+      <div className="bg-white border border-slate-200/90 rounded-2xl p-3 shadow-xs flex items-center justify-between gap-3 sticky top-16 z-30 backdrop-blur-md">
         <button
-          onClick={() => setActiveTab('attendance')}
-          className={`py-2 px-3 rounded-xl flex items-center gap-1.5 transition-all shrink-0 ${
-            activeTab === 'attendance' ? 'bg-maroon-800 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'
-          }`}
+          type="button"
+          onClick={() => setIsNavDrawerOpen(true)}
+          className="px-3.5 py-2.5 bg-gradient-to-r from-maroon-900 to-maroon-800 text-white rounded-xl flex items-center gap-2.5 text-xs font-bold shadow-sm hover:from-maroon-950 hover:to-maroon-900 active:scale-95 transition-all cursor-pointer ring-1 ring-gold-400/30"
+          title="فتح أقسام الخدمة"
         >
-          <QrCode className="w-4 h-4" />
-          <span>تسجيل حضور</span>
+          <Menu className="w-4 h-4 text-gold-300 shrink-0" />
+          <span>أقسام المخدوم</span>
         </button>
 
-        <button
-          onClick={() => setActiveTab('spiritual_diary')}
-          className={`py-2 px-3 rounded-xl flex items-center gap-1.5 transition-all shrink-0 ${
-            activeTab === 'spiritual_diary' ? 'bg-maroon-800 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'
-          }`}
-        >
-          <Sun className="w-4 h-4" />
-          <span>النوتة الروحية</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('curriculum')}
-          className={`py-2 px-3 rounded-xl flex items-center gap-1.5 transition-all shrink-0 ${
-            activeTab === 'curriculum' ? 'bg-maroon-800 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'
-          }`}
-        >
-          <BookOpen className="w-4 h-4" />
-          <span>المنهج والمواد</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('exams')}
-          className={`py-2 px-3 rounded-xl flex items-center gap-1.5 transition-all shrink-0 ${
-            activeTab === 'exams' ? 'bg-maroon-800 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'
-          }`}
-        >
-          <FileText className="w-4 h-4" />
-          <span>الامتحانات</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('tasks')}
-          className={`py-2 px-3 rounded-xl flex items-center gap-1.5 transition-all shrink-0 ${
-            activeTab === 'tasks' ? 'bg-maroon-800 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'
-          }`}
-        >
-          <CheckSquare className="w-4 h-4" />
-          <span>التاسكات</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('announcements')}
-          className={`py-2 px-3 rounded-xl flex items-center gap-1.5 transition-all shrink-0 ${
-            activeTab === 'announcements' ? 'bg-maroon-800 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'
-          }`}
-        >
-          <Bell className="w-4 h-4" />
-          <span>التنبيهات</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-extrabold text-maroon-950 bg-maroon-50/80 border border-maroon-200/70 px-3.5 py-1.5 rounded-xl shadow-2xs flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-gold-500 inline-block animate-pulse"></span>
+            {activeTab === 'attendance' && 'تسجيل حضور'}
+            {activeTab === 'spiritual_diary' && 'النوتة الروحية'}
+            {activeTab === 'curriculum' && 'المنهج والمواد الدراسية'}
+            {activeTab === 'exams' && 'الامتحانات والاختبارات'}
+            {activeTab === 'tasks' && 'التاسكات والأنشطة'}
+            {activeTab === 'announcements' && 'لوحة التنبيهات والإعلانات'}
+          </span>
+        </div>
       </div>
+
+      {/* Slide-Over Navigation Drawer for Students */}
+      {isNavDrawerOpen && (
+        <div className="fixed inset-0 z-50 overflow-hidden font-cairo">
+          {/* Backdrop Blur Overlay */}
+          <div 
+            onClick={() => setIsNavDrawerOpen(false)}
+            className="fixed inset-0 bg-slate-950/40 backdrop-blur-xs transition-opacity duration-300"
+          />
+
+          {/* Drawer Slide-in from Right (RTL) */}
+          <div className="fixed inset-y-0 right-0 max-w-xs w-full bg-white shadow-2xl z-50 flex flex-col justify-between border-l border-slate-200 animate-in slide-in-from-right duration-250">
+            {/* Drawer Header */}
+            <div>
+              <div className="flex items-center justify-between p-4 border-b border-slate-100 bg-slate-50/80">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-maroon-900 text-gold-300 flex items-center justify-center font-bold">
+                    <BookOpen className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <span className="text-xs font-bold text-slate-800 block">أقسام المخدوم</span>
+                    <span className="text-[10px] text-slate-400 font-medium">{getGradeTitle(user.grade)}</span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsNavDrawerOpen(false)}
+                  className="w-8 h-8 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 flex items-center justify-center transition-colors"
+                  title="إغلاق القائمة"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Navigation Items */}
+              <nav className="p-3 space-y-1.5 overflow-y-auto max-h-[calc(100vh-140px)]">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab('attendance');
+                    setIsNavDrawerOpen(false);
+                  }}
+                  className={`w-full text-right py-3 px-3.5 rounded-2xl flex items-center gap-3 text-xs font-bold transition-all ${
+                    activeTab === 'attendance'
+                      ? 'bg-maroon-800 text-white shadow-sm'
+                      : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                  }`}
+                >
+                  <QrCode className={`w-4 h-4 ${activeTab === 'attendance' ? 'text-gold-300' : 'text-slate-500'}`} />
+                  <span>تسجيل حضور</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab('spiritual_diary');
+                    setIsNavDrawerOpen(false);
+                  }}
+                  className={`w-full text-right py-3 px-3.5 rounded-2xl flex items-center gap-3 text-xs font-bold transition-all ${
+                    activeTab === 'spiritual_diary'
+                      ? 'bg-maroon-800 text-white shadow-sm'
+                      : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                  }`}
+                >
+                  <Sun className={`w-4 h-4 ${activeTab === 'spiritual_diary' ? 'text-gold-300' : 'text-amber-500'}`} />
+                  <span>النوتة الروحية</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab('curriculum');
+                    setIsNavDrawerOpen(false);
+                  }}
+                  className={`w-full text-right py-3 px-3.5 rounded-2xl flex items-center gap-3 text-xs font-bold transition-all ${
+                    activeTab === 'curriculum'
+                      ? 'bg-maroon-800 text-white shadow-sm'
+                      : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                  }`}
+                >
+                  <BookOpen className={`w-4 h-4 ${activeTab === 'curriculum' ? 'text-gold-300' : 'text-slate-500'}`} />
+                  <span>المنهج والمواد</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab('exams');
+                    setIsNavDrawerOpen(false);
+                  }}
+                  className={`w-full text-right py-3 px-3.5 rounded-2xl flex items-center gap-3 text-xs font-bold transition-all ${
+                    activeTab === 'exams'
+                      ? 'bg-maroon-800 text-white shadow-sm'
+                      : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                  }`}
+                >
+                  <FileText className={`w-4 h-4 ${activeTab === 'exams' ? 'text-gold-300' : 'text-slate-500'}`} />
+                  <span>الامتحانات</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab('tasks');
+                    setIsNavDrawerOpen(false);
+                  }}
+                  className={`w-full text-right py-3 px-3.5 rounded-2xl flex items-center gap-3 text-xs font-bold transition-all ${
+                    activeTab === 'tasks'
+                      ? 'bg-maroon-800 text-white shadow-sm'
+                      : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                  }`}
+                >
+                  <CheckSquare className={`w-4 h-4 ${activeTab === 'tasks' ? 'text-gold-300' : 'text-slate-500'}`} />
+                  <span>التاسكات</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab('announcements');
+                    setIsNavDrawerOpen(false);
+                  }}
+                  className={`w-full text-right py-3 px-3.5 rounded-2xl flex items-center gap-3 text-xs font-bold transition-all ${
+                    activeTab === 'announcements'
+                      ? 'bg-maroon-800 text-white shadow-sm'
+                      : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                  }`}
+                >
+                  <Bell className={`w-4 h-4 ${activeTab === 'announcements' ? 'text-gold-300' : 'text-slate-500'}`} />
+                  <span>التنبيهات</span>
+                </button>
+              </nav>
+            </div>
+
+            {/* Drawer Footer */}
+            <div className="p-4 border-t border-slate-100 bg-slate-50/50 text-center text-[11px] text-slate-400">
+              خدمة أليشع النبي وإعداد خدام
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 1. Tab: Student Attendance (Modular) */}
       {activeTab === 'attendance' && (
