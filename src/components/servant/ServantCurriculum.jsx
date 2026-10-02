@@ -34,6 +34,9 @@ export default function ServantCurriculum({
   const [aiStudioMode, setAiStudioMode] = useState('presentation'); // 'presentation' | 'study_guide'
   const [activePresentation, setActivePresentation] = useState(null);
   const [targetRefForAi, setTargetRefForAi] = useState(null);
+  const [loadingRefAiId, setLoadingRefAiId] = useState(null);
+  const [loadedAiFile, setLoadedAiFile] = useState(null);
+  const [autoGenerateAiAfterUpload, setAutoGenerateAiAfterUpload] = useState(false);
 
   const allCurrentGradeSubjects = subjectsByGrade[selectedGrade] || [];
   const currentGradeSubjects = allCurrentGradeSubjects.filter(
@@ -153,6 +156,16 @@ export default function ServantCurriculum({
     setRefSaving(true);
     let finalUrl = newRefUrl.trim();
     let finalFileId = null;
+    let uploadedBase64 = null;
+    let uploadedFileMeta = null;
+
+    if (selectedUploadFile) {
+      uploadedFileMeta = {
+        name: selectedUploadFile.name,
+        size: selectedUploadFile.size,
+        type: selectedUploadFile.type || 'application/pdf'
+      };
+    }
 
     try {
       if (newRefType !== 'video' && selectedUploadFile) {
@@ -167,6 +180,7 @@ export default function ServantCurriculum({
           reader.onerror = reject;
           reader.readAsDataURL(selectedUploadFile);
         });
+        uploadedBase64 = base64Data;
 
         setUploadStatusText('جاري الرفع السحابي إلى Google Drive...');
         const driveEndpoint = 'https://script.google.com/macros/s/AKfycbxhdl_hk5vB7NLLL7zdPmVXlwvAOiZYVLsrk5T73UdJpJJM9JpU74p0DexpSch7gI4I/exec';
@@ -227,6 +241,18 @@ export default function ServantCurriculum({
         references: updatedRefs
       });
       setActiveSubject({ ...activeSubject, references: updatedRefs });
+
+      if (autoGenerateAiAfterUpload && uploadedBase64) {
+        setTargetRefForAi(newRef);
+        setAiStudioMode('study_guide');
+        setLoadedAiFile({
+          base64: uploadedBase64,
+          mimeType: uploadedFileMeta?.type || 'application/pdf',
+          fileName: uploadedFileMeta?.name || newRef.title,
+          fileSize: uploadedFileMeta?.size || 0
+        });
+        setShowAiStudioModal(true);
+      }
     } catch (err) {
       console.error('Error adding reference:', err);
       setActiveSubject({ ...activeSubject, references: updatedRefs });
@@ -241,7 +267,72 @@ export default function ServantCurriculum({
       setNewRefTitle('');
       setNewRefUrl('');
       setSelectedUploadFile(null);
+      setAutoGenerateAiAfterUpload(false);
       setShowAddRefModal(false);
+    }
+  };
+
+  // Direct Cloud Background Downloader for AI Studio
+  const handleOpenAiForRef = async (rf, mode) => {
+    setTargetRefForAi(rf);
+    setAiStudioMode(mode);
+    setLoadedAiFile(null);
+
+    // If it's a YouTube video, open AI Studio normally for notes/questions
+    if (rf.type === 'video') {
+      setShowAiStudioModal(true);
+      return;
+    }
+
+    // Extract fileId from rf or rf.url
+    let fileId = rf.fileId;
+    if (!fileId && rf.url) {
+      const match = rf.url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/) || rf.url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+      if (match) fileId = match[1];
+    }
+
+    if (!fileId) {
+      setShowAiStudioModal(true);
+      return;
+    }
+
+    setLoadingRefAiId(rf.id);
+
+    try {
+      // Direct fetch from Google Drive CDN (with open Access-Control-Allow-Origin: *)
+      const downloadUrl = `https://drive.usercontent.google.com/download?id=${fileId}&export=download`;
+      const res = await fetch(downloadUrl);
+      if (!res.ok) throw new Error('فشل جلب الملف من خوادم Google Drive');
+
+      const blob = await res.blob();
+      const mimeType = blob.type && blob.type !== 'application/octet-stream'
+        ? blob.type
+        : (rf.type === 'image' ? 'image/jpeg' : 'application/pdf');
+
+      // Convert to Base64
+      const base64 = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const result = reader.result;
+          resolve(typeof result === 'string' ? result.split(',')[1] : result);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+
+      setLoadedAiFile({
+        base64,
+        mimeType,
+        fileName: rf.fileName || rf.title || 'مستند الدرس',
+        fileSize: blob.size
+      });
+      setShowAiStudioModal(true);
+    } catch (fetchErr) {
+      console.warn('Auto-fetch from Google Drive failed, opening with manual upload fallback:', fetchErr);
+      setLoadedAiFile(null);
+      setShowAiStudioModal(true);
+    } finally {
+      setLoadingRefAiId(null);
     }
   };
 
@@ -645,6 +736,19 @@ export default function ServantCurriculum({
                 </div>
               )}
 
+              {/* Optional Auto AI Studio Generation checkbox */}
+              {newRefType !== 'video' && (
+                <label className="flex items-center gap-2 cursor-pointer bg-amber-50/70 border border-amber-200/80 p-2.5 rounded-xl text-xs font-bold text-amber-950 hover:bg-amber-100/70 transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={autoGenerateAiAfterUpload}
+                    onChange={(e) => setAutoGenerateAiAfterUpload(e.target.checked)}
+                    className="rounded text-maroon-800 focus:ring-maroon-800"
+                  />
+                  <span>توليد ملخص الدرس فوراً بعد الرفع بالذكاء الاصطناعي 🪄 (اختياري)</span>
+                </label>
+              )}
+
               <div className="flex justify-end gap-2 pt-2 border-t border-slate-200">
                 <button type="button" onClick={() => setShowAddRefModal(false)} className="bg-white border border-slate-200 text-slate-600 text-xs px-3 py-1.5 rounded-xl font-bold">
                   إلغاء
@@ -711,31 +815,43 @@ export default function ServantCurriculum({
                       {/* Direct AI Presentation from this file */}
                       <button
                         type="button"
-                        onClick={() => {
-                          setTargetRefForAi(rf);
-                          setAiStudioMode('presentation');
-                          setShowAiStudioModal(true);
-                        }}
-                        className="bg-amber-100/70 hover:bg-amber-200 text-amber-900 border border-amber-300 font-bold px-2.5 py-1 rounded-lg text-[10px] flex items-center gap-1 transition-all"
+                        disabled={loadingRefAiId === rf.id}
+                        onClick={() => handleOpenAiForRef(rf, 'presentation')}
+                        className="bg-amber-100/70 hover:bg-amber-200 text-amber-900 border border-amber-300 font-bold px-2.5 py-1 rounded-lg text-[10px] flex items-center gap-1 transition-all disabled:opacity-60"
                         title="إنشاء عرض تقديمي (Presentation Data Show) من هذا الملف مباشرة"
                       >
-                        <Presentation className="w-3 h-3 text-amber-700" />
-                        <span>Presentation 📽️</span>
+                        {loadingRefAiId === rf.id && aiStudioMode === 'presentation' ? (
+                          <>
+                            <div className="w-3 h-3 border-2 border-amber-800 border-t-transparent rounded-full animate-spin"></div>
+                            <span>جاري القراءة سحابياً...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Presentation className="w-3 h-3 text-amber-700" />
+                            <span>Presentation 📽️</span>
+                          </>
+                        )}
                       </button>
 
                       {/* Direct AI Summary from this file */}
                       <button
                         type="button"
-                        onClick={() => {
-                          setTargetRefForAi(rf);
-                          setAiStudioMode('study_guide');
-                          setShowAiStudioModal(true);
-                        }}
-                        className="bg-purple-100/70 hover:bg-purple-200 text-purple-900 border border-purple-300 font-bold px-2.5 py-1 rounded-lg text-[10px] flex items-center gap-1 transition-all"
+                        disabled={loadingRefAiId === rf.id}
+                        onClick={() => handleOpenAiForRef(rf, 'study_guide')}
+                        className="bg-purple-100/70 hover:bg-purple-200 text-purple-900 border border-purple-300 font-bold px-2.5 py-1 rounded-lg text-[10px] flex items-center gap-1 transition-all disabled:opacity-60"
                         title="توليد ملخص ودليل دراسي كنسي من هذا الملف مباشرة"
                       >
-                        <Sparkles className="w-3 h-3 text-purple-700" />
-                        <span>ملخص 📖</span>
+                        {loadingRefAiId === rf.id && aiStudioMode === 'study_guide' ? (
+                          <>
+                            <div className="w-3 h-3 border-2 border-purple-800 border-t-transparent rounded-full animate-spin"></div>
+                            <span>جاري القراءة سحابياً...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="w-3 h-3 text-purple-700" />
+                            <span>ملخص 📖</span>
+                          </>
+                        )}
                       </button>
 
                       {/* Toggle Visibility for Students */}
@@ -798,19 +914,26 @@ export default function ServantCurriculum({
         onClose={() => {
           setShowAiStudioModal(false);
           setTargetRefForAi(null);
+          setLoadedAiFile(null);
         }}
         initialGrade={selectedGrade}
         initialMode={aiStudioMode}
         targetReference={targetRefForAi}
         initialText=""
+        initialBase64={loadedAiFile?.base64 || ''}
+        initialMimeType={loadedAiFile?.mimeType || ''}
+        initialFileName={loadedAiFile?.fileName || ''}
+        initialFileSize={loadedAiFile?.fileSize || 0}
         onOpenPresentation={(pres) => {
           setActivePresentation(pres);
           setShowAiStudioModal(false);
           setTargetRefForAi(null);
+          setLoadedAiFile(null);
         }}
         onAddQuestionsToBank={() => {
           setShowAiStudioModal(false);
           setTargetRefForAi(null);
+          setLoadedAiFile(null);
         }}
       />
     </div>

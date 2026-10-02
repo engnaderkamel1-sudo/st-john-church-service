@@ -16,7 +16,11 @@ export default function ServantAiStudioModal({
   initialMode = 'questions',
   initialFile = null,
   initialText = '',
-  targetReference = null
+  targetReference = null,
+  initialBase64 = '',
+  initialMimeType = '',
+  initialFileName = '',
+  initialFileSize = 0
 }) {
   const resultsRef = useRef(null);
   const [activeMode, setActiveMode] = useState(initialMode); // 'questions' | 'presentation' | 'study_guide'
@@ -55,10 +59,22 @@ export default function ServantAiStudioModal({
       if (initialText) setManualText(initialText);
       if (initialMode) setActiveMode(initialMode);
       if (initialGrade) setSelectedGrade(initialGrade);
+      if (initialBase64) {
+        setFileBase64(initialBase64);
+        setFileMimeType(initialMimeType || 'application/pdf');
+        setSelectedFile({
+          name: initialFileName || 'المستند السحابي',
+          size: initialFileSize || 0,
+          type: initialMimeType || 'application/pdf',
+          isAutoFetched: true
+        });
+      } else if (initialFile) {
+        setSelectedFile(initialFile);
+      }
       setError('');
       setAddedSuccess(false);
     }
-  }, [isOpen, initialText, initialMode, initialGrade]);
+  }, [isOpen, initialText, initialMode, initialGrade, initialBase64, initialMimeType, initialFileName, initialFileSize, initialFile]);
 
   if (!isOpen) return null;
 
@@ -516,8 +532,10 @@ export default function ServantAiStudioModal({
                     <CheckCircle className="w-5 h-5" />
                   </div>
                   <div>
-                    <span className="font-bold text-slate-900 block text-sm">{selectedFile.name}</span>
-                    <span className="text-emerald-700 font-medium">({Math.round(selectedFile.size / 1024)} KB) • جاهز للمعالجة</span>
+                    <span className="text-emerald-700 font-medium">
+                      {selectedFile.size ? `(${Math.round(selectedFile.size / 1024)} KB) • ` : ''}
+                      {selectedFile.isAutoFetched ? 'تم جلبه سحابياً بنجاح ☁️ • جاهز للتحليل الفوري' : 'جاهز للمعالجة'}
+                    </span>
                   </div>
                 </div>
                 <button onClick={handleClearFile} className="text-red-600 hover:bg-red-50 p-2 rounded-xl text-xs font-bold">
