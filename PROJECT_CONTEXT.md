@@ -109,12 +109,16 @@
 
 ---
 
-## 6. 🔄 آلية Git والنشر السحابي (Git & Deployment)
+## 6. 🔄 آلية Git والنشر السحابي والتحديث الفوري (Git & Auto-Update)
 - تم تفعيل **PortableGit** محلياً من المسار:
   `C:\Users\nader.reda\Downloads\PortableGit\cmd\git.exe`
 - المستودع مربوط بالفرع الرئيسي `main` على GitHub:
   `https://github.com/engnaderkamel1-sudo/st-john-church-service`
-- يتم تنفيذ الرفع بأمر Git مباشر ذرّي (`commit` + `push`) دون الحاجة لفتح أي نوافذ أو استهلاك رصيد زائد في تتبع Vercel.
+- يتم تنفيذ الرفع بأمر Git مباشر ذرّي (`commit` + `push`).
+- **منظومة التحديث الفوري الشامل لكافة المستخدمين (Instant Auto-Update):**
+  - ملف `vercel.json` يضبط `Cache-Control: no-cache, no-store, must-revalidate` لملف `index.html` لمنع تخزين النسخ القديمة في متصفحات الموبايل.
+  - وسم منع الكاش في `index.html`.
+  - مكون `AutoUpdateWatcher.jsx` يفحص السيرفر تلقائياً عند عودة المستخدم للتطبيق أو كل دقيقتين، ويظهر إشعاراً عائماً فور توفر أي نسخة جديدة مع تحديث الكاش وإعادة التحميل الفوري.
 
 ---
 

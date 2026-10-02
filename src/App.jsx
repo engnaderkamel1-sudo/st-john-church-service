@@ -4,6 +4,7 @@ import { db } from './firebase';
 import AuthModal from './components/AuthModal';
 import StudentDashboard from './components/StudentDashboard';
 import ServantDashboard from './components/ServantDashboard';
+import AutoUpdateWatcher from './components/common/AutoUpdateWatcher';
 
 import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore';
 
@@ -385,6 +386,9 @@ export default function App() {
         initialMode={targetMode}
         onLoginSuccess={handleLoginSuccess}
       />
+
+      {/* Auto Update Watcher for all users */}
+      <AutoUpdateWatcher />
     </div>
     </>
   );
