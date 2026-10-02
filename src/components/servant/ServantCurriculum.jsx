@@ -41,6 +41,8 @@ export default function ServantCurriculum({
   const [loadingRefAiId, setLoadingRefAiId] = useState(null);
   const [loadedAiFile, setLoadedAiFile] = useState(null);
   const [autoGenerateAiAfterUpload, setAutoGenerateAiAfterUpload] = useState(false);
+  const [isEditingYear, setIsEditingYear] = useState(false);
+  const [inputYear, setInputYear] = useState(academicYear);
 
   const allCurrentGradeSubjects = subjectsByGrade[selectedGrade] || [];
   const currentGradeSubjects = allCurrentGradeSubjects.filter(
@@ -397,17 +399,62 @@ export default function ServantCurriculum({
 
   return (
     <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-6">
-      {/* Academic Cycle Banner & Yearly Selector */}
+      {/* Academic Cycle Banner & Editable Yearly Selector */}
       <div className="bg-gradient-to-r from-slate-900 to-maroon-950 text-white p-3.5 sm:p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm border border-gold-400/30">
         <div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <span className="text-[10px] bg-gold-400 text-maroon-950 font-black px-2 py-0.5 rounded-full">
               نظام السنتين التبادلية
             </span>
-            <span className="text-xs text-slate-300 font-bold">العام الدراسي: {academicYear}</span>
+            <div className="flex items-center gap-1.5 text-xs text-slate-300 font-bold">
+              <span>العام الدراسي:</span>
+              {isEditingYear ? (
+                <div className="flex items-center gap-1">
+                  <input
+                    type="text"
+                    value={inputYear}
+                    onChange={(e) => setInputYear(e.target.value)}
+                    placeholder="مثال: 2026-2027"
+                    className="bg-white/10 border border-gold-400/50 rounded-lg px-2 py-0.5 text-xs text-white font-mono focus:outline-none w-28 text-center"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (inputYear.trim() && handleUpdateAcademicCycle) {
+                        handleUpdateAcademicCycle(activeAcademicCycle, inputYear.trim());
+                      }
+                      setIsEditingYear(false);
+                    }}
+                    className="bg-gold-500 hover:bg-gold-400 text-maroon-950 text-[10px] px-2 py-0.5 rounded-md font-extrabold cursor-pointer"
+                  >
+                    حفظ ✓
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsEditingYear(false)}
+                    className="text-slate-400 hover:text-white text-[10px] px-1 cursor-pointer"
+                  >
+                    إلغاء
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setInputYear(academicYear);
+                    setIsEditingYear(true);
+                  }}
+                  className="bg-white/10 hover:bg-white/20 border border-white/20 text-gold-300 px-2 py-0.5 rounded-lg text-xs font-mono font-bold flex items-center gap-1 cursor-pointer"
+                  title="اضغط لتعديل العام الدراسي لأي سنة قادمة"
+                >
+                  <span>{academicYear}</span>
+                  <span className="text-[10px]">✏️</span>
+                </button>
+              )}
+            </div>
           </div>
           <h4 className="text-sm font-extrabold text-gold-300 mt-1">
-            المنهج الفعّال حالياً لقاعة إعداد خدام: {activeAcademicCycle === 'cycle_1' ? 'منهج المرحلة الأولى (الدورة أ)' : 'منهج المرحلة الثانية (الدورة ب)'}
+            المنهج الفعّال حالياً لقاعة إعداد خدام: {activeAcademicCycle === 'cycle_1' ? 'منهج المرحلة الأولى' : 'منهج المرحلة الثانية'}
           </h4>
           <p className="text-[11px] text-slate-300 mt-0.5">
             يتم بث هذا المنهج تلقائياً لطلاب سنة أولى وسنة ثانية معاً خلال العام الدراسي الحالي.
@@ -418,25 +465,25 @@ export default function ServantCurriculum({
         <div className="flex items-center gap-1.5 bg-black/30 p-1.5 rounded-xl border border-white/10 shrink-0">
           <button
             type="button"
-            onClick={() => handleUpdateAcademicCycle && handleUpdateAcademicCycle('cycle_1', '2026-2027')}
+            onClick={() => handleUpdateAcademicCycle && handleUpdateAcademicCycle('cycle_1', academicYear)}
             className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
               activeAcademicCycle === 'cycle_1'
                 ? 'bg-gold-400 text-maroon-950 shadow'
                 : 'text-slate-300 hover:text-white'
             }`}
           >
-            المرحلة الأولى (2026-2027)
+            المرحلة الأولى ⭐
           </button>
           <button
             type="button"
-            onClick={() => handleUpdateAcademicCycle && handleUpdateAcademicCycle('cycle_2', '2027-2028')}
+            onClick={() => handleUpdateAcademicCycle && handleUpdateAcademicCycle('cycle_2', academicYear)}
             className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
               activeAcademicCycle === 'cycle_2'
                 ? 'bg-gold-400 text-maroon-950 shadow'
                 : 'text-slate-300 hover:text-white'
             }`}
           >
-            المرحلة الثانية (2027-2028)
+            المرحلة الثانية ⭐
           </button>
         </div>
       </div>
@@ -446,8 +493,8 @@ export default function ServantCurriculum({
         <span className="text-xs font-extrabold text-slate-700 shrink-0">اختر محتوى المنهج:</span>
         {[
           { key: 'elisha', label: 'فصل أليشع (تمهيدي)', badge: 'تحضيري' },
-          { key: 'cycle_1', label: 'منهج المرحلة الأولى', badge: activeAcademicCycle === 'cycle_1' ? 'نشط حالياً ⭐' : 'الدورة أ' },
-          { key: 'cycle_2', label: 'منهج المرحلة الثانية', badge: activeAcademicCycle === 'cycle_2' ? 'نشط حالياً ⭐' : 'الدورة ب' }
+          { key: 'cycle_1', label: 'منهج المرحلة الأولى', badge: activeAcademicCycle === 'cycle_1' ? 'نشط حالياً' : 'مقرر' },
+          { key: 'cycle_2', label: 'منهج المرحلة الثانية', badge: activeAcademicCycle === 'cycle_2' ? 'نشط حالياً' : 'مقرر' }
         ].map(item => (
           <button
             key={item.key}
@@ -537,36 +584,11 @@ export default function ServantCurriculum({
                 إدارة المواد ورفع الملفات (PDF، Word، Excel، صور، تسجيلات) إلى Google Drive مباشرة.
               </p>
             </div>
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-2">
               <button
                 type="button"
-                onClick={() => {
-                  setAiStudioMode('presentation');
-                  setShowAiStudioModal(true);
-                }}
-                className="bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white font-extrabold text-xs py-2 px-3.5 rounded-xl transition-all shadow-xs flex items-center justify-center gap-1.5"
-                title="توليد عرض تقديمي للشرائح Data Show من كتاب أو مذكرة الدرس بالذكاء الاصطناعي"
-              >
-                <Presentation className="w-4 h-4 text-gold-300" />
-                <span>إنشاء Presentation (Data Show) 📽️</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setAiStudioMode('study_guide');
-                  setShowAiStudioModal(true);
-                }}
-                className="bg-purple-700 hover:bg-purple-800 text-white font-extrabold text-xs py-2 px-3.5 rounded-xl transition-all shadow-xs flex items-center justify-center gap-1.5"
-                title="توليد ملخص ودليل دراسي كنسي شامل للدرس مع الشواهد والأسئلة"
-              >
-                <Sparkles className="w-4 h-4 text-purple-200" />
-                <span>توليد ملخص الدرس كنسياً 📖</span>
-              </button>
-
-              <button
                 onClick={() => setShowAddSubjectModal(true)}
-                className="bg-maroon-800 hover:bg-maroon-700 text-white font-bold text-xs py-2 px-4 rounded-xl transition-all shadow-xs flex items-center justify-center gap-1.5"
+                className="bg-maroon-800 hover:bg-maroon-700 text-white font-bold text-xs py-2 px-4 rounded-xl transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
               >
                 <Plus className="w-4 h-4" />
                 <span>إضافة مادة جديدة</span>

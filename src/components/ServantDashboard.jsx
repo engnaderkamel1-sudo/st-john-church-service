@@ -971,8 +971,8 @@ export default function ServantDashboard({ user }) {
       second: 'سنة ثانية',
       third: 'سنة ثالثة',
       elisha: 'فصل أليشع (إعداد خدام)',
-      cycle_1: 'منهج المرحلة الأولى (الدورة أ)',
-      cycle_2: 'منهج المرحلة الثانية (الدورة ب)'
+      cycle_1: 'منهج المرحلة الأولى',
+      cycle_2: 'منهج المرحلة الثانية'
     };
     return titles[g] || g;
   };
