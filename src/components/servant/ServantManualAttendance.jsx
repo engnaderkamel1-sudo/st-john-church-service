@@ -10,7 +10,8 @@ export default function ServantManualAttendance({
   manualAttendSuccessId,
   manualAbsenceLoadingId,
   manualAbsenceSuccessId,
-  todayStr
+  todayStr,
+  onOpenHolidays
 }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilterGrade, setActiveFilterGrade] = useState('all');
@@ -92,6 +93,17 @@ export default function ServantManualAttendance({
               </button>
             )}
           </div>
+
+          {onOpenHolidays && (
+            <button
+              type="button"
+              onClick={onOpenHolidays}
+              className="px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200 rounded-2xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 min-h-[44px] cursor-pointer shadow-2xs shrink-0"
+              title="إدارة الجمع المعفاة والإجازات"
+            >
+              <span>إجازات الخدمة 🗓️</span>
+            </button>
+          )}
 
           <div className="relative w-full sm:w-64">
             <Search className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2" />

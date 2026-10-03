@@ -18,6 +18,7 @@ import ServantAttendanceQR from './servant/ServantAttendanceQR';
 import ServantUsersHub from './servant/ServantUsersHub';
 import ServantStudentsHub from './servant/ServantStudentsHub';
 import ServantManualAttendance from './servant/ServantManualAttendance';
+import ServantHolidaysManager from './servant/ServantHolidaysManager';
 import StudentProfileModal from './servant/StudentProfileModal';
 import ServantErrorsHub from './servant/ServantErrorsHub';
 import StageRegulationsModal from './common/StageRegulationsModal';
@@ -1266,6 +1267,33 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
                   </div>
                 </button>
 
+                {/* 3.1 Holidays & Cancelled Fridays */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMainTab('holidays_manager');
+                    setActiveSubject(null);
+                    setMobileSidebarOpen(false);
+                  }}
+                  className={`w-full text-right py-2 px-3 rounded-xl flex items-center justify-between text-xs font-bold transition-all cursor-pointer ${
+                    mainTab === 'holidays_manager'
+                      ? 'bg-rose-800 text-white shadow-xs'
+                      : 'text-slate-700 hover:bg-rose-50 hover:text-rose-900'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <CalendarOff className={`w-4 h-4 ${mainTab === 'holidays_manager' ? 'text-white' : 'text-rose-700'}`} />
+                    <span>إجازات الخدمة والجمع المعفاة 🗓️</span>
+                  </div>
+                  {serviceHolidays.length > 0 && (
+                    <span className={`text-[10px] min-w-5 text-center px-1.5 py-0.2 rounded-md font-bold ${
+                      mainTab === 'holidays_manager' ? 'bg-white text-rose-950' : 'bg-rose-100 text-rose-900'
+                    }`}>
+                      {serviceHolidays.length}
+                    </span>
+                  )}
+                </button>
+
                 {/* 4. App Admin only: Users & Roles */}
                 {isAppAdmin && (
                   <button
@@ -1498,6 +1526,16 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
           manualAbsenceLoadingId={manualAbsenceLoadingId}
           manualAbsenceSuccessId={manualAbsenceSuccessId}
           todayStr={todayStr}
+          onOpenHolidays={() => setMainTab('holidays_manager')}
+        />
+      )}
+
+      {/* Holidays & Cancelled Fridays Manager (All Servants & Admins) */}
+      {mainTab === 'holidays_manager' && (
+        <ServantHolidaysManager
+          serviceHolidays={serviceHolidays}
+          handleAddHoliday={handleAddHoliday}
+          handleRemoveHoliday={handleRemoveHoliday}
         />
       )}
 
