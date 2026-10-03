@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Cake, Calendar, Gift, Users, User, Search, Sparkles, AlertCircle } from 'lucide-react';
+import { Cake, Calendar, Gift, Users, User, Search, Sparkles, AlertCircle, Phone, MessageCircle } from 'lucide-react';
 
 export default function ServantBirthdaysHub({ allUsers = [], getGradeTitle, onSelectStudent }) {
   const [filterType, setFilterType] = useState('all'); // 'all' | 'servants' | 'students'
@@ -229,7 +229,29 @@ export default function ServantBirthdaysHub({ allUsers = [], getGradeTitle, onSe
                   </div>
                 </div>
 
-                <div className="text-left shrink-0">
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {u.phone && (
+                    <>
+                      <a
+                        href={`https://wa.me/20${u.phone.replace(/^0+/, '')}?text=${encodeURIComponent(`كل سنة وأنت طيب يا ${u.fullName}، سنة حلوة ومباركة مع بابا يسوع وعيد ميلاد سعيد! 🎂🎉 أسرة خدمة القديس يوحنا المعمدان`)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="w-8 h-8 rounded-xl bg-emerald-50 hover:bg-emerald-600 text-emerald-700 hover:text-white border border-emerald-200 flex items-center justify-center transition-all shadow-2xs"
+                        title="إرسال تهنئة عبر واتساب 💬"
+                      >
+                        <MessageCircle className="w-4 h-4" />
+                      </a>
+                      <a
+                        href={`tel:${u.phone}`}
+                        onClick={(e) => e.stopPropagation()}
+                        className="w-8 h-8 rounded-xl bg-blue-50 hover:bg-blue-600 text-blue-700 hover:text-white border border-blue-200 flex items-center justify-center transition-all shadow-2xs"
+                        title="اتصال هاتف 📞"
+                      >
+                        <Phone className="w-4 h-4" />
+                      </a>
+                    </>
+                  )}
                   <span className="bg-amber-500 text-white text-xs font-black px-2.5 py-1 rounded-xl shadow-2xs inline-block animate-pulse">
                     اليوم 🎂
                   </span>
@@ -274,9 +296,31 @@ export default function ServantBirthdaysHub({ allUsers = [], getGradeTitle, onSe
                   </div>
                 </div>
 
-                <div className="text-left shrink-0">
-                  <span className="bg-amber-100 text-amber-900 border border-amber-300 text-xs font-bold px-2.5 py-1 rounded-xl">
-                    بعد {u.daysRemaining === 1 ? 'يوم واحد' : u.daysRemaining === 2 ? 'يومين' : `${u.daysRemaining} أيام`} ⏳
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {u.phone && (
+                    <>
+                      <a
+                        href={`https://wa.me/20${u.phone.replace(/^0+/, '')}?text=${encodeURIComponent(`كل سنة وأنت طيب يا ${u.fullName}، سنة حلوة ومباركة مع بابا يسوع وعيد ميلاد سعيد مقدماً! 🎂🎉 أسرة خدمة القديس يوحنا المعمدان`)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="w-8 h-8 rounded-xl bg-emerald-50 hover:bg-emerald-600 text-emerald-700 hover:text-white border border-emerald-200 flex items-center justify-center transition-all shadow-2xs"
+                        title="إرسال تهنئة عبر واتساب 💬"
+                      >
+                        <MessageCircle className="w-4 h-4" />
+                      </a>
+                      <a
+                        href={`tel:${u.phone}`}
+                        onClick={(e) => e.stopPropagation()}
+                        className="w-8 h-8 rounded-xl bg-blue-50 hover:bg-blue-600 text-blue-700 hover:text-white border border-blue-200 flex items-center justify-center transition-all shadow-2xs"
+                        title="اتصال هاتف 📞"
+                      >
+                        <Phone className="w-4 h-4" />
+                      </a>
+                    </>
+                  )}
+                  <span className="bg-amber-100 text-amber-900 border border-amber-300 text-xs font-bold px-2 py-1 rounded-xl">
+                    بعد {u.daysRemaining === 1 ? 'يوم' : u.daysRemaining === 2 ? 'يومين' : `${u.daysRemaining} أيام`} ⏳
                   </span>
                 </div>
               </div>
@@ -322,11 +366,33 @@ export default function ServantBirthdaysHub({ allUsers = [], getGradeTitle, onSe
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3 shrink-0">
+                <div className="flex items-center gap-2 shrink-0">
+                  {u.phone && (
+                    <div className="flex items-center gap-1">
+                      <a
+                        href={`https://wa.me/20${u.phone.replace(/^0+/, '')}?text=${encodeURIComponent(`كل سنة وأنت طيب يا ${u.fullName}، سنة حلوة ومباركة مع بابا يسوع وعيد ميلاد سعيد مقدماً! 🎂🎉 أسرة خدمة القديس يوحنا المعمدان`)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="w-7 h-7 rounded-lg bg-emerald-50 hover:bg-emerald-600 text-emerald-700 hover:text-white border border-emerald-200 flex items-center justify-center transition-all shadow-2xs"
+                        title="إرسال تهنئة عبر واتساب 💬"
+                      >
+                        <MessageCircle className="w-3.5 h-3.5" />
+                      </a>
+                      <a
+                        href={`tel:${u.phone}`}
+                        onClick={(e) => e.stopPropagation()}
+                        className="w-7 h-7 rounded-lg bg-blue-50 hover:bg-blue-600 text-blue-700 hover:text-white border border-blue-200 flex items-center justify-center transition-all shadow-2xs"
+                        title="اتصال هاتف 📞"
+                      >
+                        <Phone className="w-3.5 h-3.5" />
+                      </a>
+                    </div>
+                  )}
                   <span className="text-xs font-bold text-slate-700 font-mono bg-slate-100 px-2 py-0.5 rounded-lg">
                     {u.bDay} / {u.bMonth}
                   </span>
-                  <span className="text-[11px] text-slate-500">
+                  <span className="text-[11px] text-slate-500 hidden sm:inline">
                     بعد {u.daysRemaining} يوم
                   </span>
                 </div>
