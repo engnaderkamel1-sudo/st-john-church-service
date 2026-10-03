@@ -679,18 +679,7 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser, externa
         </div>
       </div>
 
-      {/* Top Floating Appbar with Menu Trigger */}
-      <div className="bg-white border border-slate-200/90 rounded-2xl p-2.5 sm:p-3 shadow-xs flex items-center justify-between sticky top-16 z-30 backdrop-blur-md">
-        <button
-          type="button"
-          onClick={() => setIsNavDrawerOpen(true)}
-          className="w-full py-2.5 sm:py-3 bg-gradient-to-r from-maroon-900 via-maroon-850 to-maroon-800 hover:from-maroon-950 hover:to-maroon-900 text-white rounded-xl flex items-center justify-center gap-2.5 text-xs sm:text-sm font-black shadow-sm active:scale-[0.99] transition-all cursor-pointer ring-1 ring-gold-400/30"
-          title="فتح أقسام الخدمة"
-        >
-          <Menu className="w-4 h-4 sm:w-5 sm:h-5 text-gold-300 shrink-0" />
-          <span>أقسام المخدوم والتنقل ☰</span>
-        </button>
-      </div>
+
 
       {/* Slide-Over Navigation Drawer for Students */}
       {isNavDrawerOpen && (
