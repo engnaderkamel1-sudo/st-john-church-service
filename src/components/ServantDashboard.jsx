@@ -46,6 +46,7 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
   const [selectedGrade, setSelectedGrade] = useState('first');
   const [showRegulationsModal, setShowRegulationsModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [previewPhotoModal, setPreviewPhotoModal] = useState(null);
 
   // Registered Users Management & Approval State
   const [allUsers, setAllUsers] = useState([]);
@@ -1149,13 +1150,31 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
         title="اضغط لعرض وتعديل بيانات الحساب أو تسجيل الخروج"
       >
         <div className="flex items-center gap-3 min-w-0">
-          <div className="w-11 h-11 sm:w-13 sm:h-13 rounded-2xl bg-maroon-800 text-white flex items-center justify-center font-bold text-lg sm:text-xl shrink-0 shadow-xs group-hover:scale-105 transition-transform">
-            <ShieldCheck className="w-6 h-6 sm:w-7 sm:h-7 text-gold-300" />
+          {/* Avatar with click to enlarge */}
+          <div 
+            onClick={(e) => {
+              if (user.photoUrl) {
+                e.stopPropagation();
+                setPreviewPhotoModal({ url: user.photoUrl, title: user.fullName });
+              }
+            }}
+            className="w-11 h-11 sm:w-13 sm:h-13 rounded-2xl bg-maroon-800 text-white flex items-center justify-center font-bold text-lg sm:text-xl shrink-0 shadow-xs group-hover:scale-105 transition-transform overflow-hidden relative"
+            title={user.photoUrl ? "اضغط لتكبير الصورة الشخصية" : ""}
+          >
+            {user.photoUrl ? (
+              <img src={user.photoUrl} alt={user.fullName} className="w-full h-full object-cover" />
+            ) : (
+              <ShieldCheck className="w-6 h-6 sm:w-7 sm:h-7 text-gold-300" />
+            )}
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               <h2 className="text-sm sm:text-base font-extrabold text-slate-900 group-hover:text-maroon-800 transition-colors truncate">
-                {user.fullName || 'أمين الخدمة'}
+                {user.gender === 'female' 
+                  ? `أهلاً تاسوني ${user.fullName || ''}` 
+                  : isServantLeader && !isAppAdmin 
+                  ? `أهلاً أمين الخدمة ${user.fullName || ''}`
+                  : `أهلاً أستاذ ${user.fullName || ''}`}
               </h2>
               <span className="text-[10px] bg-amber-50 group-hover:bg-amber-100 text-amber-900 border border-amber-200 px-2 py-0.5 rounded-full font-bold transition-colors shrink-0">
                 بياناتي ⚙️
@@ -1764,6 +1783,35 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
         onLogout={onLogout}
         onUpdateUser={onUpdateUser}
       />
+
+      {/* 9. Full-Screen Photo Lightbox Modal */}
+      {previewPhotoModal && (
+        <div 
+          onClick={() => setPreviewPhotoModal(null)}
+          className="fixed inset-0 z-[9999] bg-slate-950/85 backdrop-blur-md flex flex-col items-center justify-center p-4 cursor-pointer animate-in fade-in duration-200 select-none"
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="relative max-w-sm sm:max-w-md w-full bg-white rounded-3xl overflow-hidden shadow-2xl border-2 border-gold-400 p-3 sm:p-4 text-center space-y-3 cursor-default animate-in zoom-in-95 duration-200"
+          >
+            <div className="relative rounded-2xl overflow-hidden bg-slate-100 flex items-center justify-center max-h-[70vh]">
+              <img 
+                src={previewPhotoModal.url} 
+                alt={previewPhotoModal.title || 'صورة شخصية'} 
+                className="w-full h-auto max-h-[68vh] object-contain rounded-2xl"
+              />
+            </div>
+            {previewPhotoModal.title && (
+              <h4 className="text-xs sm:text-sm font-extrabold text-slate-800">
+                {previewPhotoModal.title}
+              </h4>
+            )}
+            <p className="text-[11px] text-slate-400 font-medium">
+              اضغط في أي مكان في الشاشة للإغلاق
+            </p>
+          </div>
+        </div>
+      )}
       </main>
     </div>
   );

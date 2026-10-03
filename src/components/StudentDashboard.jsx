@@ -26,6 +26,7 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser, externa
 
   const [showRegulationsModal, setShowRegulationsModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [previewPhotoModal, setPreviewPhotoModal] = useState(null);
   const [isWithinTime, setIsWithinTime] = useState(false);
   const [currentTimeStr, setCurrentTimeStr] = useState('');
   const [bypassTime, setBypassTime] = useState(false);
@@ -639,7 +640,16 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser, externa
           className="flex items-center gap-2.5 sm:gap-3.5 text-right min-w-0 cursor-pointer group p-1.5 rounded-2xl hover:bg-slate-50 transition-all"
           title="اضغط لعرض وتعديل بيانات الحساب أو تسجيل الخروج"
         >
-          <div className="w-10 h-10 sm:w-13 sm:h-13 rounded-2xl bg-maroon-50 border border-maroon-200 text-maroon-900 flex items-center justify-center font-bold text-lg sm:text-xl shrink-0 shadow-xs group-hover:scale-105 transition-transform overflow-hidden">
+          <div 
+            onClick={(e) => {
+              if (user.photoUrl) {
+                e.stopPropagation();
+                setPreviewPhotoModal({ url: user.photoUrl, title: user.fullName });
+              }
+            }}
+            className="w-10 h-10 sm:w-13 sm:h-13 rounded-2xl bg-maroon-50 border border-maroon-200 text-maroon-900 flex items-center justify-center font-bold text-lg sm:text-xl shrink-0 shadow-xs group-hover:scale-105 transition-transform overflow-hidden relative"
+            title={user.photoUrl ? "اضغط لتكبير الصورة الشخصية" : ""}
+          >
             {user.photoUrl ? (
               <img src={user.photoUrl} alt={user.fullName} className="w-full h-full object-cover" />
             ) : (
@@ -649,7 +659,7 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser, externa
           <div className="min-w-0">
             <div className="flex items-center gap-1.5">
               <h2 className="text-sm sm:text-base font-extrabold text-slate-900 truncate group-hover:text-maroon-800 transition-colors">
-                {user.fullName}
+                أهلاً يا {user.fullName || 'مخدوم'}
               </h2>
               <span className="text-[9px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded-full font-bold">
                 ⚙️
@@ -1024,6 +1034,35 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser, externa
         onLogout={onLogout}
         onUpdateUser={onUpdateUser}
       />
+
+      {/* Full-Screen Photo Lightbox Modal */}
+      {previewPhotoModal && (
+        <div 
+          onClick={() => setPreviewPhotoModal(null)}
+          className="fixed inset-0 z-[9999] bg-slate-950/85 backdrop-blur-md flex flex-col items-center justify-center p-4 cursor-pointer animate-in fade-in duration-200 select-none"
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="relative max-w-sm sm:max-w-md w-full bg-white rounded-3xl overflow-hidden shadow-2xl border-2 border-gold-400 p-3 sm:p-4 text-center space-y-3 cursor-default animate-in zoom-in-95 duration-200"
+          >
+            <div className="relative rounded-2xl overflow-hidden bg-slate-100 flex items-center justify-center max-h-[70vh]">
+              <img 
+                src={previewPhotoModal.url} 
+                alt={previewPhotoModal.title || 'صورة شخصية'} 
+                className="w-full h-auto max-h-[68vh] object-contain rounded-2xl"
+              />
+            </div>
+            {previewPhotoModal.title && (
+              <h4 className="text-xs sm:text-sm font-extrabold text-slate-800">
+                {previewPhotoModal.title}
+              </h4>
+            )}
+            <p className="text-[11px] text-slate-400 font-medium">
+              اضغط في أي مكان في الشاشة للإغلاق
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

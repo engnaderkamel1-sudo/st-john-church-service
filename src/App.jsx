@@ -21,6 +21,8 @@ export default function App() {
   const [notifications, setNotifications] = useState([]);
   // Multi-Role Live Preview State (null = original role, or 'student' | 'servant' | 'servant_leader' | 'admin')
   const [previewRole, setPreviewRole] = useState(null);
+  // Full-Screen Image Lightbox Preview State (for church logo or user profile photos)
+  const [previewModalImage, setPreviewModalImage] = useState(null);
 
   // Real-time Firestore Notifications for Current User
   useEffect(() => {
@@ -348,13 +350,20 @@ export default function App() {
             </p>
           </div>
 
-          {/* Left Side: St. John Church Logo */}
+          {/* Left Side: St. John Church Logo (Click to zoom/expand) */}
           <div className="shrink-0 flex items-center">
-            <img 
-              src="/church_logo.jpg" 
-              alt="شعار كنيسة القديس ماريوحنا المعمدان" 
-              className="w-9 h-9 sm:w-11 sm:h-11 rounded-full border-2 border-gold-400 object-cover shadow-sm ring-1 ring-gold-400/20"
-            />
+            <button
+              type="button"
+              onClick={() => setPreviewModalImage({ url: '/church_logo.jpg', title: 'شعار كنيسة القديس يوحنا المعمدان' })}
+              className="rounded-full focus:outline-none focus:ring-2 focus:ring-gold-400 group cursor-pointer"
+              title="اضغط لتكبير صورة القديس يوحنا المعمدان"
+            >
+              <img 
+                src="/church_logo.jpg" 
+                alt="شعار كنيسة القديس ماريوحنا المعمدان" 
+                className="w-9 h-9 sm:w-11 sm:h-11 rounded-full border-2 border-gold-400 object-cover shadow-sm ring-1 ring-gold-400/20 group-hover:scale-105 active:scale-95 transition-all"
+              />
+            </button>
           </div>
         </div>
       </header>
@@ -559,6 +568,35 @@ export default function App() {
 
       {/* Auto Update Watcher for all users */}
       <AutoUpdateWatcher />
+
+      {/* Full-Screen Image Lightbox Preview Modal */}
+      {previewModalImage && (
+        <div 
+          onClick={() => setPreviewModalImage(null)}
+          className="fixed inset-0 z-[9999] bg-slate-950/85 backdrop-blur-md flex flex-col items-center justify-center p-4 cursor-pointer animate-in fade-in duration-200 select-none"
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="relative max-w-sm sm:max-w-md w-full bg-white rounded-3xl overflow-hidden shadow-2xl border-2 border-gold-400 p-3 sm:p-4 text-center space-y-3 cursor-default animate-in zoom-in-95 duration-200"
+          >
+            <div className="relative rounded-2xl overflow-hidden bg-slate-100 flex items-center justify-center max-h-[70vh]">
+              <img 
+                src={previewModalImage.url} 
+                alt={previewModalImage.title || 'صورة مكبرة'} 
+                className="w-full h-auto max-h-[68vh] object-contain rounded-2xl"
+              />
+            </div>
+            {previewModalImage.title && (
+              <h4 className="text-xs sm:text-sm font-extrabold text-slate-800">
+                {previewModalImage.title}
+              </h4>
+            )}
+            <p className="text-[11px] text-slate-400 font-medium">
+              اضغط في أي مكان في الشاشة للإغلاق
+            </p>
+          </div>
+        </div>
+      )}
     </div>
     </>
   );
