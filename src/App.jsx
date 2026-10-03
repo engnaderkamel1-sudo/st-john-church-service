@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Church, BookOpen, QrCode, ShieldCheck, HeartHandshake, LogOut, CheckCircle2, User, Bell, ChevronLeft, Sparkles, RefreshCw, AlertCircle, ArrowLeftRight, Eye } from 'lucide-react';
+import { Church, BookOpen, QrCode, ShieldCheck, HeartHandshake, LogOut, CheckCircle2, User, Bell, ChevronLeft, Sparkles, RefreshCw, AlertCircle, ArrowLeftRight, Eye, Menu } from 'lucide-react';
 import { db } from './firebase';
 import AuthModal from './components/AuthModal';
 import StudentDashboard from './components/StudentDashboard';
@@ -14,6 +14,7 @@ export default function App() {
   const [targetRole, setTargetRole] = useState('student');
   const [targetMode, setTargetMode] = useState('login');
   const [showNotifications, setShowNotifications] = useState(false);
+  const [mobileMenuTrigger, setMobileMenuTrigger] = useState(0); // Trigger to open navigation drawer from header
   const notificationRef = useRef(null);
 
   const [notifications, setNotifications] = useState([]);
@@ -281,6 +282,19 @@ export default function App() {
                 </div>
               )}
             </div>
+
+            {/* Main Menu Button (Directly in Header - Freeing up full screen space) */}
+            {currentUser && (
+              <button
+                type="button"
+                onClick={() => setMobileMenuTrigger(prev => prev + 1)}
+                className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 bg-gradient-to-r from-maroon-900 to-maroon-800 text-white rounded-xl text-xs font-bold shadow-xs hover:from-maroon-950 hover:to-maroon-900 active:scale-95 transition-all ring-1 ring-gold-400/40 cursor-pointer"
+                title="فتح القائمة الرئيسية للأقسام"
+              >
+                <Menu className="w-4 h-4 text-gold-300 shrink-0" />
+                <span className="hidden xs:inline">القائمة</span>
+              </button>
+            )}
           </div>
         </div>
       </header>
@@ -329,12 +343,14 @@ export default function App() {
               user={{ ...currentUser, role: 'student', grade: currentUser.grade || 'first' }} 
               onLogout={handleLogout}
               onUpdateUser={(updated) => setCurrentUser(prev => ({ ...prev, ...updated }))}
+              externalMenuTrigger={mobileMenuTrigger}
             />
           ) : (
             <ServantDashboard 
               user={currentUser} 
               onLogout={handleLogout}
               onUpdateUser={(updated) => setCurrentUser(prev => ({ ...prev, ...updated }))}
+              externalMenuTrigger={mobileMenuTrigger}
             />
           )
         ) : (

@@ -11,10 +11,18 @@ import StudentExams from './student/StudentExams';
 import StageRegulationsModal from './common/StageRegulationsModal';
 import UserProfileModal from './common/UserProfileModal';
 
-export default function StudentDashboard({ user, onLogout, onUpdateUser }) {
+export default function StudentDashboard({ user, onLogout, onUpdateUser, externalMenuTrigger }) {
   // 6 Specified Tabs: 'attendance', 'spiritual_diary', 'curriculum', 'exams', 'tasks', 'announcements'
   const [activeTab, setActiveTab] = useState('attendance');
   const [isNavDrawerOpen, setIsNavDrawerOpen] = useState(false);
+
+  // Sync external menu trigger from top header
+  useEffect(() => {
+    if (externalMenuTrigger && externalMenuTrigger > 0) {
+      setIsNavDrawerOpen(true);
+    }
+  }, [externalMenuTrigger]);
+
   const [showRegulationsModal, setShowRegulationsModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [isWithinTime, setIsWithinTime] = useState(false);

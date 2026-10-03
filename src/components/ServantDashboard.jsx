@@ -22,12 +22,19 @@ import StageRegulationsModal from './common/StageRegulationsModal';
 import UserProfileModal from './common/UserProfileModal';
 import { collection, getDocs, doc, updateDoc, setDoc, addDoc, deleteDoc, query, where, orderBy, serverTimestamp, limit, onSnapshot } from 'firebase/firestore';
 
-export default function ServantDashboard({ user, onLogout, onUpdateUser }) {
+export default function ServantDashboard({ user, onLogout, onUpdateUser, externalMenuTrigger }) {
   // Check if current user is App Administrator (Nader Reda or church prep account)
   const isAppAdmin = user && (user.role === 'admin' || user.phone === '01275571569' || (user.email && (user.email.includes('nader.kamel') || user.email.includes('st.johnmaadiservantsprep@gmail.com'))));
 
   const [mainTab, setMainTab] = useState(isAppAdmin ? 'users_hub' : 'subjects_hub');
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+
+  // Sync external menu trigger from top header
+  useEffect(() => {
+    if (externalMenuTrigger && externalMenuTrigger > 0) {
+      setMobileSidebarOpen(true);
+    }
+  }, [externalMenuTrigger]);
   const [selectedGrade, setSelectedGrade] = useState('first');
   const [showRegulationsModal, setShowRegulationsModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
@@ -1056,17 +1063,6 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser }) {
 
   return (
     <div className="w-full max-w-5xl mx-auto space-y-6 pb-12 text-right">
-      {/* Floating Side-Docked Button for Navigation Menu on the edge */}
-      <button
-        type="button"
-        onClick={() => setMobileSidebarOpen(true)}
-        className="fixed top-28 right-0 z-40 bg-gradient-to-l from-maroon-900 via-maroon-800 to-amber-950 text-white rounded-l-2xl shadow-2xl py-2.5 px-3 flex items-center gap-1.5 text-xs font-black ring-2 ring-gold-400/40 hover:from-maroon-950 hover:to-maroon-900 cursor-pointer transition-all active:scale-95"
-        title="فتح القائمة الرئيسية لجميع الأقسام"
-      >
-        <Menu className="w-4 h-4 text-gold-300" />
-        <span>القائمة الرئيسية</span>
-      </button>
-
       {/* Servant Profile Card (Clickable to open user account & profile modal) */}
       <div 
         onClick={() => setShowProfileModal(true)}
