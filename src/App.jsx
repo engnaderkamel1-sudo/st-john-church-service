@@ -254,54 +254,30 @@ export default function App() {
                 </div>
               )}
             </div>
-
-            {/* User Logged in badge + Role Switcher (للخدام للتجربة) + Logout */}
-            {currentUser && (
-              <div className="flex items-center gap-1.5 sm:gap-2">
-                {/* Switcher Button for Servants to test Student Mode */}
-                {currentUser.role !== 'student' && (
-                  <button
-                    type="button"
-                    onClick={() => setServantPreviewMode(prev => !prev)}
-                    className={`text-[11px] sm:text-xs font-bold py-1 sm:py-1.5 px-2 sm:px-3 rounded-xl transition-all shadow-xs flex items-center gap-1 border cursor-pointer active:scale-95 ${
-                      servantPreviewMode
-                        ? 'bg-amber-500 hover:bg-amber-600 text-maroon-950 border-amber-400 animate-pulse'
-                        : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200'
-                    }`}
-                    title="التبديل بين شاشة الخادم وتجربة شاشة المخدوم بنفس الحساب"
-                  >
-                    <ArrowLeftRight className="w-3.5 h-3.5 shrink-0" />
-                    <span className="hidden sm:inline">{servantPreviewMode ? 'العودة لحساب الخادم ↩' : 'تجربة كـ مخدوم 🎓'}</span>
-                    <span className="sm:hidden">{servantPreviewMode ? 'الخادم ↩' : 'مخدوم 🎓'}</span>
-                  </button>
-                )}
-
-                <div className="flex items-center gap-2 bg-slate-100 border border-slate-200 py-1 px-3 rounded-xl">
-                  <div className="text-right hidden sm:block">
-                    <div className="text-xs font-bold text-slate-800">{currentUser.fullName}</div>
-                    <div className="text-[10px] text-maroon-800 font-semibold">
-                      {servantPreviewMode 
-                        ? 'وضع التجربة (كمخدوم)' 
-                        : (currentUser.role === 'admin' || currentUser.phone === '01275571569' || (currentUser.email && (currentUser.email.includes('nader.kamel') || currentUser.email.includes('st.johnmaadiservantsprep@gmail.com'))))
-                        ? 'مشرف التطبيق 👑' 
-                        : currentUser.role === 'student' 
-                        ? getGradeName(currentUser.grade) 
-                        : 'خادم عام'}
-                    </div>
-                  </div>
-                  <button
-                    onClick={handleLogout}
-                    title="تسجيل الخروج"
-                    className="p-1.5 text-slate-500 hover:text-red-600 hover:bg-white rounded-lg transition-colors"
-                  >
-                    <LogOut className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            )}
           </div>
         </div>
       </header>
+
+      {/* Sub-Header Bar for Servants: Preview Switcher (خارج الهيدر تماماً لتفريغ المساحة) */}
+      {currentUser && currentUser.role !== 'student' && (
+        <div className="bg-amber-50/90 border-b border-amber-200/80 px-4 py-2 flex items-center justify-between text-xs max-w-5xl mx-auto w-full">
+          <div className="flex items-center gap-1.5 text-amber-900 font-bold text-[11px] sm:text-xs">
+            <span>{servantPreviewMode ? 'وضع التجربة الحالي: مخدوم 🎓' : 'لوحة تحكم الخدام والمشرف'}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setServantPreviewMode(prev => !prev)}
+            className={`text-[11px] sm:text-xs font-bold py-1 px-3 rounded-xl transition-all flex items-center gap-1.5 border cursor-pointer active:scale-95 ${
+              servantPreviewMode
+                ? 'bg-amber-500 hover:bg-amber-600 text-maroon-950 border-amber-600 shadow-xs animate-pulse'
+                : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300 shadow-2xs'
+            }`}
+          >
+            <ArrowLeftRight className="w-3.5 h-3.5 text-maroon-800 shrink-0" />
+            <span>{servantPreviewMode ? 'العودة لحساب الخادم ↩' : 'التبديل لتجربة كـ مخدوم 🎓'}</span>
+          </button>
+        </div>
+      )}
 
       {/* Preview Mode Notification Banner */}
       {currentUser && currentUser.role !== 'student' && servantPreviewMode && (
@@ -319,12 +295,20 @@ export default function App() {
       )}
 
       {/* Main Container */}
-      <main className="flex-1 max-w-5xl mx-auto px-4 py-8 w-full flex flex-col justify-center">
+      <main className="flex-1 max-w-5xl mx-auto px-4 py-6 w-full flex flex-col justify-center">
         {currentUser ? (
           currentUser.role === 'student' || servantPreviewMode ? (
-            <StudentDashboard user={{ ...currentUser, role: 'student', grade: currentUser.grade || 'first' }} />
+            <StudentDashboard 
+              user={{ ...currentUser, role: 'student', grade: currentUser.grade || 'first' }} 
+              onLogout={handleLogout}
+              onUpdateUser={(updated) => setCurrentUser(prev => ({ ...prev, ...updated }))}
+            />
           ) : (
-            <ServantDashboard user={currentUser} />
+            <ServantDashboard 
+              user={currentUser} 
+              onLogout={handleLogout}
+              onUpdateUser={(updated) => setCurrentUser(prev => ({ ...prev, ...updated }))}
+            />
           )
         ) : (
           /* Landing Screen: Clean, Direct Entry */

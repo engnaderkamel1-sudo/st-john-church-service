@@ -9,12 +9,14 @@ import StudentSpiritualDiary from './student/StudentSpiritualDiary';
 import StudentCurriculum from './student/StudentCurriculum';
 import StudentExams from './student/StudentExams';
 import StageRegulationsModal from './common/StageRegulationsModal';
+import UserProfileModal from './common/UserProfileModal';
 
-export default function StudentDashboard({ user }) {
+export default function StudentDashboard({ user, onLogout, onUpdateUser }) {
   // 6 Specified Tabs: 'attendance', 'spiritual_diary', 'curriculum', 'exams', 'tasks', 'announcements'
   const [activeTab, setActiveTab] = useState('attendance');
   const [isNavDrawerOpen, setIsNavDrawerOpen] = useState(false);
   const [showRegulationsModal, setShowRegulationsModal] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
   const [isWithinTime, setIsWithinTime] = useState(false);
   const [currentTimeStr, setCurrentTimeStr] = useState('');
   const [bypassTime, setBypassTime] = useState(false);
@@ -578,12 +580,23 @@ export default function StudentDashboard({ user }) {
     <div className="w-full max-w-4xl mx-auto space-y-6 pb-12">
       {/* Student Profile Card (Light Mode) */}
       <div className="bg-white border border-slate-200 rounded-3xl p-3.5 sm:p-5 shadow-sm flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2.5 sm:gap-3.5 text-right min-w-0">
-          <div className="w-10 h-10 sm:w-13 sm:h-13 rounded-2xl bg-maroon-50 border border-maroon-200 text-maroon-900 flex items-center justify-center font-bold text-lg sm:text-xl shrink-0 shadow-xs">
+        <div 
+          onClick={() => setShowProfileModal(true)}
+          className="flex items-center gap-2.5 sm:gap-3.5 text-right min-w-0 cursor-pointer group p-1.5 rounded-2xl hover:bg-slate-50 transition-all"
+          title="اضغط لعرض وتعديل بيانات الحساب أو تسجيل الخروج"
+        >
+          <div className="w-10 h-10 sm:w-13 sm:h-13 rounded-2xl bg-maroon-50 border border-maroon-200 text-maroon-900 flex items-center justify-center font-bold text-lg sm:text-xl shrink-0 shadow-xs group-hover:scale-105 transition-transform">
             {user.fullName ? user.fullName[0] : 'م'}
           </div>
           <div className="min-w-0">
-            <h2 className="text-sm sm:text-base font-extrabold text-slate-900 truncate">{user.fullName}</h2>
+            <div className="flex items-center gap-1.5">
+              <h2 className="text-sm sm:text-base font-extrabold text-slate-900 truncate group-hover:text-maroon-800 transition-colors">
+                {user.fullName}
+              </h2>
+              <span className="text-[9px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded-full font-bold">
+                ⚙️
+              </span>
+            </div>
             <div className="flex items-center gap-1.5 text-xs text-slate-500 mt-0.5">
               <span className="bg-maroon-800 text-white px-2 py-0.5 rounded-full font-bold text-[9px] sm:text-[10px]">
                 {getGradeTitle(user.grade)}
@@ -966,6 +979,15 @@ export default function StudentDashboard({ user }) {
         studentGrade={user?.grade || 'first'}
         isStudent={true}
         isAdmin={false}
+      />
+
+      {/* User Account & Profile Modal */}
+      <UserProfileModal
+        isOpen={showProfileModal}
+        onClose={() => setShowProfileModal(false)}
+        user={user}
+        onLogout={onLogout}
+        onUpdateUser={onUpdateUser}
       />
     </div>
   );

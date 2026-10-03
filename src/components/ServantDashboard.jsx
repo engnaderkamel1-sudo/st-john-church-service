@@ -19,9 +19,10 @@ import ServantStudentsHub from './servant/ServantStudentsHub';
 import ServantManualAttendance from './servant/ServantManualAttendance';
 import StudentProfileModal from './servant/StudentProfileModal';
 import StageRegulationsModal from './common/StageRegulationsModal';
+import UserProfileModal from './common/UserProfileModal';
 import { collection, getDocs, doc, updateDoc, setDoc, addDoc, deleteDoc, query, where, orderBy, serverTimestamp, limit, onSnapshot } from 'firebase/firestore';
 
-export default function ServantDashboard({ user }) {
+export default function ServantDashboard({ user, onLogout, onUpdateUser }) {
   // Check if current user is App Administrator (Nader Reda or church prep account)
   const isAppAdmin = user && (user.role === 'admin' || user.phone === '01275571569' || (user.email && (user.email.includes('nader.kamel') || user.email.includes('st.johnmaadiservantsprep@gmail.com'))));
 
@@ -29,6 +30,7 @@ export default function ServantDashboard({ user }) {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [selectedGrade, setSelectedGrade] = useState('first');
   const [showRegulationsModal, setShowRegulationsModal] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
 
   // Registered Users Management & Approval State
   const [allUsers, setAllUsers] = useState([]);
@@ -1054,24 +1056,43 @@ export default function ServantDashboard({ user }) {
 
   return (
     <div className="w-full max-w-5xl mx-auto space-y-6 pb-12 text-right">
-      {/* Servant Profile Card (Light Mode) */}
-      <div className="bg-white border border-slate-200 rounded-3xl p-5 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
-        <div className="flex items-center gap-3.5 w-full sm:w-auto">
-          <div className="w-13 h-13 rounded-2xl bg-maroon-800 text-white flex items-center justify-center font-bold text-xl shrink-0 shadow-xs">
+      {/* Floating Side-Docked Button for Navigation Menu on the edge */}
+      <button
+        type="button"
+        onClick={() => setMobileSidebarOpen(true)}
+        className="fixed top-28 right-0 z-40 bg-gradient-to-l from-maroon-900 to-maroon-800 text-white rounded-l-2xl shadow-xl py-2.5 px-3 flex items-center gap-2 text-xs font-black ring-2 ring-gold-400/40 hover:from-maroon-950 hover:to-maroon-900 cursor-pointer transition-all active:scale-95"
+        title="فتح القائمة الرئيسية لجميع الأقسام"
+      >
+        <Menu className="w-4 h-4 text-gold-300" />
+        <span className="hidden sm:inline">أقسام الخدمة</span>
+        <span>☰</span>
+      </button>
+
+      {/* Servant Profile Card (Clickable to open user account & profile modal) */}
+      <div className="bg-white border border-slate-200 rounded-3xl p-4 sm:p-5 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div 
+          onClick={() => setShowProfileModal(true)}
+          className="flex items-center gap-3.5 w-full sm:w-auto cursor-pointer group hover:bg-slate-50/80 p-2 rounded-2xl transition-all"
+          title="اضغط لعرض وتعديل بيانات الحساب أو تسجيل الخروج"
+        >
+          <div className="w-13 h-13 rounded-2xl bg-maroon-800 text-white flex items-center justify-center font-bold text-xl shrink-0 shadow-xs group-hover:scale-105 transition-transform">
             <ShieldCheck className="w-7 h-7 text-gold-300" />
           </div>
           <div>
-            <h2 className="text-base sm:text-lg font-extrabold text-slate-900">{user.fullName || 'أمين الخدمة'}</h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-base sm:text-lg font-extrabold text-slate-900 group-hover:text-maroon-800 transition-colors">
+                {user.fullName || 'أمين الخدمة'}
+              </h2>
+              <span className="text-[10px] bg-amber-50 group-hover:bg-amber-100 text-amber-900 border border-amber-200 px-2 py-0.5 rounded-full font-bold transition-colors">
+                بياناتي ⚙️
+              </span>
+            </div>
             <div className="flex items-center gap-2 text-xs text-slate-500 mt-1">
               <span className="bg-maroon-50 text-maroon-900 border border-maroon-200 font-bold px-2.5 py-0.5 rounded-full text-[10px]">
-                {(user.role === 'admin' || user.phone === '01275571569' || (user.email && user.email.includes('nader.kamel')))
-                  ? 'مشرف التطبيق 👑'
-                  : 'لوحة الخدام'}
+                {isAppAdmin ? 'مشرف التطبيق 👑' : 'لوحة الخدام'}
               </span>
               <span>
-                الصفة: {(user.role === 'admin' || user.phone === '01275571569' || (user.email && user.email.includes('nader.kamel')))
-                  ? 'مشرف التطبيق'
-                  : 'خادم عام (كافة المراحل)'}
+                الصفة: {isAppAdmin ? 'مشرف التطبيق' : 'خادم عام (كافة المراحل)'}
               </span>
             </div>
           </div>
@@ -1088,33 +1109,133 @@ export default function ServantDashboard({ user }) {
         </button>
       </div>
 
-      {/* Top Floating Appbar with Menu Trigger and Active Tab Pill */}
-      <div className="bg-white border border-slate-200/90 rounded-2xl p-2.5 sm:p-3 shadow-xs flex items-center justify-between gap-2 sticky top-16 z-30 backdrop-blur-md">
-        <button
-          type="button"
-          onClick={() => setMobileSidebarOpen(true)}
-          className="px-3 sm:px-3.5 py-2 sm:py-2.5 bg-gradient-to-r from-maroon-900 to-maroon-800 text-white rounded-xl flex items-center gap-2 text-xs font-bold shadow-sm hover:from-maroon-950 hover:to-maroon-900 active:scale-95 transition-all cursor-pointer ring-1 ring-gold-400/30 shrink-0"
-          title="فتح قائمة الأقسام"
-        >
-          <Menu className="w-4 h-4 text-gold-300 shrink-0" />
-          <span>القائمة الرئيسية</span>
-        </button>
-
-        <div className="min-w-0">
-          <span className="text-[11px] sm:text-xs font-extrabold text-maroon-950 bg-maroon-50/80 border border-maroon-200/70 px-2.5 sm:px-3.5 py-1.5 rounded-xl shadow-2xs flex items-center gap-1.5 truncate">
-            <span className="w-2 h-2 rounded-full bg-gold-500 inline-block animate-pulse shrink-0"></span>
-            <span className="truncate">
-              {mainTab === 'students_hub' && 'بيانات المخدومين'}
-              {mainTab === 'manual_attendance' && 'تسجيل حضور يدوي ✍️'}
-              {mainTab === 'users_hub' && userHubSubTab === 'accounts' && 'المستخدمين والأدوار'}
-              {mainTab === 'users_hub' && userHubSubTab === 'login_history' && 'سجل الدخول'}
-              {mainTab === 'subjects_hub' && (curriculumTarget === 'students' ? 'مناهج المخدومين' : 'مناهج الخدام 🔒')}
-              {mainTab === 'exams_bank_hub' && 'بنك الامتحانات'}
-              {mainTab === 'analytics_hub' && 'الإحصائيات والأوائل'}
-              {mainTab === 'spiritual_diary' && 'النوتة الروحية'}
-              {mainTab === 'attendance_qr' && 'كود الحضور (QR)'}
-            </span>
+      {/* Clear Horizontal Navigation Bar showing all sections clearly */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-2 sm:p-2.5 shadow-xs">
+        <div className="flex items-center justify-between mb-2 px-1">
+          <span className="text-xs font-extrabold text-slate-800 flex items-center gap-1.5">
+            <Menu className="w-4 h-4 text-maroon-800" />
+            أقسام لوحة الخدمة (اختر القسم):
           </span>
+          <button
+            type="button"
+            onClick={() => setMobileSidebarOpen(true)}
+            className="text-[11px] font-bold text-maroon-800 hover:text-maroon-950 flex items-center gap-1 cursor-pointer bg-maroon-50 px-2 py-0.5 rounded-lg border border-maroon-100"
+          >
+            <span>عرض القائمة الجانبية كاملة</span>
+            <span>←</span>
+          </button>
+        </div>
+        
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+          <button
+            type="button"
+            onClick={() => { setMainTab('students_hub'); setActiveSubject(null); }}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 transition-all cursor-pointer ${
+              mainTab === 'students_hub'
+                ? 'bg-maroon-800 text-white shadow-xs'
+                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+            }`}
+          >
+            👥 بيانات المخدومين
+          </button>
+
+          <button
+            type="button"
+            onClick={() => { setMainTab('manual_attendance'); setActiveSubject(null); }}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 transition-all cursor-pointer ${
+              mainTab === 'manual_attendance'
+                ? 'bg-maroon-800 text-white shadow-xs'
+                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+            }`}
+          >
+            ✍️ تسجيل حضور يدوي
+          </button>
+
+          {isAppAdmin && (
+            <button
+              type="button"
+              onClick={() => { setMainTab('users_hub'); setUserHubSubTab('accounts'); setActiveSubject(null); }}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 transition-all cursor-pointer ${
+                mainTab === 'users_hub'
+                  ? 'bg-maroon-800 text-white shadow-xs'
+                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+              }`}
+            >
+              👑 المستخدمين والأدوار
+            </button>
+          )}
+
+          <button
+            type="button"
+            onClick={() => { setMainTab('subjects_hub'); setCurriculumTarget('students'); }}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 transition-all cursor-pointer ${
+              mainTab === 'subjects_hub' && curriculumTarget === 'students'
+                ? 'bg-maroon-800 text-white shadow-xs'
+                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+            }`}
+          >
+            📚 مناهج المخدومين
+          </button>
+
+          <button
+            type="button"
+            onClick={() => { setMainTab('subjects_hub'); setCurriculumTarget('servants'); }}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 transition-all cursor-pointer ${
+              mainTab === 'subjects_hub' && curriculumTarget === 'servants'
+                ? 'bg-maroon-800 text-white shadow-xs'
+                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+            }`}
+          >
+            🔒 مناهج الخدام
+          </button>
+
+          <button
+            type="button"
+            onClick={() => { setMainTab('exams_bank_hub'); }}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 transition-all cursor-pointer ${
+              mainTab === 'exams_bank_hub'
+                ? 'bg-maroon-800 text-white shadow-xs'
+                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+            }`}
+          >
+            📝 بنك الامتحانات
+          </button>
+
+          <button
+            type="button"
+            onClick={() => { setMainTab('analytics_hub'); }}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 transition-all cursor-pointer ${
+              mainTab === 'analytics_hub'
+                ? 'bg-maroon-800 text-white shadow-xs'
+                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+            }`}
+          >
+            📊 الإحصائيات والأوائل
+          </button>
+
+          <button
+            type="button"
+            onClick={() => { setMainTab('spiritual_diary'); }}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 transition-all cursor-pointer ${
+              mainTab === 'spiritual_diary'
+                ? 'bg-maroon-800 text-white shadow-xs'
+                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+            }`}
+          >
+            📖 النوتة الروحية
+          </button>
+
+          <button
+            type="button"
+            onClick={() => { setMainTab('attendance_qr'); }}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 transition-all cursor-pointer ${
+              mainTab === 'attendance_qr'
+                ? 'bg-maroon-800 text-white shadow-xs'
+                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+            }`}
+          >
+            📷 كود الحضور
+          </button>
         </div>
       </div>
 
@@ -1576,6 +1697,15 @@ export default function ServantDashboard({ user }) {
         initialStage={selectedGrade || 'first'}
         isStudent={false}
         isAdmin={isAppAdmin}
+      />
+
+      {/* 8. User Account & Profile Modal */}
+      <UserProfileModal
+        isOpen={showProfileModal}
+        onClose={() => setShowProfileModal(false)}
+        user={user}
+        onLogout={onLogout}
+        onUpdateUser={onUpdateUser}
       />
       </main>
     </div>
