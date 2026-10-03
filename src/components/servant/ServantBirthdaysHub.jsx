@@ -101,11 +101,11 @@ export default function ServantBirthdaysHub({ allUsers = [], getGradeTitle, onSe
       <div className="bg-gradient-to-r from-amber-700 via-maroon-800 to-maroon-900 rounded-3xl p-5 sm:p-6 text-white shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
-            <Cake className="w-6 h-6 text-gold-300 animate-bounce" />
-            <h2 className="text-lg sm:text-xl font-extrabold text-white">دليل أعياد الميلاد 🎂</h2>
+            <Cake className="w-6 h-6 text-gold-300" />
+            <h2 className="text-lg sm:text-xl font-extrabold text-white">أعياد الميلاد 🎂</h2>
           </div>
           <p className="text-xs sm:text-sm text-gold-200/90">
-            متابعة أعياد ميلاد المخدومين وأسرة الخدام لافتقادهم وإدخال البهجة لقلوبهم
+            متابعة أعياد ميلاد المخدومين والخدام مرتبة زمنياً
           </p>
         </div>
 
@@ -195,8 +195,8 @@ export default function ServantBirthdaysHub({ allUsers = [], getGradeTitle, onSe
       {todayBirthdays.length > 0 && (
         <div className="bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-300 rounded-3xl p-5 shadow-sm space-y-3">
           <div className="flex items-center gap-2 text-amber-900 font-extrabold text-sm sm:text-base">
-            <Sparkles className="w-5 h-5 text-amber-600 animate-spin" />
-            <span>🎉 أعياد ميلاد اليوم (عيد ميلاد سعيد!)</span>
+            <Cake className="w-5 h-5 text-amber-600" />
+            <span>أعياد ميلاد اليوم 🎂</span>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -262,12 +262,12 @@ export default function ServantBirthdaysHub({ allUsers = [], getGradeTitle, onSe
         </div>
       )}
 
-      {/* 2. UPCOMING WITHIN 3 DAYS (URGENT REMINDERS) */}
+      {/* 2. UPCOMING WITHIN 3 DAYS */}
       {upcoming3Days.length > 0 && (
         <div className="space-y-3">
           <div className="flex items-center gap-2 font-bold text-xs sm:text-sm text-slate-800">
-            <AlertCircle className="w-4 h-4 text-amber-600" />
-            <span>قادمة خلال ٣ أيام (تنبيه مسبق للخدام):</span>
+            <Calendar className="w-4 h-4 text-amber-600" />
+            <span>خلال ٣ أيام قادمة:</span>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
