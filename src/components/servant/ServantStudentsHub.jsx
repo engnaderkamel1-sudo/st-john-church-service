@@ -44,14 +44,14 @@ export default function ServantStudentsHub({
           <div className="flex items-center gap-2">
             <h3 className="font-extrabold text-slate-900 text-base sm:text-lg flex items-center gap-2">
               <Users className="w-5 h-5 text-maroon-800" />
-              <span>بيانات المخدومين والملف الشامل</span>
+              <span>بيانات ومتابعة المخدومين</span>
             </h3>
             <span className="text-xs bg-gold-100 text-maroon-950 font-black px-2.5 py-0.5 rounded-full border border-gold-300">
               {filteredStudents.length} مخدوم
             </span>
           </div>
           <p className="text-xs text-slate-500 mt-1">
-            البحث عن أي مخدوم بالاسم أو الهاتف، معرفة سنته الدراسية، واستعراض ملفه الكامل (حضوره، امتحاناته، درجاته، ونوتته الروحية).
+            البحث عن أي مخدوم بالاسم أو الهاتف، معرفة سنته الدراسية، ومتابعة حضوره وامتحاناته ودرجاته ونوتته الروحية.
           </p>
         </div>
 

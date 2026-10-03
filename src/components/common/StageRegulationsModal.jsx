@@ -236,11 +236,11 @@ export default function StageRegulationsModal({
             </div>
             <div>
               <h2 className="text-base sm:text-lg font-black flex items-center gap-2">
-                لائحة التقييم والدرجات المعتمدة 📜
-                {isAdmin && <span className="text-[10px] bg-amber-400/20 text-amber-300 px-2 py-0.5 rounded-full font-bold">صلاحية المشرف</span>}
+                لائحة درجات المرحلة 📋
+                {isAdmin && <span className="text-[10px] bg-amber-400/20 text-amber-300 px-2 py-0.5 rounded-full font-bold">المشرف</span>}
               </h2>
               <p className="text-xs text-amber-200/80 font-medium">
-                {isStudent ? 'اللائحة الرسمية لتقييم مرحلتك وتوزيع الدرجات السنوية' : 'الدليل الإرشادي والتنظيمي لدرجات المراحل بلائحة الخدمة'}
+                {isStudent ? 'توزيع درجات وتقييم السنة الدراسية' : 'توزيع درجات وتقييم مراحل الخدمة'}
               </p>
             </div>
           </div>
@@ -278,17 +278,17 @@ export default function StageRegulationsModal({
           <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200/70 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-[11px] font-black tracking-wider text-amber-800 uppercase block">المرحلة الحالية</span>
+                <span className="text-[11px] font-black tracking-wider text-amber-800 uppercase block">المرحلة</span>
                 {isAdmin && (
                   isStagePublished ? (
                     <span className="text-[10px] bg-emerald-100 text-emerald-800 border border-emerald-300 px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
                       <Globe className="w-3 h-3" />
-                      منشورة للمخدومين
+                      ظاهرة للطلبة ✅
                     </span>
                   ) : (
                     <span className="text-[10px] bg-slate-200 text-slate-700 border border-slate-300 px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
                       <Lock className="w-3 h-3" />
-                      مسودة (غير منشورة)
+                      مخفية مؤقتاً 🔒
                     </span>
                   )
                 )}
@@ -306,7 +306,7 @@ export default function StageRegulationsModal({
                   className="px-3.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-xl shadow-xs transition-all flex items-center gap-1.5"
                 >
                   <Edit3 className="w-3.5 h-3.5" />
-                  تعديل اللائحة
+                  تعديل الدرجات
                 </button>
               )}
             </div>
@@ -318,7 +318,7 @@ export default function StageRegulationsModal({
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-emerald-100 pb-2.5">
                 <div>
                   <span className="text-[11px] font-black text-emerald-800 uppercase block tracking-wider">
-                    موقفي التراكمي في اللائحة حتى تاريخه 🎯
+                    مجموع درجاتي حتى الآن ⭐
                   </span>
                   <h4 className="font-extrabold text-slate-900 text-sm sm:text-base">
                     محقق حتى اليوم: {studentStanding.standingPercentage}% من المطلوب حتى تاريخه
@@ -351,10 +351,10 @@ export default function StageRegulationsModal({
             <div className="py-12 px-6 text-center bg-slate-50 border border-dashed border-slate-300 rounded-3xl space-y-3">
               <Clock className="w-12 h-12 text-amber-500 mx-auto animate-pulse" />
               <h4 className="font-extrabold text-slate-800 text-base">
-                {currentStageData.emptyMessage || 'لائحة تقييم المرحلة قيد الإعداد والاعتماد ⏳'}
+                {currentStageData.emptyMessage || 'درجات المرحلة قيد التجهيز ⏳'}
               </h4>
               <p className="text-xs text-slate-500 max-w-md mx-auto leading-relaxed">
-                لم يتم اعتماد أو نشر لائحة هذه المرحلة للمخدومين حتى الآن، سيتم إتاحة وتفعيل توزيع الدرجات فور اعتمادها من أمانة الخدمة.
+                لم يتم نشر درجات هذه المرحلة للطلبة حتى الآن، ستظهر الدرجات وتوزيعها هنا فور تجهيزها.
               </p>
               {isAdmin && (
                 <div className="pt-2">
@@ -363,7 +363,7 @@ export default function StageRegulationsModal({
                     className="px-4 py-2 bg-maroon-800 hover:bg-maroon-900 text-white text-xs font-bold rounded-xl shadow-xs transition-all inline-flex items-center gap-1.5"
                   >
                     <Edit3 className="w-4 h-4" />
-                    بدء إعداد وتعديل اللائحة لهذه المرحلة الآن ✏️
+                    تجهيز وتعديل درجات المرحلة ✏️
                   </button>
                 </div>
               )}
