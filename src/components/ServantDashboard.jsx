@@ -1377,21 +1377,14 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
                     setActiveSubject(null);
                     setMobileSidebarOpen(false);
                   }}
-                  className={`w-full text-right py-2 px-3 rounded-xl flex items-center justify-between text-xs font-bold transition-all cursor-pointer ${
+                  className={`w-full text-right py-2 px-3 rounded-xl flex items-center gap-2.5 text-xs font-bold transition-all cursor-pointer ${
                     mainTab === 'subjects_hub' && curriculumTarget === 'servants'
                       ? 'bg-maroon-800 text-white shadow-xs'
                       : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
                   }`}
                 >
-                  <div className="flex items-center gap-2.5">
-                    <ShieldCheck className={`w-4 h-4 ${mainTab === 'subjects_hub' && curriculumTarget === 'servants' ? 'text-gold-300' : 'text-maroon-700'}`} />
-                    <span>مناهج ومراجع الخدام</span>
-                  </div>
-                  <span className={`text-[9px] px-1.5 py-0.2 rounded-md font-bold ${
-                    mainTab === 'subjects_hub' && curriculumTarget === 'servants' ? 'bg-gold-400 text-maroon-950' : 'bg-amber-100 text-amber-900'
-                  }`}>
-                    خاص 🔒
-                  </span>
+                  <ShieldCheck className={`w-4 h-4 ${mainTab === 'subjects_hub' && curriculumTarget === 'servants' ? 'text-gold-300' : 'text-maroon-700'}`} />
+                  <span>مناهج ومراجع الخدام</span>
                 </button>
 
                 {/* 9. Question Bank & Exams */}
