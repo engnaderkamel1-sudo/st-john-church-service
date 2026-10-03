@@ -588,3 +588,174 @@ export function getDiaryPointsConfig(stageRegulations, grade = 'first') {
   };
 }
 
+/**
+ * Helper to compute elapsed service weeks (Fridays) between cycle start date and now,
+ * excluding any declared service holidays.
+ * @param {Object} options
+ * @param {string} [options.startDate] - YYYY-MM-DD
+ * @param {Array<{date: string, label: string}>} [options.holidays] - list of holidays / cancelled fridays
+ * @param {Date} [options.referenceDate] - default now
+ * @returns {{ elapsedFridays: number, fridayDates: string[] }}
+ */
+export function calculateElapsedServiceWeeks({
+  startDate = '2026-09-01',
+  holidays = [],
+  referenceDate = new Date()
+} = {}) {
+  const start = new Date(startDate);
+  const end = new Date(referenceDate);
+  const holidayDateSet = new Set((holidays || []).map(h => (typeof h === 'string' ? h : h.date)));
+
+  let elapsedFridays = 0;
+  const fridayDates = [];
+
+  const curr = new Date(start);
+  while (curr <= end) {
+    if (curr.getDay() === 5) {
+      const dateStr = curr.toISOString().split('T')[0];
+      if (!holidayDateSet.has(dateStr)) {
+        elapsedFridays++;
+        fridayDates.push(dateStr);
+      }
+    }
+    curr.setDate(curr.getDate() + 1);
+  }
+
+  return {
+    elapsedFridays: Math.max(1, elapsedFridays),
+    fridayDates
+  };
+}
+
+/**
+ * Calculates a student's cumulative standing to date based on the items accrued so far.
+ * @param {Object} params
+ * @param {string} params.studentGrade - 'first', 'second', 'third', 'elisha'
+ * @param {Object} params.stageRegulations - full map
+ * @param {Array} params.attendanceRecords - student's attendance documents
+ * @param {Array} params.diaryRecords - student's diary entries
+ * @param {Array} params.examSubmissions - student's exam submissions
+ * @param {Array} params.holidays - list of cancelled fridays
+ * @param {number} [params.currentPoints] - user's total points as fallback
+ * @returns {Object} { accruedMax, earnedPoints, standingPercentage, itemsBreakdown }
+ */
+export function calculateStudentStandingToDate({
+  studentGrade = 'first',
+  stageRegulations = null,
+  attendanceRecords = [],
+  diaryRecords = [],
+  examSubmissions = [],
+  holidays = [],
+  currentPoints = 0
+}) {
+  const stage = stageRegulations?.[studentGrade] || DEFAULT_STAGE_REGULATIONS[studentGrade] || DEFAULT_STAGE_REGULATIONS.first;
+  const items = stage?.items || [];
+
+  const { elapsedFridays } = calculateElapsedServiceWeeks({ holidays });
+
+  let accruedMax = 0;
+  let earnedPoints = 0;
+  const itemsBreakdown = [];
+
+  // 1. Attendance (Item 1)
+  const attendItem = items.find(i => i.id === '1');
+  if (attendItem && (attendItem.max || 0) > 0) {
+    const earlyPts = Number(attendItem.config?.earlyPoints) || 3;
+    const itemAccruedMax = elapsedFridays * earlyPts;
+    
+    let itemEarned = 0;
+    (attendanceRecords || []).forEach(rec => {
+      if (rec.status === 'حاضر') {
+        itemEarned += (rec.pointsAwarded !== undefined ? Number(rec.pointsAwarded) : earlyPts);
+      }
+    });
+
+    accruedMax += itemAccruedMax;
+    earnedPoints += itemEarned;
+    itemsBreakdown.push({
+      id: '1',
+      name: attendItem.name,
+      earned: itemEarned,
+      accruedMax: itemAccruedMax,
+      totalAnnualMax: attendItem.max,
+      pct: itemAccruedMax > 0 ? Math.min(100, Math.round((itemEarned / itemAccruedMax) * 100)) : 100
+    });
+  }
+
+  // 2. Spiritual Diary Items
+  const diaryItemsCfg = [
+    { id: '2', key: 'bible', name: 'قراءة الكتاب المقدس', weeklyDefault: 3 },
+    { id: '4', key: 'communion', name: 'سر التناول المقدس', weeklyDefault: 2 },
+    { id: '6', key: 'prayer', name: 'صلوات الأجبية', weeklyDefault: 2 },
+  ];
+
+  diaryItemsCfg.forEach(dCfg => {
+    const it = items.find(i => i.id === dCfg.id);
+    if (it && (it.max || 0) > 0) {
+      const weeklyPts = Number(it.config?.weeklyPoints) || dCfg.weeklyDefault;
+      const itemAccruedMax = elapsedFridays * weeklyPts;
+
+      let completedCount = 0;
+      (diaryRecords || []).forEach(entry => {
+        if (entry[dCfg.key]) completedCount++;
+      });
+      const itemEarned = Math.round((completedCount / (elapsedFridays * (dCfg.key === 'bible' ? 7 : 1))) * itemAccruedMax);
+
+      accruedMax += itemAccruedMax;
+      earnedPoints += itemEarned;
+      itemsBreakdown.push({
+        id: dCfg.id,
+        name: it.name,
+        earned: itemEarned,
+        accruedMax: itemAccruedMax,
+        totalAnnualMax: it.max,
+        pct: itemAccruedMax > 0 ? Math.min(100, Math.round((itemEarned / itemAccruedMax) * 100)) : 100
+      });
+    }
+  });
+
+  // 3. Exams (Item 11)
+  const examsItem = items.find(i => i.id === '11');
+  if (examsItem && (examsItem.max || 0) > 0) {
+    let examsAccruedMax = 0;
+    let examsEarned = 0;
+
+    (examSubmissions || []).forEach(sub => {
+      const maxSc = Number(sub.totalScore) || Number(examsItem.config?.subjectExamPoints) || 30;
+      const sc = Number(sub.score ?? sub.autoScore) || 0;
+      examsAccruedMax += maxSc;
+      examsEarned += sc;
+    });
+
+    if (examsAccruedMax > 0) {
+      accruedMax += examsAccruedMax;
+      earnedPoints += examsEarned;
+      itemsBreakdown.push({
+        id: '11',
+        name: examsItem.name,
+        earned: examsEarned,
+        accruedMax: examsAccruedMax,
+        totalAnnualMax: examsItem.max,
+        pct: Math.min(100, Math.round((examsEarned / examsAccruedMax) * 100))
+      });
+    }
+  }
+
+  // Safety fallback
+  if (accruedMax === 0) {
+    accruedMax = Math.max(1, currentPoints || 10);
+    earnedPoints = currentPoints || 0;
+  }
+
+  const standingPercentage = Math.min(100, Math.max(0, Math.round((earnedPoints / accruedMax) * 100)));
+
+  return {
+    accruedMax,
+    earnedPoints,
+    standingPercentage,
+    elapsedFridays,
+    itemsBreakdown
+  };
+}
+
+

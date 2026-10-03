@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
-import { Plus, FileText, Sparkles, Presentation } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Plus, FileText, Sparkles, Presentation, PenTool, CheckCircle, Award, UserCheck } from 'lucide-react';
 import { db } from '../../firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, doc, updateDoc, getDocs, query, where, serverTimestamp } from 'firebase/firestore';
 import ServantAiStudioModal from './ServantAiStudioModal';
 import AiPresentationViewer from './AiPresentationViewer';
 
@@ -12,9 +12,11 @@ export default function ServantExamsBank({
   questionBank,
   setQuestionBank,
   createdExams,
-  setCreatedExams
+  setCreatedExams,
+  allUsers = [],
+  fetchAllUsers
 }) {
-  const [examSubSection, setExamSubSection] = useState('bank'); // 'bank' | 'assign'
+  const [examSubSection, setExamSubSection] = useState('bank'); // 'bank' | 'assign' | 'paper'
   const [showAddQuestionModal, setShowAddQuestionModal] = useState(false);
   const [showAiStudioModal, setShowAiStudioModal] = useState(false);
   const [activePresentation, setActivePresentation] = useState(null);
@@ -32,6 +34,31 @@ export default function ServantExamsBank({
   const [newExamTitle, setNewExamTitle] = useState('');
   const [newExamSubject, setNewExamSubject] = useState('');
   const [newExamDuration, setNewExamDuration] = useState('20');
+
+  // Paper / Offline Exam State
+  const [paperSubject, setPaperSubject] = useState('');
+  const [paperExamTitle, setPaperExamTitle] = useState('');
+  const [paperMaxScore, setPaperMaxScore] = useState(30);
+  const [paperScores, setPaperScores] = useState({});
+  const [paperSavingStudentId, setPaperSavingStudentId] = useState(null);
+  const [paperSavedSuccessId, setPaperSavedSuccessId] = useState(null);
+  const [recordedPaperExams, setRecordedPaperExams] = useState([]);
+
+  // Fetch recorded paper exams
+  useEffect(() => {
+    const fetchPaperExams = async () => {
+      try {
+        const q = query(collection(db, 'exam_submissions'), where('type', '==', 'paper'));
+        const snap = await getDocs(q);
+        const list = [];
+        snap.forEach(d => list.push({ id: d.id, ...d.data() }));
+        setRecordedPaperExams(list);
+      } catch (err) {
+        console.warn('Error fetching paper submissions:', err);
+      }
+    };
+    fetchPaperExams();
+  }, []);
 
   const currentGradeQuestions = (questionBank || []).filter(q => q.grade === selectedGrade);
   const currentGradeExams = (createdExams || []).filter(ex => ex.grade === selectedGrade || !ex.grade);
@@ -119,10 +146,10 @@ export default function ServantExamsBank({
 
   return (
     <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-6">
-      <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
+      <div className="flex items-center gap-2 border-b border-slate-100 pb-3 overflow-x-auto">
         <button
           onClick={() => setExamSubSection('bank')}
-          className={`text-xs px-4 py-2 rounded-xl font-bold transition-all ${
+          className={`text-xs px-4 py-2 rounded-xl font-bold transition-all shrink-0 ${
             examSubSection === 'bank' ? 'bg-maroon-800 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:text-slate-900'
           }`}
         >
@@ -130,11 +157,20 @@ export default function ServantExamsBank({
         </button>
         <button
           onClick={() => setExamSubSection('assign')}
-          className={`text-xs px-4 py-2 rounded-xl font-bold transition-all ${
+          className={`text-xs px-4 py-2 rounded-xl font-bold transition-all shrink-0 ${
             examSubSection === 'assign' ? 'bg-maroon-800 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:text-slate-900'
           }`}
         >
-          تكليف ونشر امتحان (Assign Exam)
+          تكليف ونشر امتحان أونلاين
+        </button>
+        <button
+          onClick={() => setExamSubSection('paper')}
+          className={`text-xs px-4 py-2 rounded-xl font-bold transition-all shrink-0 flex items-center gap-1.5 ${
+            examSubSection === 'paper' ? 'bg-maroon-800 text-white shadow-sm' : 'bg-amber-50 text-amber-900 border border-amber-200 hover:bg-amber-100'
+          }`}
+        >
+          <PenTool className="w-3.5 h-3.5 text-amber-600" />
+          <span>رصد درجات امتحان ورقي / تحريري 📝</span>
         </button>
       </div>
 
@@ -345,6 +381,186 @@ export default function ServantExamsBank({
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {/* Paper / Offline Exam Grading Tab */}
+      {examSubSection === 'paper' && (
+        <div className="space-y-6">
+          <div className="bg-gradient-to-r from-amber-50 to-orange-50/60 border border-amber-200 rounded-3xl p-5 space-y-4">
+            <div>
+              <h4 className="font-extrabold text-slate-900 text-base flex items-center gap-2">
+                <PenTool className="w-5 h-5 text-amber-700" />
+                <span>رصد درجات امتحان ورقي / تحريري ({getGradeTitle(selectedGrade)})</span>
+              </h4>
+              <p className="text-xs text-slate-600 mt-1">
+                حدد بيانات الامتحان، ثم ادخل درجات الطلاب يدوياً. تُضاف الدرجات مباشرة إلى البند (11: المواد والامتحانات) في لائحة الطالب.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 mb-1">المادة الدراسية</label>
+                <select
+                  value={paperSubject}
+                  onChange={(e) => setPaperSubject(e.target.value)}
+                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:outline-none focus:border-amber-600"
+                >
+                  <option value="">-- اختر المادة --</option>
+                  {(currentGradeSubjects || []).map(s => (
+                    <option key={s.id} value={s.name}>{s.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 mb-1">عنوان الامتحان</label>
+                <input
+                  type="text"
+                  placeholder="مثال: امتحان أعمال شهر نوفمبر تحريري"
+                  value={paperExamTitle}
+                  onChange={(e) => setPaperExamTitle(e.target.value)}
+                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:outline-none focus:border-amber-600"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 mb-1">الدرجة العظمى للامتحان</label>
+                <input
+                  type="number"
+                  min="5"
+                  max="100"
+                  value={paperMaxScore}
+                  onChange={(e) => setPaperMaxScore(Number(e.target.value) || 30)}
+                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold font-mono text-slate-800 focus:outline-none focus:border-amber-600"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Students list for scoring */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h5 className="font-extrabold text-sm text-slate-900 flex items-center gap-1.5">
+                <UserCheck className="w-4 h-4 text-emerald-700" />
+                <span>قائمة مخدومي {getGradeTitle(selectedGrade)} لرصد الدرجة:</span>
+              </h5>
+              <span className="text-xs text-slate-500">
+                {allUsers.filter(u => u.role === 'student' && (u.grade || 'first') === selectedGrade).length} مخدوم
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {allUsers
+                .filter(u => u.role === 'student' && (u.grade || 'first') === selectedGrade)
+                .map(st => {
+                  const studentScore = paperScores[st.id] !== undefined ? paperScores[st.id] : '';
+                  const isSaving = paperSavingStudentId === st.id;
+                  const isSaved = paperSavedSuccessId === st.id;
+
+                  // Check if already has a record for this title
+                  const existingRec = recordedPaperExams.find(r => r.userId === st.id && r.examTitle === paperExamTitle && paperExamTitle.trim());
+
+                  const handleSaveStudentScore = async () => {
+                    if (studentScore === '' || studentScore === null) {
+                      alert('برجاء كتابة درجة الطالب أولاً');
+                      return;
+                    }
+                    const numScore = Number(studentScore);
+                    if (isNaN(numScore) || numScore < 0 || numScore > paperMaxScore) {
+                      alert(`الدرجة يجب أن تكون بين 0 و ${paperMaxScore}`);
+                      return;
+                    }
+
+                    setPaperSavingStudentId(st.id);
+                    try {
+                      const payload = {
+                        userId: st.id,
+                        userName: st.fullName || 'مخدوم',
+                        grade: selectedGrade,
+                        subject: paperSubject || (currentGradeSubjects[0]?.name || 'عام'),
+                        examTitle: paperExamTitle.trim() || 'امتحان ورقي',
+                        score: numScore,
+                        totalScore: Number(paperMaxScore) || 30,
+                        type: 'paper',
+                        date: new Date().toISOString().split('T')[0],
+                        createdAt: serverTimestamp()
+                      };
+
+                      const docRef = await addDoc(collection(db, 'exam_submissions'), payload);
+                      setRecordedPaperExams(prev => [{ id: docRef.id, ...payload }, ...prev]);
+
+                      // Update points in users doc
+                      const userRef = doc(db, 'users', st.id);
+                      await updateDoc(userRef, {
+                        points: (st.points || 0) + numScore
+                      });
+
+                      if (fetchAllUsers) fetchAllUsers();
+
+                      setPaperSavedSuccessId(st.id);
+                      setTimeout(() => setPaperSavedSuccessId(null), 3000);
+                    } catch (err) {
+                      console.error('Error saving paper exam score:', err);
+                      alert('حدث خطأ أثناء حفظ درجة الطالب.');
+                    } finally {
+                      setPaperSavingStudentId(null);
+                    }
+                  };
+
+                  return (
+                    <div key={st.id} className="bg-white border border-slate-200 rounded-2xl p-3.5 shadow-2xs flex items-center justify-between gap-3">
+                      <div>
+                        <h6 className="font-extrabold text-xs text-slate-900">{st.fullName}</h6>
+                        <span className="text-[11px] text-slate-500 font-mono" dir="ltr">{st.phone || 'بدون هاتف'}</span>
+                        {existingRec && (
+                          <span className="block text-[10px] text-emerald-700 font-bold mt-0.5">
+                            الدرجة المرصودة سابقاً: {existingRec.score}/{existingRec.totalScore}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1 bg-slate-50 border border-slate-200 px-2 py-1 rounded-xl">
+                          <input
+                            type="number"
+                            min="0"
+                            max={paperMaxScore}
+                            placeholder="0"
+                            value={studentScore}
+                            onChange={(e) => setPaperScores({ ...paperScores, [st.id]: e.target.value })}
+                            className="w-14 text-center font-mono font-bold text-xs bg-white border border-slate-300 rounded-lg py-1 text-slate-900 focus:outline-none focus:border-amber-600"
+                          />
+                          <span className="text-[11px] text-slate-500 font-bold font-mono">/{paperMaxScore}</span>
+                        </div>
+
+                        <button
+                          type="button"
+                          disabled={isSaving}
+                          onClick={handleSaveStudentScore}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
+                            isSaved 
+                              ? 'bg-emerald-600 text-white' 
+                              : 'bg-maroon-800 hover:bg-maroon-700 text-white'
+                          } disabled:opacity-50`}
+                        >
+                          {isSaving ? (
+                            <span className="inline-block w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                          ) : isSaved ? (
+                            <>
+                              <CheckCircle className="w-3.5 h-3.5" />
+                              <span>تم ✓</span>
+                            </>
+                          ) : (
+                            <span>رصد ✍️</span>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+          </div>
         </div>
       )}
 

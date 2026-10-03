@@ -14,6 +14,7 @@ export default function ServantManualAttendance({
 }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilterGrade, setActiveFilterGrade] = useState('all');
+  const [selectedAttendanceDate, setSelectedAttendanceDate] = useState(() => new Date().toISOString().split('T')[0]);
 
   // Helper: Get formatted current time in Arabic (مثلاً: 11:30 ص)
   const getCurrentTimeFormatted = () => {
@@ -42,35 +43,66 @@ export default function ServantManualAttendance({
     return matchesSearch && matchesGrade;
   });
 
+  const isSelectedDateToday = selectedAttendanceDate === new Date().toISOString().split('T')[0];
+
   return (
     <div className="bg-white border border-slate-200 rounded-3xl p-5 sm:p-6 shadow-sm space-y-6 text-right">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
         <div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <h3 className="font-extrabold text-slate-900 text-base sm:text-lg flex items-center gap-2">
               <UserCheck className="w-5 h-5 text-emerald-700" />
               <span>تسجيل حضور يدوي للمخدومين</span>
             </h3>
-            <span className="text-xs bg-emerald-50 text-emerald-800 font-black px-2.5 py-0.5 rounded-full border border-emerald-200">
-              خدمة اليوم ({todayStr})
+            <span className={`text-xs font-black px-2.5 py-0.5 rounded-full border ${
+              isSelectedDateToday 
+                ? 'bg-emerald-50 text-emerald-800 border-emerald-200' 
+                : 'bg-amber-50 text-amber-900 border-amber-300'
+            }`}>
+              {isSelectedDateToday ? `خدمة اليوم (${todayStr})` : `رصد يدوي لتاريخ: ${selectedAttendanceDate} 🗓️`}
             </span>
           </div>
           <p className="text-xs text-slate-500 mt-1">
-            تسجيل حضور أي مخدوم يدوياً في حالة عدم توفر هاتف أو انقطاع الإنترنت، مع إمكانية تحديد وتعديل وقت وصوله للخدمة بدقة.
+            تسجيل حضور أي مخدوم يدوياً في حالة عدم توفر هاتف، أو رصد أسابيع سابقة لم تُسجل، مع تحديد وقت الوصول بدقة.
           </p>
         </div>
 
-        {/* Search Input Box */}
-        <div className="relative w-full sm:w-72">
-          <Search className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2" />
-          <input
-            type="text"
-            placeholder="ابحث بالاسم أو رقم الهاتف..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-slate-50 border border-slate-200 rounded-2xl pr-9 pl-3 py-2.5 min-h-[44px] text-xs text-slate-800 focus:outline-none focus:border-maroon-800 focus:bg-white transition-all shadow-2xs font-bold"
-          />
+        {/* Date Selector for Retroactive Attendance & Search */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+          <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-2xl min-h-[44px]">
+            <Calendar className="w-4 h-4 text-maroon-800 shrink-0" />
+            <div className="flex flex-col">
+              <span className="text-[10px] font-bold text-slate-500">تاريخ الخدمة:</span>
+              <input
+                type="date"
+                value={selectedAttendanceDate}
+                onChange={(e) => setSelectedAttendanceDate(e.target.value)}
+                className="bg-transparent text-xs font-bold text-slate-900 font-mono focus:outline-none cursor-pointer"
+              />
+            </div>
+            {!isSelectedDateToday && (
+              <button
+                type="button"
+                onClick={() => setSelectedAttendanceDate(new Date().toISOString().split('T')[0])}
+                className="text-[10px] font-bold text-emerald-700 hover:underline px-1 cursor-pointer"
+                title="العودة لليوم"
+              >
+                اليوم
+              </button>
+            )}
+          </div>
+
+          <div className="relative w-full sm:w-64">
+            <Search className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              placeholder="ابحث بالاسم أو رقم الهاتف..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-slate-50 border border-slate-200 rounded-2xl pr-9 pl-3 py-2.5 min-h-[44px] text-xs text-slate-800 focus:outline-none focus:border-maroon-800 focus:bg-white transition-all shadow-2xs font-bold"
+            />
+          </div>
         </div>
       </div>
 
@@ -185,7 +217,7 @@ export default function ServantManualAttendance({
                   <button
                     type="button"
                     disabled={isAttending || isAbsenting}
-                    onClick={() => handleManualAttendanceWithTime(st, studentArrivalTime)}
+                    onClick={() => handleManualAttendanceWithTime(st, studentArrivalTime, selectedAttendanceDate)}
                     className={`min-h-[42px] px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 shadow-2xs ${
                       isAttendSuccess
                         ? 'bg-emerald-600 text-white'
@@ -210,7 +242,7 @@ export default function ServantManualAttendance({
                   <button
                     type="button"
                     disabled={isAttending || isAbsenting}
-                    onClick={() => handleManualAbsence(st)}
+                    onClick={() => handleManualAbsence(st, selectedAttendanceDate)}
                     className={`min-h-[42px] px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 ${
                       isAbsentSuccess
                         ? 'bg-red-600 text-white'

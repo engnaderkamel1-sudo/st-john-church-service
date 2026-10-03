@@ -1031,6 +1031,7 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser, externa
       <StageRegulationsModal
         isOpen={showRegulationsModal}
         onClose={() => setShowRegulationsModal(false)}
+        currentUser={user}
         studentGrade={user?.grade || 'first'}
         isStudent={true}
         isAdmin={false}

@@ -5,8 +5,8 @@ import {
   Send, Globe, Lock
 } from 'lucide-react';
 import { db } from '../../firebase';
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { DEFAULT_STAGE_REGULATIONS, recalculateItemProperties } from '../../utils/regulationsService';
+import { doc, getDoc, setDoc, collection, query, where, getDocs, serverTimestamp } from 'firebase/firestore';
+import { DEFAULT_STAGE_REGULATIONS, recalculateItemProperties, calculateStudentStandingToDate } from '../../utils/regulationsService';
 
 const STAGE_KEYS = [
   { key: 'first', label: 'سنة أولى' },
@@ -44,7 +44,7 @@ const mergeStageWithDefaults = (remoteStage, defaultStage) => {
 export default function StageRegulationsModal({
   isOpen,
   onClose,
-  initialStage = 'first',
+  currentUser = null,
   isStudent = false,
   studentGrade = null,
   isAdmin = false
@@ -55,6 +55,7 @@ export default function StageRegulationsModal({
   const [editData, setEditData] = useState(null);
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [studentStanding, setStudentStanding] = useState(null);
 
   useEffect(() => {
     if (studentGrade) {
@@ -83,6 +84,48 @@ export default function StageRegulationsModal({
     };
     fetchRegs();
   }, [isOpen]);
+
+  // Fetch student cumulative standing to date if student
+  useEffect(() => {
+    if (!isOpen || !isStudent || !currentUser?.id) return;
+    const fetchStudentStanding = async () => {
+      try {
+        // 1. Fetch holidays
+        const hSnap = await getDoc(doc(db, 'service_settings', 'service_holidays'));
+        const holidays = hSnap.exists() ? (hSnap.data().holidays || []) : [];
+
+        // 2. Fetch attendance docs
+        const attSnap = await getDocs(query(collection(db, 'attendance'), where('userId', '==', currentUser.id)));
+        const attDocs = [];
+        attSnap.forEach(d => attDocs.push(d.data()));
+
+        // 3. Fetch diary docs
+        const diaSnap = await getDocs(query(collection(db, 'spiritual_diaries'), where('userId', '==', currentUser.id)));
+        const diaDocs = [];
+        diaSnap.forEach(d => diaDocs.push(d.data()));
+
+        // 4. Fetch exam submissions
+        const exSnap = await getDocs(query(collection(db, 'exam_submissions'), where('userId', '==', currentUser.id)));
+        const exDocs = [];
+        exSnap.forEach(d => exDocs.push(d.data()));
+
+        const standing = calculateStudentStandingToDate({
+          studentGrade: currentUser.grade || studentGrade || 'first',
+          stageRegulations: regulations,
+          attendanceRecords: attDocs,
+          diaryRecords: diaDocs,
+          examSubmissions: exDocs,
+          holidays,
+          currentPoints: currentUser.points || 0
+        });
+
+        setStudentStanding(standing);
+      } catch (err) {
+        console.warn('Error calculating student standing:', err);
+      }
+    };
+    fetchStudentStanding();
+  }, [isOpen, isStudent, currentUser?.id, studentGrade, regulations]);
 
   if (!isOpen) return null;
 
@@ -267,6 +310,40 @@ export default function StageRegulationsModal({
               )}
             </div>
           </div>
+
+          {/* Student Standing to Date Card (Personal Performance Summary) */}
+          {isStudent && studentStanding && (
+            <div className="bg-gradient-to-br from-emerald-50 via-teal-50 to-white border-2 border-emerald-300 rounded-3xl p-4 sm:p-5 shadow-xs space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-emerald-100 pb-2.5">
+                <div>
+                  <span className="text-[11px] font-black text-emerald-800 uppercase block tracking-wider">
+                    موقفي التراكمي في اللائحة حتى تاريخه 🎯
+                  </span>
+                  <h4 className="font-extrabold text-slate-900 text-sm sm:text-base">
+                    محقق حتى اليوم: {studentStanding.standingPercentage}% من المطلوب حتى تاريخه
+                  </h4>
+                </div>
+                <div className="text-left sm:text-right">
+                  <span className="text-lg sm:text-xl font-black font-mono text-emerald-800">
+                    {studentStanding.earnedPoints} <span className="text-xs font-normal text-slate-500">/ {studentStanding.accruedMax} درجة مطلوبة</span>
+                  </span>
+                </div>
+              </div>
+
+              {/* Progress bar */}
+              <div className="space-y-1">
+                <div className="w-full bg-slate-100 rounded-full h-3.5 overflow-hidden p-0.5 border border-slate-200">
+                  <div 
+                    className="bg-gradient-to-r from-emerald-600 to-teal-500 h-full rounded-full transition-all duration-500"
+                    style={{ width: `${Math.min(100, Math.max(5, studentStanding.standingPercentage))}%` }}
+                  />
+                </div>
+                <p className="text-[11px] text-slate-500">
+                  تم احتساب {studentStanding.elapsedFridays} أسابيع خدمة انقضت (مع استبعاد الجمع المعفاة). الامتحانات التي لم تعقد بعد غير محسوبة عليك كرسوب حتى يتم امتحانها.
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* Alert Message for Un-published or Empty Stages */}
           {shouldShowEmptyWaitingScreen ? (

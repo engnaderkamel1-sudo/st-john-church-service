@@ -1,5 +1,5 @@
-import React from 'react';
-import { QrCode, KeyRound, RefreshCw, Printer, Clock, Unlock, CheckCircle, BellRing } from 'lucide-react';
+import React, { useState } from 'react';
+import { QrCode, KeyRound, RefreshCw, Printer, Clock, Unlock, CheckCircle, BellRing, CalendarOff, Plus, Trash2 } from 'lucide-react';
 
 export default function ServantAttendanceQR({
   todayStr,
@@ -16,10 +16,27 @@ export default function ServantAttendanceQR({
   remoteAccessLoading,
   allUsers,
   serviceStartTime = '10:30',
-  handleUpdateServiceStartTime
+  handleUpdateServiceStartTime,
+  serviceHolidays = [],
+  handleAddHoliday,
+  handleRemoveHoliday
 }) {
-  const [isEditingStartTime, setIsEditingStartTime] = React.useState(false);
-  const [inputStartTime, setInputStartTime] = React.useState(serviceStartTime);
+  const [isEditingStartTime, setIsEditingStartTime] = useState(false);
+  const [inputStartTime, setInputStartTime] = useState(serviceStartTime);
+  const [showAddHolidayForm, setShowAddHolidayForm] = useState(false);
+  const [holidayDate, setHolidayDate] = useState('');
+  const [holidayLabel, setHolidayLabel] = useState('');
+
+  const submitAddHoliday = (e) => {
+    e.preventDefault();
+    if (!holidayDate) return;
+    if (handleAddHoliday) {
+      handleAddHoliday(holidayDate, holidayLabel || 'إجازة خدمة / جمعة معفاة');
+    }
+    setHolidayDate('');
+    setHolidayLabel('');
+    setShowAddHolidayForm(false);
+  };
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -139,101 +156,192 @@ export default function ServantAttendanceQR({
         </div>
       </div>
 
-      <div className="bg-white border border-slate-200 rounded-3xl p-5 shadow-sm text-right flex flex-col justify-between text-xs space-y-4">
-        <div>
-          <h4 className="font-extrabold text-slate-900 text-sm mb-2 flex items-center gap-2">
-            <Clock className="w-4 h-4 text-maroon-800" />
-            دليل الحضور السريع
-          </h4>
-          <p className="text-slate-600 leading-relaxed">
-            اعرض هذا الكود عند مدخل قاعة الخدمة. يقوم المخدومون بمسحه عبر كاميرا هواتفهم المدمجة في حساباتهم وتسجيل الحضور وإضافة النقاط مباشرة.
-          </p>
-        </div>
-
-        {/* Remote Code Access Control (فتح التسجيل لشخص معين أو للجميع مع إرسال إشعار) */}
-        <div className="bg-gradient-to-br from-amber-50 to-orange-50/60 border border-amber-200/80 p-4 rounded-2xl space-y-3">
-          <div className="flex items-center gap-2">
-            <Unlock className="w-4 h-4 text-amber-700" />
-            <span className="font-extrabold text-slate-900 text-xs">فتح التسجيل بالكود الاستثنائي</span>
+      <div className="space-y-6">
+        {/* Right Card 1: Remote Code Access & Quick Guide */}
+        <div className="bg-white border border-slate-200 rounded-3xl p-5 shadow-sm text-right flex flex-col justify-between text-xs space-y-4">
+          <div>
+            <h4 className="font-extrabold text-slate-900 text-sm mb-2 flex items-center gap-2">
+              <Clock className="w-4 h-4 text-maroon-800" />
+              دليل الحضور السريع
+            </h4>
+            <p className="text-slate-600 leading-relaxed">
+              اعرض هذا الكود عند مدخل قاعة الخدمة. يقوم المخدومون بمسحه عبر كاميرا هواتفهم وتسجيل الحضور مباشرة.
+            </p>
           </div>
-          <p className="text-[11px] text-slate-600">
-            يمكنك كخادم فتح التسجيل بالكود الآن لشخص معين أو للجميع وإرسال تنبيه فوري له/لهم:
-          </p>
 
-          {remoteAccessMessage && (
-            <div className="bg-emerald-100/80 border border-emerald-300 text-emerald-800 text-[11px] p-2.5 rounded-xl font-bold flex items-center gap-1.5 animate-in fade-in">
-              <CheckCircle className="w-4 h-4 text-emerald-700 shrink-0" />
-              <span>{remoteAccessMessage}</span>
+          {/* Remote Code Access Control */}
+          <div className="bg-gradient-to-br from-amber-50 to-orange-50/60 border border-amber-200/80 p-4 rounded-2xl space-y-3">
+            <div className="flex items-center gap-2">
+              <Unlock className="w-4 h-4 text-amber-700" />
+              <span className="font-extrabold text-slate-900 text-xs">فتح التسجيل بالكود الاستثنائي</span>
             </div>
-          )}
+            <p className="text-[11px] text-slate-600">
+              فتح التسجيل بالكود الآن لشخص معين أو للجميع مع إرسال إشعار فوري:
+            </p>
 
-          <div className="space-y-2">
-            <label className="block text-[11px] font-bold text-slate-700">لمن تريد فتح التسجيل؟</label>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => setRemoteAccessTarget('all')}
-                className={`py-2 px-3 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-1 ${
-                  remoteAccessTarget === 'all'
-                    ? 'bg-amber-600 text-white shadow-xs'
-                    : 'bg-white border border-slate-200 text-slate-700'
-                }`}
-              >
-                <span>📢 للجميع</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setRemoteAccessTarget('specific')}
-                className={`py-2 px-3 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-1 ${
-                  remoteAccessTarget === 'specific'
-                    ? 'bg-amber-600 text-white shadow-xs'
-                    : 'bg-white border border-slate-200 text-slate-700'
-                }`}
-              >
-                <span>🎯 لشخص معين</span>
-              </button>
-            </div>
-
-            {remoteAccessTarget === 'specific' && (
-              <div className="pt-1">
-                <label className="block text-[11px] font-bold text-slate-700 mb-1">اختر المخدوم:</label>
-                <select
-                  value={selectedStudentForAccess}
-                  onChange={(e) => setSelectedStudentForAccess(e.target.value)}
-                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-amber-600"
-                >
-                  <option value="">-- اضغط لاختيار المخدوم --</option>
-                  {allUsers
-                    .filter(u => u.role === 'student')
-                    .map(st => (
-                      <option key={st.id} value={st.id}>
-                        {st.fullName} ({st.phone})
-                      </option>
-                    ))}
-                </select>
+            {remoteAccessMessage && (
+              <div className="bg-emerald-100/80 border border-emerald-300 text-emerald-800 text-[11px] p-2.5 rounded-xl font-bold flex items-center gap-1.5 animate-in fade-in">
+                <CheckCircle className="w-4 h-4 text-emerald-700 shrink-0" />
+                <span>{remoteAccessMessage}</span>
               </div>
             )}
 
-            <button
-              type="button"
-              onClick={handleOpenCodeAccess}
-              disabled={remoteAccessLoading}
-              className="w-full bg-maroon-800 hover:bg-maroon-700 text-white font-bold py-2 px-3 rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5 text-xs mt-2"
-            >
-              <BellRing className="w-3.5 h-3.5" />
-              <span>
-                {remoteAccessLoading
-                  ? 'جاري الفتح والإشعار...'
-                  : remoteAccessTarget === 'all'
-                    ? 'فتح التسجيل للجميع وإرسال إشعار عام 📢'
-                    : 'فتح التسجيل وإرسال تنبيه للمخدوم 🎯'}
-              </span>
-            </button>
+            <div className="space-y-2">
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setRemoteAccessTarget('all')}
+                  className={`py-2 px-3 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-1 ${
+                    remoteAccessTarget === 'all'
+                      ? 'bg-amber-600 text-white shadow-xs'
+                      : 'bg-white border border-slate-200 text-slate-700'
+                  }`}
+                >
+                  <span>📢 للجميع</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRemoteAccessTarget('specific')}
+                  className={`py-2 px-3 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-1 ${
+                    remoteAccessTarget === 'specific'
+                      ? 'bg-amber-600 text-white shadow-xs'
+                      : 'bg-white border border-slate-200 text-slate-700'
+                  }`}
+                >
+                  <span>🎯 لشخص معين</span>
+                </button>
+              </div>
+
+              {remoteAccessTarget === 'specific' && (
+                <div className="pt-1">
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">اختر المخدوم:</label>
+                  <select
+                    value={selectedStudentForAccess}
+                    onChange={(e) => setSelectedStudentForAccess(e.target.value)}
+                    className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-amber-600"
+                  >
+                    <option value="">-- اضغط لاختيار المخدوم --</option>
+                    {allUsers
+                      .filter(u => u.role === 'student')
+                      .map(st => (
+                        <option key={st.id} value={st.id}>
+                          {st.fullName} ({st.phone})
+                        </option>
+                      ))}
+                  </select>
+                </div>
+              )}
+
+              <button
+                type="button"
+                onClick={handleOpenCodeAccess}
+                disabled={remoteAccessLoading}
+                className="w-full bg-maroon-800 hover:bg-maroon-700 text-white font-bold py-2 px-3 rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5 text-xs mt-2"
+              >
+                <BellRing className="w-3.5 h-3.5" />
+                <span>
+                  {remoteAccessLoading
+                    ? 'جاري الفتح والإشعار...'
+                    : remoteAccessTarget === 'all'
+                      ? 'فتح التسجيل للجميع وإرسال إشعار 📢'
+                      : 'فتح التسجيل وإرسال تنبيه للمخدوم 🎯'}
+                </span>
+              </button>
+            </div>
           </div>
         </div>
 
-        <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200 text-slate-500">
-          النافذة المعتمدة العادية: 10:30 ص إلى 02:00 م.
+        {/* Right Card 2: Holidays & Cancelled Fridays Management */}
+        <div className="bg-white border border-slate-200 rounded-3xl p-5 shadow-sm text-right space-y-4">
+          <div className="flex items-center justify-between">
+            <h4 className="font-extrabold text-slate-900 text-sm flex items-center gap-2">
+              <CalendarOff className="w-4 h-4 text-rose-700" />
+              <span>إجازات الخدمة والجمع المعفاة 🗓️</span>
+            </h4>
+            <button
+              type="button"
+              onClick={() => setShowAddHolidayForm(!showAddHolidayForm)}
+              className="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200 rounded-xl text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>استثناء جمعة</span>
+            </button>
+          </div>
+          <p className="text-slate-500 text-[11px] leading-relaxed">
+            الجمع المسجلة هنا (مثل جمعة ختام الصوم أو الإجازات الطارئة) تُستبعد تلقائياً من حسبة أسابيع الخدمة ولا تخصم من تقييم المخدومين.
+          </p>
+
+          {showAddHolidayForm && (
+            <form onSubmit={submitAddHoliday} className="bg-slate-50 border border-slate-200 p-3.5 rounded-2xl space-y-2.5 animate-in fade-in">
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 mb-1">تاريخ الجمعة المعفاة:</label>
+                <input
+                  type="date"
+                  required
+                  value={holidayDate}
+                  onChange={(e) => setHolidayDate(e.target.value)}
+                  className="w-full bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs font-mono font-bold text-slate-800 focus:outline-none focus:border-rose-600"
+                />
+              </div>
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 mb-1">سبب الاستثناء / المناسبة:</label>
+                <input
+                  type="text"
+                  placeholder="مثال: جمعة ختام الصوم / عطلة رسمية"
+                  value={holidayLabel}
+                  onChange={(e) => setHolidayLabel(e.target.value)}
+                  className="w-full bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs font-bold text-slate-800 focus:outline-none focus:border-rose-600"
+                />
+              </div>
+              <div className="flex justify-end gap-1.5 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setShowAddHolidayForm(false)}
+                  className="px-3 py-1 bg-white border border-slate-200 text-slate-600 text-xs rounded-lg font-bold"
+                >
+                  إلغاء
+                </button>
+                <button
+                  type="submit"
+                  className="px-3 py-1 bg-rose-700 hover:bg-rose-800 text-white text-xs rounded-lg font-bold shadow-2xs"
+                >
+                  حفظ الاستثناء ✓
+                </button>
+              </div>
+            </form>
+          )}
+
+          {/* List of declared holidays */}
+          {serviceHolidays.length === 0 ? (
+            <div className="text-center py-3 bg-slate-50 rounded-xl border border-dashed border-slate-200 text-slate-400 text-[11px]">
+              لا توجد جمع معفاة مضافة حالياً.
+            </div>
+          ) : (
+            <div className="space-y-2 max-h-48 overflow-y-auto">
+              {serviceHolidays.map((h, i) => {
+                const dateVal = typeof h === 'string' ? h : h.date;
+                const labelVal = typeof h === 'string' ? 'جمعة معفاة' : (h.label || 'جمعة معفاة');
+                return (
+                  <div key={i} className="flex items-center justify-between p-2.5 bg-rose-50/50 border border-rose-100 rounded-xl text-xs">
+                    <div>
+                      <span className="font-bold text-rose-950 block">{labelVal}</span>
+                      <span className="text-[10px] text-slate-500 font-mono" dir="ltr">{dateVal}</span>
+                    </div>
+                    {handleRemoveHoliday && (
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveHoliday(dateVal)}
+                        className="p-1 text-slate-400 hover:text-rose-700 transition-colors"
+                        title="حذف الاستثناء"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -129,6 +129,7 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
   // Dynamic Service Start Time (Default: 10:30)
   const [serviceStartTime, setServiceStartTime] = useState('10:30');
   const [stageRegulations, setStageRegulations] = useState(DEFAULT_STAGE_REGULATIONS);
+  const [serviceHolidays, setServiceHolidays] = useState([]);
 
   // Sync Stage Regulations in real-time
   useEffect(() => {
@@ -139,6 +140,49 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
     }, (err) => console.warn('Regs listener err:', err));
     return () => unsubRegs();
   }, []);
+
+  // Sync Service Holidays (Cancelled/Excused Fridays) in real-time
+  useEffect(() => {
+    const unsubHolidays = onSnapshot(doc(db, 'service_settings', 'service_holidays'), (snap) => {
+      if (snap.exists()) {
+        const data = snap.data();
+        setServiceHolidays(data.holidays || []);
+      }
+    }, (err) => console.warn('Holidays listener err:', err));
+    return () => unsubHolidays();
+  }, []);
+
+  const handleAddHoliday = async (dateStr, labelStr) => {
+    if (!dateStr) return;
+    const newHolidays = [
+      ...serviceHolidays.filter(h => (typeof h === 'string' ? h !== dateStr : h.date !== dateStr)),
+      { date: dateStr, label: labelStr || 'جمعة معفاة / إجازة رسمية' }
+    ];
+    setServiceHolidays(newHolidays);
+    try {
+      await setDoc(doc(db, 'service_settings', 'service_holidays'), {
+        holidays: newHolidays,
+        updatedBy: user.fullName || 'الخادم المسؤول',
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+    } catch (e) {
+      console.error('Error saving holiday:', e);
+    }
+  };
+
+  const handleRemoveHoliday = async (dateStr) => {
+    const newHolidays = serviceHolidays.filter(h => (typeof h === 'string' ? h !== dateStr : h.date !== dateStr));
+    setServiceHolidays(newHolidays);
+    try {
+      await setDoc(doc(db, 'service_settings', 'service_holidays'), {
+        holidays: newHolidays,
+        updatedBy: user.fullName || 'الخادم المسؤول',
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+    } catch (e) {
+      console.error('Error removing holiday:', e);
+    }
+  };
 
   const handleUpdateServiceStartTime = async (newTime) => {
     setServiceStartTime(newTime);
@@ -237,11 +281,13 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
     }
   };
 
-  // 1. Manual Attendance (لو نسي التليفون أو لتسجيله حاضراً مع تحديد وقت الوصول)
-  const handleManualAttendance = async (targetUser, customTime = null) => {
+  // 1. Manual Attendance (لو نسي التليفون أو لتسجيله حاضراً مع تحديد وقت وتاريخ الخدمة)
+  const handleManualAttendance = async (targetUser, customTime = null, customDate = null) => {
     setManualAttendLoadingId(targetUser.id);
     try {
       const todayDateOnly = new Date().toISOString().split('T')[0];
+      const targetDate = customDate || todayDateOnly;
+      const targetDateFormatted = targetDate === todayDateOnly ? todayStr : new Date(targetDate).toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
       const recordedTime = customTime || new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
 
       // Calculate Official Regulation Attendance Points dynamically based on stage regulations
@@ -258,8 +304,8 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
         userName: targetUser.fullName,
         phone: targetUser.phone,
         grade: targetUser.grade || 'first',
-        date: todayDateOnly,
-        dateFormatted: todayStr,
+        date: targetDate,
+        dateFormatted: targetDateFormatted,
         time: recordedTime,
         type: 'manual_by_servant',
         status: 'حاضر',
@@ -279,7 +325,7 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
       await addDoc(collection(db, 'notifications'), {
         targetUserId: targetUser.id,
         title: 'تسجيل حضور يدوي في الخدمة ✓',
-        desc: `قام الخادم (${user.fullName || 'المسؤول'}) بتسجيل حضورك يدوياً لليوم وتمت إضافة 10 نقاط لرصيدك.`,
+        desc: `قام الخادم (${user.fullName || 'المسؤول'}) بتسجيل حضورك يدوياً لتاريخ (${targetDate}) وتمت إضافة ${pointsAwarded} نقطة لرصيدك.`,
         time: 'الآن',
         createdAt: serverTimestamp()
       });
@@ -295,19 +341,22 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
     }
   };
 
-  // 1.2 Manual Absence (تسجيل غياب المخدوم)
-  const handleManualAbsence = async (targetUser) => {
+  // 1.2 Manual Absence (تسجيل غياب المخدوم مع دعم التاريخ المحدد)
+  const handleManualAbsence = async (targetUser, customDate = null) => {
     setManualAbsenceLoadingId(targetUser.id);
     try {
       const todayDateOnly = new Date().toISOString().split('T')[0];
+      const targetDate = customDate || todayDateOnly;
+      const targetDateFormatted = targetDate === todayDateOnly ? todayStr : new Date(targetDate).toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
       // Record absence in Firestore
       await addDoc(collection(db, 'attendance'), {
         userId: targetUser.id,
         userName: targetUser.fullName,
         phone: targetUser.phone,
         grade: targetUser.grade || 'first',
-        date: todayDateOnly,
-        dateFormatted: todayStr,
+        date: targetDate,
+        dateFormatted: targetDateFormatted,
         time: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }),
         type: 'manual_absence_by_servant',
         status: 'غائب',
@@ -319,8 +368,8 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
       // Send in-app reminder / notification
       await addDoc(collection(db, 'notifications'), {
         targetUserId: targetUser.id,
-        title: 'تم تسجيل غياب لخدمة اليوم ⚠️',
-        desc: `تم تسجيلك غائباً لخدمة اليوم بواسطة الخادم (${user.fullName || 'المسؤول'}). نتمنى رؤيتك الجمعة القادمة ببركة ربنا!`,
+        title: 'تم تسجيل غياب في الخدمة ⚠️',
+        desc: `تم تسجيلك غائباً لتاريخ (${targetDate}) بواسطة الخادم (${user.fullName || 'المسؤول'}). نتمنى رؤيتك الجمعة القادمة ببركة ربنا!`,
         time: 'الآن',
         createdAt: serverTimestamp()
       });
@@ -1541,6 +1590,8 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
           setQuestionBank={setQuestionBank}
           createdExams={createdExams}
           setCreatedExams={setCreatedExams}
+          allUsers={allUsers}
+          fetchAllUsers={fetchAllUsers}
         />
       )}
 
@@ -1581,6 +1632,9 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
           allUsers={allUsers}
           serviceStartTime={serviceStartTime}
           handleUpdateServiceStartTime={handleUpdateServiceStartTime}
+          serviceHolidays={serviceHolidays}
+          handleAddHoliday={handleAddHoliday}
+          handleRemoveHoliday={handleRemoveHoliday}
         />
       )}
 
