@@ -19,7 +19,8 @@ export default function App() {
   const notificationRef = useRef(null);
 
   const [notifications, setNotifications] = useState([]);
-  const [servantPreviewMode, setServantPreviewMode] = useState(false); // خادم يجرب كـ مخدوم بنفس حسابه في الفترة التجريبية
+  // Multi-Role Live Preview State (null = original role, or 'student' | 'servant' | 'servant_leader' | 'admin')
+  const [previewRole, setPreviewRole] = useState(null);
 
   // Real-time Firestore Notifications for Current User
   useEffect(() => {
@@ -287,62 +288,142 @@ export default function App() {
         </div>
       </header>
 
-      {/* Sub-Header Bar for Servants: Preview Switcher (خارج الهيدر تماماً لتفريغ المساحة) */}
-      {currentUser && currentUser.role !== 'student' && (
-        <div className="bg-amber-50/90 border-b border-amber-200/80 px-4 py-2 flex items-center justify-between text-xs max-w-5xl mx-auto w-full">
-          <div className="flex items-center gap-1.5 text-amber-900 font-bold text-[11px] sm:text-xs">
-            <span>{servantPreviewMode ? 'وضع التجربة الحالي: مخدوم 🎓' : 'لوحة تحكم الخدام والمشرف'}</span>
-          </div>
-          <button
-            type="button"
-            onClick={() => setServantPreviewMode(prev => !prev)}
-            className={`text-[11px] sm:text-xs font-bold py-1 px-3 rounded-xl transition-all flex items-center gap-1.5 border cursor-pointer active:scale-95 ${
-              servantPreviewMode
-                ? 'bg-amber-500 hover:bg-amber-600 text-maroon-950 border-amber-600 shadow-xs animate-pulse'
-                : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300 shadow-2xs'
-            }`}
-          >
-            <ArrowLeftRight className="w-3.5 h-3.5 text-maroon-800 shrink-0" />
-            <span>{servantPreviewMode ? 'العودة لحساب الخادم ↩' : 'التبديل لتجربة كـ مخدوم 🎓'}</span>
-          </button>
-        </div>
-      )}
+      {/* Sub-Header Bar: Multi-Role Preview Switcher */}
+      {currentUser && currentUser.role !== 'student' && (() => {
+        const isAppAdmin = currentUser.role === 'admin' || currentUser.phone === '01275571569' || (currentUser.email && (currentUser.email.includes('nader.kamel') || currentUser.email.includes('st.johnmaadiservantsprep@gmail.com')));
+        const activeEffectiveRole = previewRole || currentUser.role;
 
-      {/* Preview Mode Notification Banner */}
-      {currentUser && currentUser.role !== 'student' && servantPreviewMode && (
-        <div className="bg-amber-500 text-maroon-950 px-4 py-2 text-center text-xs font-bold border-b border-amber-600 shadow-sm flex items-center justify-center gap-2">
-          <Eye className="w-4 h-4" />
-          <span>أنت الآن في وضع تجربة شاشة المخدوم بنفس حسابك كخادم. يمكنك تجربة تسجيل الحضور والنوتة الروحية والامتحانات كأنك مخدوم تماماً.</span>
-          <button
-            type="button"
-            onClick={() => setServantPreviewMode(false)}
-            className="underline mr-2 hover:text-white"
-          >
-            إلغاء وضع التجربة
-          </button>
-        </div>
-      )}
+        return (
+          <div className="bg-amber-50/90 border-b border-amber-200/80 px-3 sm:px-4 py-2 text-xs max-w-5xl mx-auto w-full">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div className="flex items-center gap-1.5 text-amber-900 font-extrabold text-[11px] sm:text-xs">
+                <Eye className="w-4 h-4 text-amber-700 shrink-0" />
+                <span>
+                  {previewRole 
+                    ? `أنت الآن في وضع تجربة: ${
+                        previewRole === 'student' ? 'مخدوم 🎓' 
+                        : previewRole === 'servant' ? 'خادم عادي ✝️' 
+                        : previewRole === 'servant_leader' ? 'أمين خدمة 🛡️' 
+                        : 'مشرف التطبيق 👑'
+                      }`
+                    : isAppAdmin 
+                    ? 'لوحة المشرف العام (اختر وضع المعاينة):' 
+                    : 'لوحة تحكم الخادم'}
+                </span>
+              </div>
+
+              {/* Multi-Role Switcher Buttons */}
+              <div className="flex items-center gap-1 overflow-x-auto pb-0.5 scrollbar-none">
+                {isAppAdmin ? (
+                  <>
+                    {/* Admin original button */}
+                    <button
+                      type="button"
+                      onClick={() => setPreviewRole(null)}
+                      className={`text-[11px] font-bold py-1 px-2.5 rounded-xl transition-all cursor-pointer border ${
+                        !previewRole
+                          ? 'bg-amber-500 text-maroon-950 border-amber-600 shadow-2xs'
+                          : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300'
+                      }`}
+                    >
+                      👑 المشرف
+                    </button>
+
+                    {/* Servant Leader preview */}
+                    <button
+                      type="button"
+                      onClick={() => setPreviewRole('servant_leader')}
+                      className={`text-[11px] font-bold py-1 px-2.5 rounded-xl transition-all cursor-pointer border ${
+                        previewRole === 'servant_leader'
+                          ? 'bg-purple-800 text-white border-purple-900 shadow-2xs animate-pulse'
+                          : 'bg-white hover:bg-slate-100 text-purple-900 border-purple-300'
+                      }`}
+                    >
+                      🛡️ أمين الخدمة
+                    </button>
+
+                    {/* Regular Servant preview */}
+                    <button
+                      type="button"
+                      onClick={() => setPreviewRole('servant')}
+                      className={`text-[11px] font-bold py-1 px-2.5 rounded-xl transition-all cursor-pointer border ${
+                        previewRole === 'servant'
+                          ? 'bg-maroon-800 text-white border-maroon-900 shadow-2xs animate-pulse'
+                          : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300'
+                      }`}
+                    >
+                      ✝️ خادم
+                    </button>
+
+                    {/* Student preview */}
+                    <button
+                      type="button"
+                      onClick={() => setPreviewRole('student')}
+                      className={`text-[11px] font-bold py-1 px-2.5 rounded-xl transition-all cursor-pointer border ${
+                        previewRole === 'student'
+                          ? 'bg-emerald-700 text-white border-emerald-800 shadow-2xs animate-pulse'
+                          : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300'
+                      }`}
+                    >
+                      🎓 مخدوم
+                    </button>
+                  </>
+                ) : (
+                  /* Normal servant toggle */
+                  <button
+                    type="button"
+                    onClick={() => setPreviewRole(prev => prev === 'student' ? null : 'student')}
+                    className={`text-[11px] sm:text-xs font-bold py-1 px-3 rounded-xl transition-all flex items-center gap-1.5 border cursor-pointer active:scale-95 ${
+                      previewRole === 'student'
+                        ? 'bg-amber-500 hover:bg-amber-600 text-maroon-950 border-amber-600 shadow-xs animate-pulse'
+                        : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300 shadow-2xs'
+                    }`}
+                  >
+                    <ArrowLeftRight className="w-3.5 h-3.5 text-maroon-800 shrink-0" />
+                    <span>{previewRole === 'student' ? 'العودة لحساب الخادم ↩' : 'التبديل لتجربة كـ مخدوم 🎓'}</span>
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Main Container */}
       <main className="flex-1 max-w-5xl mx-auto px-4 py-6 w-full flex flex-col justify-center">
         <ErrorBoundary currentUser={currentUser}>
-          {currentUser ? (
-            currentUser.role === 'student' || servantPreviewMode ? (
-              <StudentDashboard 
-                user={{ ...currentUser, role: 'student', grade: currentUser.grade || 'first' }} 
-                onLogout={handleLogout}
-                onUpdateUser={(updated) => setCurrentUser(prev => ({ ...prev, ...updated }))}
-                externalMenuTrigger={mobileMenuTrigger}
-              />
-            ) : (
+          {currentUser ? (() => {
+            const effectiveRole = previewRole || currentUser.role;
+
+            if (effectiveRole === 'student') {
+              return (
+                <StudentDashboard 
+                  user={{ ...currentUser, role: 'student', grade: currentUser.grade || 'first' }} 
+                  onLogout={handleLogout}
+                  onUpdateUser={(updated) => setCurrentUser(prev => ({ ...prev, ...updated }))}
+                  externalMenuTrigger={mobileMenuTrigger}
+                />
+              );
+            }
+
+            // Emulated user for Servant or Servant Leader mode
+            const emulatedUser = {
+              ...currentUser,
+              role: effectiveRole,
+              // If previewing regular servant or servant leader, disable admin bypass phone/email
+              phone: effectiveRole === 'admin' ? currentUser.phone : (previewRole ? '01000000000' : currentUser.phone),
+              email: effectiveRole === 'admin' ? currentUser.email : (previewRole ? 'servant@church.com' : currentUser.email)
+            };
+
+            return (
               <ServantDashboard 
-                user={currentUser} 
+                user={emulatedUser} 
                 onLogout={handleLogout}
                 onUpdateUser={(updated) => setCurrentUser(prev => ({ ...prev, ...updated }))}
                 externalMenuTrigger={mobileMenuTrigger}
               />
-            )
-          ) : (
+            );
+          })() : (
           /* Landing Screen: Clean, Direct Entry */
           <div className="w-full max-w-xl mx-auto text-center space-y-8 py-8">
             <div>
