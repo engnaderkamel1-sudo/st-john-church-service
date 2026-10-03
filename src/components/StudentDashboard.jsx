@@ -679,31 +679,17 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser, externa
         </div>
       </div>
 
-      {/* Top Floating Appbar with Menu Trigger and Active Tab Pill */}
-      <div className="bg-white border border-slate-200/90 rounded-2xl p-2.5 sm:p-3 shadow-xs flex items-center justify-between gap-2 sticky top-16 z-30 backdrop-blur-md">
+      {/* Top Floating Appbar with Menu Trigger */}
+      <div className="bg-white border border-slate-200/90 rounded-2xl p-2.5 sm:p-3 shadow-xs flex items-center justify-between sticky top-16 z-30 backdrop-blur-md">
         <button
           type="button"
           onClick={() => setIsNavDrawerOpen(true)}
-          className="px-3 sm:px-3.5 py-2 sm:py-2.5 bg-gradient-to-r from-maroon-900 to-maroon-800 text-white rounded-xl flex items-center gap-2 text-xs font-bold shadow-sm hover:from-maroon-950 hover:to-maroon-900 active:scale-95 transition-all cursor-pointer ring-1 ring-gold-400/30 shrink-0"
+          className="w-full py-2.5 sm:py-3 bg-gradient-to-r from-maroon-900 via-maroon-850 to-maroon-800 hover:from-maroon-950 hover:to-maroon-900 text-white rounded-xl flex items-center justify-center gap-2.5 text-xs sm:text-sm font-black shadow-sm active:scale-[0.99] transition-all cursor-pointer ring-1 ring-gold-400/30"
           title="فتح أقسام الخدمة"
         >
-          <Menu className="w-4 h-4 text-gold-300 shrink-0" />
-          <span>أقسام المخدوم</span>
+          <Menu className="w-4 h-4 sm:w-5 sm:h-5 text-gold-300 shrink-0" />
+          <span>أقسام المخدوم والتنقل ☰</span>
         </button>
-
-        <div className="min-w-0">
-          <span className="text-[11px] sm:text-xs font-extrabold text-maroon-950 bg-maroon-50/80 border border-maroon-200/70 px-2.5 sm:px-3.5 py-1.5 rounded-xl shadow-2xs flex items-center gap-1.5 truncate">
-            <span className="w-2 h-2 rounded-full bg-gold-500 inline-block animate-pulse shrink-0"></span>
-            <span className="truncate">
-              {activeTab === 'attendance' && 'تسجيل حضور'}
-              {activeTab === 'spiritual_diary' && 'النوتة الروحية'}
-              {activeTab === 'curriculum' && 'المنهج والمواد'}
-              {activeTab === 'exams' && 'الامتحانات'}
-              {activeTab === 'tasks' && 'التاسكات والأنشطة'}
-              {activeTab === 'announcements' && 'لوحة التنبيهات'}
-            </span>
-          </span>
-        </div>
       </div>
 
       {/* Slide-Over Navigation Drawer for Students */}
