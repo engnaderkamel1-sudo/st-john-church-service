@@ -222,8 +222,8 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
 
   // Update User Role & Stage in Firestore
   const handleUpdateUserRole = async (userId, newRole, newGrade = null) => {
-    if (!isAppAdmin) {
-      alert('عفواً، تعديل الرتب والأدوار مقتصر على مشرف التطبيق فقط.');
+    if (!isServantLeader) {
+      alert('عفواً، تعديل الرتب والأدوار مقتصر على أمين الخدمة ومشرف التطبيق فقط.');
       return;
     }
 
@@ -232,7 +232,6 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
       const userRef = doc(db, 'users', userId);
       const updateData = { role: newRole };
       if (newRole === 'servant') {
-        updateData.status = 'active';
         updateData.servantScope = newGrade || 'all';
       } else {
         if (newGrade) updateData.grade = newGrade;
@@ -244,6 +243,71 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
     } catch (err) {
       console.error('Error updating role:', err);
       alert('حدث خطأ أثناء تعديل رتبة المستخدم');
+    } finally {
+      setRoleUpdatingId(null);
+    }
+  };
+
+  // Approve a pending user (موافقة واعتماد الحساب)
+  const handleApproveUser = async (userId, assignedRole = null, assignedGrade = null) => {
+    if (!isServantLeader) {
+      alert('عفواً، اعتماد الحسابات مقتصر على أمين الخدمة ومشرف التطبيق.');
+      return;
+    }
+
+    setRoleUpdatingId(userId);
+    try {
+      const userRef = doc(db, 'users', userId);
+      const updateData = {
+        status: 'active',
+        approvedAt: serverTimestamp(),
+        approvedBy: user.fullName || 'أمين الخدمة'
+      };
+
+      if (assignedRole) {
+        updateData.role = assignedRole;
+        if (assignedRole === 'servant') {
+          updateData.servantScope = assignedGrade || 'all';
+        } else if (assignedRole === 'student' && assignedGrade) {
+          updateData.grade = assignedGrade;
+        }
+      }
+
+      await updateDoc(userRef, updateData);
+      setAllUsers(prev => prev.map(u => u.id === userId ? { ...u, ...updateData } : u));
+    } catch (err) {
+      console.error('Error approving user:', err);
+      alert('حدث خطأ أثناء اعتماد الحساب.');
+    } finally {
+      setRoleUpdatingId(null);
+    }
+  };
+
+  // Reject / Inactivate a user account (رفض أو حظر حساب)
+  const handleRejectUser = async (userId) => {
+    if (!isServantLeader) {
+      alert('عفواً، إلغاء الحسابات مقتصر على أمين الخدمة ومشرف التطبيق.');
+      return;
+    }
+
+    if (!window.confirm('هل أنت متأكد من رفض / تعطيل هذا الحساب؟ لن يتمكن صاحب الحساب من الدخول.')) {
+      return;
+    }
+
+    setRoleUpdatingId(userId);
+    try {
+      const userRef = doc(db, 'users', userId);
+      const updateData = {
+        status: 'rejected',
+        rejectedAt: serverTimestamp(),
+        rejectedBy: user.fullName || 'أمين الخدمة'
+      };
+
+      await updateDoc(userRef, updateData);
+      setAllUsers(prev => prev.map(u => u.id === userId ? { ...u, ...updateData } : u));
+    } catch (err) {
+      console.error('Error rejecting user:', err);
+      alert('حدث خطأ أثناء رفض الحساب.');
     } finally {
       setRoleUpdatingId(null);
     }
@@ -1482,8 +1546,8 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
                   </button>
                 )}
 
-                {/* 12. App Admin only: Users & Roles */}
-                {isAppAdmin && (
+                {/* 12. App Admin & Servant Leader: Users & Roles */}
+                {(isAppAdmin || isServantLeader) && (
                   <button
                     type="button"
                     onClick={() => {
@@ -1500,7 +1564,7 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
                   >
                     <div className="flex items-center gap-2.5">
                       <UserCog className={`w-4 h-4 ${mainTab === 'users_hub' && userHubSubTab === 'accounts' ? 'text-gold-300' : 'text-slate-500'}`} />
-                      <span>المستخدمين والأدوار</span>
+                      <span>المستخدمين واعتماد الحسابات</span>
                     </div>
                     {allUsers.length > 0 && (
                       <span className={`text-[10px] min-w-5 text-center px-1.5 py-0.2 rounded-md font-bold ${
@@ -1619,10 +1683,12 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
         />
       )}
 
-      {/* 0. Users & Roles Management Hub (Admin Only: Admin Approvals & Activity Logs) */}
-      {isAppAdmin && mainTab === 'users_hub' && (
+      {/* 0. Users & Roles Management Hub (Admin & Servant Leader: Admin Approvals & Activity Logs) */}
+      {(isAppAdmin || isServantLeader) && mainTab === 'users_hub' && (
         <ServantUsersHub
           user={user}
+          isAppAdmin={isAppAdmin}
+          isServantLeader={isServantLeader}
           userHubSubTab={userHubSubTab}
           setUserHubSubTab={setUserHubSubTab}
           allUsers={allUsers}
@@ -1641,6 +1707,8 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
           manualAbsenceLoadingId={manualAbsenceLoadingId}
           manualAbsenceSuccessId={manualAbsenceSuccessId}
           handleUpdateUserRole={handleUpdateUserRole}
+          handleApproveUser={handleApproveUser}
+          handleRejectUser={handleRejectUser}
           roleUpdatingId={roleUpdatingId}
           onSelectStudent={(st) => setStudent360Profile(st)}
         />

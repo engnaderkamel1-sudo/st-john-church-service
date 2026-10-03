@@ -13,6 +13,7 @@ export default function AuthModal({ isOpen, onClose, initialRole = 'student', in
   const [isForgot, setIsForgot] = useState(false);
   const [resetIdentifier, setResetIdentifier] = useState('');
   const [resetSuccess, setResetSuccess] = useState(null);
+  const [registrationPendingSuccess, setRegistrationPendingSuccess] = useState(null);
   const [role, setRole] = useState(initialRole);
   const [grade, setGrade] = useState('first');
   const [servantScope, setServantScope] = useState('all');
@@ -46,6 +47,7 @@ export default function AuthModal({ isOpen, onClose, initialRole = 'student', in
       setRole(initialRole);
       setError('');
       setResetSuccess(null);
+      setRegistrationPendingSuccess(null);
       setResetIdentifier('');
       setShowExtendedFields(false);
     }
@@ -147,6 +149,20 @@ export default function AuthModal({ isOpen, onClose, initialRole = 'student', in
 
         const userData = { id: snapshot.docs[0].id, ...snapshot.docs[0].data() };
 
+        // Check if user is pending admin approval
+        if (userData.status === 'pending_approval') {
+          setError('حسابك قيد المراجعة والاعتماد من أمين الخدمة. سيتم تفعيل حسابك قريباً لتتمكن من الدخول.');
+          setLoading(false);
+          return;
+        }
+
+        // Check if user is rejected or inactive
+        if (userData.status === 'inactive' || userData.status === 'rejected') {
+          setError('تم إيقاف تفعيل هذا الحساب. يرجى التواصل مع أمين الخدمة.');
+          setLoading(false);
+          return;
+        }
+
         // Record Login Log in Firestore
         try {
           await addDoc(collection(db, 'login_logs'), {
@@ -195,7 +211,7 @@ export default function AuthModal({ isOpen, onClose, initialRole = 'student', in
           role: role,
           grade: role === 'student' ? grade : null,
           servantScope: role === 'servant' ? 'all' : null,
-          status: 'active', // تفعيل فوري ومباشر (للخدام والمخدومين) لتسهيل تجربة الخدام بدون انتظار موافقة
+          status: 'pending_approval', // يتطلب موافقة أمين الخدمة أو الأدمن لمنع أي دخول غير مصرح به
           points: 0,
           // Extended Profile Data
           photoUrl: photoUrl || '',
@@ -223,7 +239,7 @@ export default function AuthModal({ isOpen, onClose, initialRole = 'student', in
             role: newUser.role,
             grade: newUser.grade,
             servantScope: newUser.servantScope,
-            action: 'register',
+            action: 'register_pending_approval',
             timestamp: serverTimestamp(),
             timeStr: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }),
             dateStr: new Date().toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
@@ -232,8 +248,11 @@ export default function AuthModal({ isOpen, onClose, initialRole = 'student', in
           console.error('Failed to log registration:', logErr);
         }
 
-        onLoginSuccess({ id: docRef.id, ...newUser });
-        onClose();
+        setRegistrationPendingSuccess({
+          fullName: newUser.fullName,
+          phone: newUser.phone,
+          role: newUser.role
+        });
       }
     } catch (err) {
       console.error(err);
@@ -273,8 +292,51 @@ export default function AuthModal({ isOpen, onClose, initialRole = 'student', in
           </button>
         </div>
 
-        {/* FORGOT PASSWORD VIEW */}
-        {isForgot ? (
+        {/* REGISTRATION PENDING CONFIRMATION VIEW */}
+        {registrationPendingSuccess ? (
+          <div className="p-6 space-y-5 text-center">
+            <div className="w-16 h-16 rounded-3xl bg-amber-50 text-amber-600 flex items-center justify-center mx-auto border border-amber-200 shadow-xs">
+              <CheckCircle2 className="w-9 h-9" />
+            </div>
+
+            <div className="space-y-2">
+              <h3 className="font-extrabold text-base text-slate-900">
+                تم تسجيل بياناتك بنجاح
+              </h3>
+              <p className="text-xs text-slate-600 leading-relaxed max-w-sm mx-auto">
+                أهلاً بك <span className="font-bold text-slate-800">{registrationPendingSuccess.fullName}</span>. 
+                حسابك الآن <span className="font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md">قيد المراجعة والاعتماد</span> من قِبل أمين الخدمة.
+              </p>
+              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3 text-right text-xs space-y-1 mt-3">
+                <div className="flex justify-between items-center text-slate-600">
+                  <span className="font-medium">الرتبة المطلوبة:</span>
+                  <span className="font-bold text-maroon-800">
+                    {registrationPendingSuccess.role === 'servant' ? 'خادم ✝️' : 'مخدوم 🎓'}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center text-slate-600">
+                  <span className="font-medium">رقم الهاتف:</span>
+                  <span className="font-bold font-mono text-slate-800" dir="ltr">{registrationPendingSuccess.phone}</span>
+                </div>
+              </div>
+              <p className="text-[11px] text-slate-400 pt-1">
+                سيتم تفعيل حسابك مباشرة من لوحة الإدارة فور مراجعته لتتمكن من تسجيل الدخول.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                setRegistrationPendingSuccess(null);
+                setIsLogin(true);
+              }}
+              className="w-full min-h-[44px] bg-maroon-800 hover:bg-maroon-900 text-white rounded-2xl font-bold text-xs shadow-md transition-all cursor-pointer active:scale-95 flex items-center justify-center gap-2"
+            >
+              <span>العودة لشاشة الدخول</span>
+              <ArrowRight className="w-4 h-4 rotate-180" />
+            </button>
+          </div>
+        ) : isForgot ? (
           <form onSubmit={handleResetPassword} className="p-6 space-y-4">
             <div className="text-center pb-1">
               <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mx-auto mb-2 border border-amber-200">

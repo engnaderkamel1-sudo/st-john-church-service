@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Users, History, RefreshCw, Activity, UserPlus, UserX, Check, Sparkles, Key, ExternalLink, Save, Eye, EyeOff, Lock, X } from 'lucide-react';
+import { Users, History, RefreshCw, Activity, UserPlus, UserX, Check, Sparkles, Key, ExternalLink, Save, Eye, EyeOff, Lock, X, CheckCircle2, ShieldAlert, UserCheck, AlertCircle } from 'lucide-react';
 import { getGeminiApiKey, saveGeminiApiKey } from '../../services/geminiService';
 import { db } from '../../firebase';
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 
 export default function ServantUsersHub({
   user,
+  isAppAdmin,
+  isServantLeader,
   userHubSubTab,
   setUserHubSubTab,
   allUsers,
@@ -24,6 +26,8 @@ export default function ServantUsersHub({
   manualAbsenceLoadingId,
   manualAbsenceSuccessId,
   handleUpdateUserRole,
+  handleApproveUser,
+  handleRejectUser,
   roleUpdatingId,
   onSelectStudent
 }) {
@@ -81,10 +85,12 @@ export default function ServantUsersHub({
     }
   };
 
+  const pendingUsers = allUsers.filter(u => u.status === 'pending_approval');
+
   return (
     <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-6">
-      {/* Subtabs Switcher: الحسابات والأدوار vs سجل دخول المستخدمين vs إعدادات الذكاء الاصطناعي */}
-      <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
+      {/* Subtabs Switcher: الحسابات والأدوار vs طلبات الاعتماد vs سجل دخول المستخدمين vs إعدادات الذكاء الاصطناعي */}
+      <div className="flex items-center gap-2 border-b border-slate-100 pb-3 flex-wrap">
         <button
           type="button"
           onClick={() => setUserHubSubTab('accounts')}
@@ -96,6 +102,29 @@ export default function ServantUsersHub({
         >
           <Users className="w-4 h-4" />
           <span>الحسابات والأدوار ({allUsers.length})</span>
+        </button>
+
+        {/* Tab for Pending Approvals with pulsating badge if there are any */}
+        <button
+          type="button"
+          onClick={() => setUserHubSubTab('pending_approvals')}
+          className={`py-2 px-4 rounded-xl font-bold text-xs transition-all flex items-center gap-1.5 ${
+            userHubSubTab === 'pending_approvals'
+              ? 'bg-amber-600 text-white shadow-xs'
+              : pendingUsers.length > 0
+              ? 'bg-amber-100 text-amber-900 hover:bg-amber-200 border border-amber-300'
+              : 'bg-slate-100 text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          <UserCheck className="w-4 h-4" />
+          <span>طلبات الاعتماد المعلقة</span>
+          {pendingUsers.length > 0 && (
+            <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+              userHubSubTab === 'pending_approvals' ? 'bg-white text-amber-900' : 'bg-amber-600 text-white animate-pulse'
+            }`}>
+              {pendingUsers.length}
+            </span>
+          )}
         </button>
 
         <button
@@ -111,19 +140,155 @@ export default function ServantUsersHub({
           <span>سجل النشاط والدخول ({loginLogs.length})</span>
         </button>
 
-        <button
-          type="button"
-          onClick={() => setUserHubSubTab('ai_settings')}
-          className={`py-2 px-4 rounded-xl font-bold text-xs transition-all flex items-center gap-1.5 ${
-            userHubSubTab === 'ai_settings'
-              ? 'bg-maroon-800 text-white shadow-xs'
-              : 'bg-slate-100 text-slate-600 hover:text-slate-900'
-          }`}
-        >
-          <Sparkles className="w-4 h-4 text-gold-400" />
-          <span>إعدادات الذكاء الاصطناعي (AI) 🤖</span>
-        </button>
+        {isAppAdmin && (
+          <button
+            type="button"
+            onClick={() => setUserHubSubTab('ai_settings')}
+            className={`py-2 px-4 rounded-xl font-bold text-xs transition-all flex items-center gap-1.5 ${
+              userHubSubTab === 'ai_settings'
+                ? 'bg-maroon-800 text-white shadow-xs'
+                : 'bg-slate-100 text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <Sparkles className="w-4 h-4 text-gold-400" />
+            <span>إعدادات الذكاء الاصطناعي (AI) 🤖</span>
+          </button>
+        )}
       </div>
+
+      {/* PENDING APPROVALS TAB VIEW */}
+      {userHubSubTab === 'pending_approvals' && (
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="font-extrabold text-slate-900 text-base">طلبات التسجيل الجديدة بانتظار الاعتماد</h3>
+                <span className="text-[11px] bg-amber-100 text-amber-900 font-bold px-2 py-0.5 rounded-full border border-amber-300">
+                  {pendingUsers.length} طلبات معلقة
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 mt-1">
+                لا يمكن لأي مستخدم جديد الدخول للتطبيق إلا بعد قيامك بمراجعة بياناته واعتماده هنا.
+              </p>
+            </div>
+
+            <button
+              onClick={fetchAllUsers}
+              disabled={usersLoading}
+              className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition-colors self-start sm:self-auto"
+              title="تحديث القائمة"
+            >
+              <RefreshCw className={`w-4 h-4 ${usersLoading ? 'animate-spin text-maroon-800' : ''}`} />
+            </button>
+          </div>
+
+          {pendingUsers.length === 0 ? (
+            <div className="text-center py-12 bg-slate-50 border border-dashed border-slate-200 rounded-2xl p-6">
+              <CheckCircle2 className="w-12 h-12 text-emerald-500 mx-auto mb-2" />
+              <p className="text-xs font-bold text-slate-700">لا توجد أي طلبات تسجيل معلقة حالياً.</p>
+              <p className="text-[11px] text-slate-400 mt-1">كافة الحسابات المسجلة تم اعتمادها ومراجعتها.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {pendingUsers.map((item) => (
+                <div key={`pending-${item.id}`} className="bg-white border-2 border-amber-200 rounded-2xl p-4 shadow-sm space-y-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-900 flex items-center justify-center font-bold text-sm shrink-0">
+                        {item.fullName ? item.fullName[0] : '؟'}
+                      </div>
+                      <div>
+                        <span className="font-extrabold text-slate-900 text-sm block">{item.fullName || 'بدون اسم'}</span>
+                        <span className="text-xs text-slate-500 font-mono block mt-0.5" dir="ltr">{item.phone}</span>
+                        {item.email && (
+                          <span className="text-[10px] text-slate-400 font-mono block truncate max-w-[200px]" dir="ltr">{item.email}</span>
+                        )}
+                      </div>
+                    </div>
+
+                    <span className={`inline-flex items-center gap-1 text-[11px] font-extrabold px-2.5 py-1 rounded-full shrink-0 ${
+                      item.role === 'servant'
+                        ? 'bg-maroon-100 text-maroon-900 border border-maroon-200'
+                        : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                    }`}>
+                      {item.role === 'servant' ? 'طلب رتبة خادم ✝️' : 'طلب رتبة مخدوم 🎓'}
+                    </span>
+                  </div>
+
+                  <div className="text-xs bg-slate-50 p-2.5 rounded-xl border border-slate-100 space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-500 font-medium">الرتبة المطلوبة:</span>
+                      <select
+                        defaultValue={item.role || 'student'}
+                        id={`role-select-${item.id}`}
+                        className="bg-white border border-slate-300 rounded-lg px-2 py-1 text-xs font-bold text-slate-800 focus:outline-none focus:border-maroon-800"
+                      >
+                        <option value="student">مخدوم 🎓</option>
+                        <option value="servant">خادم ✝️</option>
+                        {isAppAdmin && <option value="servant_leader">أمين خدمة 🛡️</option>}
+                      </select>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-500 font-medium">المرحلة الدراسية:</span>
+                      <select
+                        defaultValue={item.grade || 'first'}
+                        id={`grade-select-${item.id}`}
+                        className="bg-white border border-slate-300 rounded-lg px-2 py-1 text-xs font-bold text-slate-800 focus:outline-none focus:border-maroon-800"
+                      >
+                        <option value="first">سنة أولى</option>
+                        <option value="second">سنة ثانية</option>
+                        <option value="third">سنة ثالثة</option>
+                        <option value="elisha">فصل أليشع (إعداد خدام)</option>
+                      </select>
+                    </div>
+
+                    {item.job && (
+                      <div className="flex items-center justify-between text-slate-600">
+                        <span className="text-slate-400">المهنة / الكلية:</span>
+                        <span className="font-bold">{item.job}</span>
+                      </div>
+                    )}
+                    {item.confessionFather && (
+                      <div className="flex items-center justify-between text-slate-600">
+                        <span className="text-slate-400">أب الاعتراف:</span>
+                        <span className="font-bold">{item.confessionFather}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Approve / Reject buttons */}
+                  <div className="grid grid-cols-2 gap-2 pt-1">
+                    <button
+                      type="button"
+                      disabled={roleUpdatingId === item.id}
+                      onClick={() => {
+                        const roleSel = document.getElementById(`role-select-${item.id}`)?.value || item.role;
+                        const gradeSel = document.getElementById(`grade-select-${item.id}`)?.value || item.grade;
+                        handleApproveUser(item.id, roleSel, gradeSel);
+                      }}
+                      className="min-h-[44px] bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-3 py-2 rounded-xl transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 disabled:opacity-50"
+                    >
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span>{roleUpdatingId === item.id ? 'جاري الاعتماد...' : 'اعتماد وتفعيل ✓'}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={roleUpdatingId === item.id}
+                      onClick={() => handleRejectUser(item.id)}
+                      className="min-h-[44px] bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-300 font-bold text-xs px-3 py-2 rounded-xl transition-all shadow-2xs flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 disabled:opacity-50"
+                    >
+                      <UserX className="w-4 h-4 text-rose-700" />
+                      <span>رفض الطلب ✕</span>
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {userHubSubTab === 'accounts' && (
         <div className="space-y-4">
@@ -147,8 +312,9 @@ export default function ServantUsersHub({
                 className="bg-slate-50 border border-slate-200 text-xs font-bold rounded-xl px-3 py-2 text-slate-700"
               >
                 <option value="all">عرض الكل ({allUsers.length})</option>
-                <option value="student">المخدومين فقط ({allUsers.filter(u => u.role === 'student').length})</option>
-                <option value="servant">الخدام فقط ({allUsers.filter(u => u.role === 'servant').length})</option>
+                <option value="pending">بانتظار الاعتماد ⏳ ({allUsers.filter(u => u.status === 'pending_approval').length})</option>
+                <option value="student">المخدومين فقط ({allUsers.filter(u => u.role === 'student' && u.status !== 'pending_approval').length})</option>
+                <option value="servant">الخدام فقط ({allUsers.filter(u => u.role === 'servant' && u.status !== 'pending_approval').length})</option>
                 <option value="servant_leader">أمناء الخدمة فقط ({allUsers.filter(u => u.role === 'servant_leader').length})</option>
               </select>
 
@@ -200,14 +366,20 @@ export default function ServantUsersHub({
               {/* Mobile Responsive Cards (Visible on screens < md) */}
               <div className="md:hidden space-y-3">
                 {allUsers
-                  .filter(u => userRoleFilter === 'all' || u.role === userRoleFilter)
+                  .filter(u => {
+                    if (userRoleFilter === 'all') return true;
+                    if (userRoleFilter === 'pending') return u.status === 'pending_approval';
+                    return u.role === userRoleFilter && u.status !== 'pending_approval';
+                  })
                   .map((item) => (
                     <div key={`m-${item.id}`} className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs space-y-3">
                       {/* User Info Header */}
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex items-center gap-3">
                           <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm shrink-0 ${
-                            item.role === 'servant' ? 'bg-maroon-800 text-white' : 'bg-slate-100 text-slate-700'
+                            item.status === 'pending_approval'
+                              ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                              : item.role === 'servant' ? 'bg-maroon-800 text-white' : 'bg-slate-100 text-slate-700'
                           }`}>
                             {item.fullName ? item.fullName[0] : '؟'}
                           </div>
@@ -216,6 +388,11 @@ export default function ServantUsersHub({
                               <span className="font-extrabold text-slate-900 text-sm">{item.fullName || 'بدون اسم'}</span>
                               {item.id === user.id && (
                                 <span className="text-[10px] bg-slate-100 text-slate-700 px-2 py-0.5 rounded-full font-bold">حسابك</span>
+                              )}
+                              {item.status === 'pending_approval' && (
+                                <span className="text-[10px] bg-amber-100 text-amber-900 border border-amber-300 px-2 py-0.5 rounded-full font-extrabold">
+                                  قيد الاعتماد ⏳
+                                </span>
                               )}
                             </div>
                             <span className="text-xs text-slate-500 font-mono block mt-0.5" dir="ltr">{item.phone}</span>
@@ -388,21 +565,32 @@ export default function ServantUsersHub({
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {allUsers
-                      .filter(u => userRoleFilter === 'all' || u.role === userRoleFilter)
+                      .filter(u => {
+                        if (userRoleFilter === 'all') return true;
+                        if (userRoleFilter === 'pending') return u.status === 'pending_approval';
+                        return u.role === userRoleFilter && u.status !== 'pending_approval';
+                      })
                       .map((item) => (
                         <tr key={item.id} className="hover:bg-slate-50/80 transition-colors">
                           <td className="py-3.5 px-3 font-bold text-slate-900">
                             <div className="flex items-center gap-2">
                               <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs ${
-                                item.role === 'servant' ? 'bg-maroon-800 text-white' : 'bg-slate-100 text-slate-700'
+                                item.status === 'pending_approval'
+                                  ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                                  : item.role === 'servant' ? 'bg-maroon-800 text-white' : 'bg-slate-100 text-slate-700'
                               }`}>
                                 {item.fullName ? item.fullName[0] : '؟'}
                               </div>
                               <div>
-                                <div className="flex items-center gap-1.5">
+                                <div className="flex items-center gap-1.5 flex-wrap">
                                   <span>{item.fullName || 'بدون اسم'}</span>
                                   {item.id === user.id && (
                                     <span className="text-[10px] bg-slate-200 text-slate-700 px-1.5 py-0.2 rounded mr-1.5">حسابك</span>
+                                  )}
+                                  {item.status === 'pending_approval' && (
+                                    <span className="text-[10px] bg-amber-100 text-amber-900 border border-amber-300 px-1.5 py-0.2 rounded font-extrabold mr-1">
+                                      قيد الاعتماد ⏳
+                                    </span>
                                   )}
                                 </div>
                                 {item.email && (
