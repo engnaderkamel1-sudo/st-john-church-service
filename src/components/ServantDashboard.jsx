@@ -7,7 +7,8 @@ import {
   BellRing, Unlock, Lock, UserPlus, UserX, KeyRound, Copy, Sun, Sunset, Moon, Sparkles, Heart,
   History, Activity, Menu, X, Video, Music, ExternalLink,
   Eye, EyeOff, Calendar, CalendarOff, ChevronRight, FileSpreadsheet, File, BarChart3, TrendingDown, Image as ImageIcon,
-  AlertTriangle
+  AlertTriangle,
+  Cake
 } from 'lucide-react';
 import { db } from '../firebase';
 import ServantSpiritualDiary from './servant/ServantSpiritualDiary';
@@ -19,6 +20,7 @@ import ServantUsersHub from './servant/ServantUsersHub';
 import ServantStudentsHub from './servant/ServantStudentsHub';
 import ServantManualAttendance from './servant/ServantManualAttendance';
 import ServantHolidaysManager from './servant/ServantHolidaysManager';
+import ServantBirthdaysHub from './servant/ServantBirthdaysHub';
 import StudentProfileModal from './servant/StudentProfileModal';
 import ServantErrorsHub from './servant/ServantErrorsHub';
 import StageRegulationsModal from './common/StageRegulationsModal';
@@ -1291,6 +1293,26 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
                   </div>
                 </button>
 
+                {/* 4.1 Birthdays Hub (Servants & Students) */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMainTab('birthdays_hub');
+                    setActiveSubject(null);
+                    setMobileSidebarOpen(false);
+                  }}
+                  className={`w-full text-right py-2 px-3 rounded-xl flex items-center justify-between text-xs font-bold transition-all cursor-pointer ${
+                    mainTab === 'birthdays_hub'
+                      ? 'bg-amber-700 text-white shadow-xs'
+                      : 'text-slate-700 hover:bg-amber-50 hover:text-amber-900'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Cake className={`w-4 h-4 ${mainTab === 'birthdays_hub' ? 'text-gold-200' : 'text-amber-600'}`} />
+                    <span>أعياد الميلاد القادمة 🎂</span>
+                  </div>
+                </button>
+
                 {/* Divider */}
                 <div className="my-1 border-t border-slate-100" />
 
@@ -1540,6 +1562,15 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
           getGradeTitle={getGradeTitle}
           activeAcademicCycle={activeAcademicCycle}
           academicYear={academicYear}
+          onSelectStudent={(st) => setStudent360Profile(st)}
+        />
+      )}
+
+      {/* Birthdays Hub (Servants & Students) */}
+      {mainTab === 'birthdays_hub' && (
+        <ServantBirthdaysHub
+          allUsers={allUsers}
+          getGradeTitle={getGradeTitle}
           onSelectStudent={(st) => setStudent360Profile(st)}
         />
       )}

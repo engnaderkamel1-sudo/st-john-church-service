@@ -35,14 +35,79 @@ export default function App() {
       where('targetUserId', 'in', ['ALL', currentUser.id])
     );
 
+    let usersUnsub = () => {};
+
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const list = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-      setNotifications(list);
+
+      // If current user is a servant or admin, compute 3-day advance birthday alerts
+      const isServantOrAdmin = currentUser.role !== 'student';
+      if (isServantOrAdmin) {
+        // Fetch/listen to all users to detect birthdays
+        const usersQ = query(collection(db, 'users'));
+        usersUnsub = onSnapshot(usersQ, (uSnap) => {
+          const today = new Date();
+          const currentYear = today.getFullYear();
+          const todayMonth = today.getMonth();
+          const todayDate = today.getDate();
+
+          const bdayAlerts = [];
+          uSnap.docs.forEach(docSnap => {
+            const u = docSnap.data();
+            if (!u.birthDate || typeof u.birthDate !== 'string' || !u.birthDate.includes('-')) return;
+
+            const [bYearStr, bMonthStr, bDayStr] = u.birthDate.split('-');
+            const bYear = parseInt(bYearStr, 10);
+            const bMonth = parseInt(bMonthStr, 10) - 1;
+            const bDay = parseInt(bDayStr, 10);
+
+            if (isNaN(bMonth) || isNaN(bDay)) return;
+
+            let nextBday = new Date(currentYear, bMonth, bDay);
+            if (bMonth < todayMonth || (bMonth === todayMonth && bDay < todayDate)) {
+              nextBday = new Date(currentYear + 1, bMonth, bDay);
+            }
+
+            const diffTime = nextBday.getTime() - new Date(currentYear, todayMonth, todayDate).getTime();
+            const daysRemaining = Math.round(diffTime / (1000 * 60 * 60 * 24));
+
+            if (daysRemaining >= 0 && daysRemaining <= 3) {
+              const roleTitle = u.role === 'student' ? 'المخدوم' : 'الخادم';
+              const timeDesc = daysRemaining === 0 
+                ? 'اليوم! 🎂🎉' 
+                : daysRemaining === 1 
+                ? 'غداً إن شاء الله' 
+                : daysRemaining === 2 
+                ? 'بعد يومين' 
+                : 'بعد ٣ أيام';
+
+              bdayAlerts.push({
+                id: `bday_${docSnap.id}_${nextBday.getFullYear()}`,
+                title: `تنبيه عيد ميلاد 🎂: ${u.fullName}`,
+                desc: `عيد ميلاد ${roleTitle} ${u.fullName} ${timeDesc} (${bDay}/${bMonth + 1})، لا تنسوا تهنئته!`,
+                time: daysRemaining === 0 ? 'اليوم' : `خلال ${daysRemaining} أيام`,
+                isBirthday: true
+              });
+            }
+          });
+
+          // Combine manual Firestore notifications with birthday alerts
+          setNotifications([...bdayAlerts, ...list]);
+        }, (uErr) => {
+          console.log('Error listening to users for birthdays:', uErr);
+          setNotifications(list);
+        });
+      } else {
+        setNotifications(list);
+      }
     }, (err) => {
       console.log('Notifications listen error:', err);
     });
 
-    return () => unsubscribe();
+    return () => {
+      unsubscribe();
+      usersUnsub();
+    };
   }, [currentUser]);
 
   // Close notifications dropdown when clicking outside
