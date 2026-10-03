@@ -57,6 +57,7 @@ export default function StageRegulationsModal({
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [studentStanding, setStudentStanding] = useState(null);
+  const [togglePublishLoading, setTogglePublishLoading] = useState(false);
 
   useEffect(() => {
     if (studentGrade) {
@@ -225,7 +226,6 @@ export default function StageRegulationsModal({
   };
 
   // Direct 1-Click Toggle Publish / Hide without editing
-  const [togglePublishLoading, setTogglePublishLoading] = useState(false);
   const handleTogglePublishDirectly = async () => {
     if (!isAdmin) return;
     setTogglePublishLoading(true);
