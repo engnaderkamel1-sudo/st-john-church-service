@@ -56,7 +56,7 @@ export default function ServantSpiritualDiary({
             }`}
           >
             <Sparkles className="w-4 h-4 text-gold-300" />
-            <span>متابعة النوتة الروحية للمخدومين (رعائي)</span>
+            <span>متابعة النوتة الروحية للمخدومين</span>
           </button>
         </div>
 
@@ -370,7 +370,7 @@ export default function ServantSpiritualDiary({
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50 border border-slate-200 p-4 rounded-2xl">
             <div>
               <h4 className="font-extrabold text-slate-900 text-sm">متابعة التزام مخدومي المرحلة</h4>
-              <p className="text-xs text-slate-500 mt-0.5">استعراض مدى مواظبة الطلبة على النوتة الروحية والصلوات والأسرار لمتابعتهم رعائياً.</p>
+              <p className="text-xs text-slate-500 mt-0.5">استعراض مدى مواظبة الطلبة على النوتة الروحية والصلوات والأسرار لمتابعتهم وافتقادهم.</p>
             </div>
 
             <div className="flex items-center gap-2 flex-wrap">

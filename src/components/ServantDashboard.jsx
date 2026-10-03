@@ -1394,11 +1394,6 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
                 <Sun className={`w-4 h-4 ${mainTab === 'spiritual_diary' ? 'text-gold-300' : 'text-amber-500'}`} />
                 <span>النوتة الروحية والمتابعة</span>
               </div>
-              <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
-                mainTab === 'spiritual_diary' ? 'bg-gold-400 text-maroon-950' : 'bg-slate-100 text-slate-600'
-              }`}>
-                رعائي
-              </span>
             </button>
 
             {/* 7. Attendance QR Code */}
