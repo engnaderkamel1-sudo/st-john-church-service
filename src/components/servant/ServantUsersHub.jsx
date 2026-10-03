@@ -325,20 +325,21 @@ export default function ServantUsersHub({
                         )}
 
                         {/* Role Selector Controls */}
-                        <div className="bg-slate-50 p-2 rounded-xl border border-slate-200 flex items-center justify-between gap-2">
-                          <span className="text-[11px] font-bold text-slate-600">تغيير الرتبة:</span>
-                          <select
-                            value={item.role || 'student'}
-                            disabled={roleUpdatingId === item.id || item.phone === '01275571569'}
-                            onChange={(e) => handleUpdateUserRole(item.id, e.target.value, item.grade || 'first')}
-                            className="bg-white border border-slate-300 rounded-lg px-2 py-1 text-xs font-bold text-slate-800 focus:outline-none focus:border-maroon-800"
-                          >
-                            <option value="student">مخدوم 🎓</option>
-                            <option value="servant">خادم ✝️</option>
-                            <option value="servant_leader">أمين خدمة 🛡️</option>
-                            {item.phone === '01275571569' && <option value="admin">مشرف النظام 👑</option>}
-                          </select>
-                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          <div className="bg-slate-50 p-2 rounded-xl border border-slate-200 flex items-center justify-between gap-2">
+                            <span className="text-[11px] font-bold text-slate-600">تغيير الرتبة:</span>
+                            <select
+                              value={item.role || 'student'}
+                              disabled={roleUpdatingId === item.id || item.phone === '01275571569'}
+                              onChange={(e) => handleUpdateUserRole(item.id, e.target.value, item.grade || 'first')}
+                              className="bg-white border border-slate-300 rounded-lg px-2 py-1 text-xs font-bold text-slate-800 focus:outline-none focus:border-maroon-800"
+                            >
+                              <option value="student">مخدوم 🎓</option>
+                              <option value="servant">خادم ✝️</option>
+                              <option value="servant_leader">أمين خدمة 🛡️</option>
+                              {item.phone === '01275571569' && <option value="admin">مشرف النظام 👑</option>}
+                            </select>
+                          </div>
 
                           <button
                             type="button"
