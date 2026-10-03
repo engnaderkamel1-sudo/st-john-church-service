@@ -1,8 +1,12 @@
 import React, { useState } from 'react';
-import { X, User, Phone, Lock, BookOpen, GraduationCap, ShieldAlert, Mail, KeyRound, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { 
+  X, User, Phone, Lock, BookOpen, GraduationCap, ShieldAlert, Mail, KeyRound, 
+  ArrowRight, CheckCircle2, Camera, Heart, MapPin, Briefcase, Calendar, Users
+} from 'lucide-react';
 import { db, auth } from '../firebase';
 import { collection, addDoc, getDocs, query, where, serverTimestamp } from 'firebase/firestore';
 import { sendPasswordResetEmail } from 'firebase/auth';
+import { compressImage } from '../utils/imageCompressor';
 
 export default function AuthModal({ isOpen, onClose, initialRole = 'student', initialMode = 'login', onLoginSuccess }) {
   const [isLogin, setIsLogin] = useState(initialMode !== 'register');
@@ -18,6 +22,20 @@ export default function AuthModal({ isOpen, onClose, initialRole = 'student', in
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
 
+  // Extended Profile State
+  const [photoUrl, setPhotoUrl] = useState('');
+  const [birthDate, setBirthDate] = useState('');
+  const [gender, setGender] = useState('male'); // 'male' | 'female'
+  const [education, setEducation] = useState(''); // e.g. كلية التجارة - جامعة عين شمس
+  const [job, setJob] = useState(''); // طالب / مهندس / إلخ
+  const [maritalStatus, setMaritalStatus] = useState('single'); // 'single' | 'engaged' | 'married'
+  const [spouseName, setSpouseName] = useState('');
+  const [hasChildren, setHasChildren] = useState(false);
+  const [childrenDetails, setChildrenDetails] = useState('');
+  const [address, setAddress] = useState('');
+  const [confessionFather, setConfessionFather] = useState('');
+  const [showExtendedFields, setShowExtendedFields] = useState(false);
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -29,6 +47,7 @@ export default function AuthModal({ isOpen, onClose, initialRole = 'student', in
       setError('');
       setResetSuccess(null);
       setResetIdentifier('');
+      setShowExtendedFields(false);
     }
   }, [isOpen, initialMode, initialRole]);
 
@@ -178,6 +197,18 @@ export default function AuthModal({ isOpen, onClose, initialRole = 'student', in
           servantScope: role === 'servant' ? 'all' : null,
           status: 'active', // تفعيل فوري ومباشر (للخدام والمخدومين) لتسهيل تجربة الخدام بدون انتظار موافقة
           points: 0,
+          // Extended Profile Data
+          photoUrl: photoUrl || '',
+          gender: gender || 'male',
+          birthDate: birthDate || '',
+          education: education.trim(),
+          job: job.trim(),
+          maritalStatus: maritalStatus || 'single',
+          spouseName: maritalStatus === 'married' ? spouseName.trim() : '',
+          hasChildren: maritalStatus === 'married' ? hasChildren : false,
+          childrenDetails: (maritalStatus === 'married' && hasChildren) ? childrenDetails.trim() : '',
+          address: address.trim(),
+          confessionFather: confessionFather.trim(),
           createdAt: serverTimestamp()
         };
 
@@ -464,6 +495,243 @@ export default function AuthModal({ isOpen, onClose, initialRole = 'student', in
                   <option value="third">سنة ثالثة</option>
                   <option value="elisha">فصل أليشع (إعداد خدام)</option>
                 </select>
+              </div>
+            )}
+
+            {/* Extended Profile Optional / Pastoral Fields (Toggleable Accordion) */}
+            {!isLogin && (
+              <div className="border border-amber-200/90 bg-amber-50/50 rounded-2xl p-3.5 space-y-3 transition-all">
+                <button
+                  type="button"
+                  onClick={() => setShowExtendedFields(!showExtendedFields)}
+                  className="w-full flex items-center justify-between text-xs font-bold text-maroon-900 cursor-pointer"
+                >
+                  <div className="flex items-center gap-2">
+                    <Heart className="w-4 h-4 text-amber-600" />
+                    <span>البيانات الشخصية والاجتماعية (اختياري)</span>
+                  </div>
+                  <span className="text-[10px] bg-amber-200/80 text-amber-900 px-2 py-0.5 rounded-full font-bold">
+                    {showExtendedFields ? 'إخفاء ▲' : 'إكمال البيانات (صورة، كلية، أسرة) ▼'}
+                  </span>
+                </button>
+
+                {showExtendedFields && (
+                  <div className="space-y-3 pt-2 border-t border-amber-200/60 animate-in fade-in duration-200">
+                    {/* 1. Profile Picture Upload */}
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                        الصورة الشخصية
+                      </label>
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 rounded-2xl bg-white border border-slate-200 flex items-center justify-center overflow-hidden shrink-0 shadow-2xs">
+                          {photoUrl ? (
+                            <img src={photoUrl} alt="Preview" className="w-full h-full object-cover" />
+                          ) : (
+                            <Camera className="w-5 h-5 text-slate-400" />
+                          )}
+                        </div>
+                        <div className="flex-1">
+                          <label className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-300 hover:border-maroon-700 rounded-xl text-xs font-bold text-slate-700 shadow-2xs transition-all">
+                            <Camera className="w-3.5 h-3.5 text-maroon-700" />
+                            <span>{photoUrl ? 'تغيير الصورة' : 'اختر صورة من جهازك'}</span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={async (e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  try {
+                                    const compressed = await compressImage(file, 400, 0.72);
+                                    if (compressed) setPhotoUrl(compressed);
+                                  } catch (err) {
+                                    console.error('Image compression error:', err);
+                                  }
+                                }
+                              }}
+                            />
+                          </label>
+                          {photoUrl && (
+                            <button
+                              type="button"
+                              onClick={() => setPhotoUrl('')}
+                              className="text-[10px] text-rose-600 hover:underline mr-2 font-bold"
+                            >
+                              إزالة الصورة
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 2. Gender & Birth Date */}
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-700 mb-1">النوع</label>
+                        <select
+                          value={gender}
+                          onChange={(e) => setGender(e.target.value)}
+                          className="w-full bg-white border border-slate-200 rounded-xl px-2.5 py-2 text-xs focus:outline-none focus:border-maroon-700"
+                        >
+                          <option value="male">شاب (ذكر)</option>
+                          <option value="female">شابة (أنثى)</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-700 mb-1">تاريخ الميلاد</label>
+                        <input
+                          type="date"
+                          value={birthDate}
+                          onChange={(e) => setBirthDate(e.target.value)}
+                          className="w-full bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs focus:outline-none focus:border-maroon-700"
+                        />
+                      </div>
+                    </div>
+
+                    {/* 3. College & University */}
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                        الكلية / الجامعة / المؤهل الدراسي
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="text"
+                          value={education}
+                          onChange={(e) => setEducation(e.target.value)}
+                          placeholder="مثال: هندسة عين شمس، تجارة حلوان..."
+                          className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 pl-8 text-xs focus:outline-none focus:border-maroon-700"
+                        />
+                        <GraduationCap className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-slate-400" />
+                      </div>
+                    </div>
+
+                    {/* 4. Job / Profession */}
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">الوظيفة أو مجال العمل</label>
+                      <div className="relative">
+                        <input
+                          type="text"
+                          value={job}
+                          onChange={(e) => setJob(e.target.value)}
+                          placeholder="مثال: طالب، مهندس برمجيات، محاسب..."
+                          className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 pl-8 text-xs focus:outline-none focus:border-maroon-700"
+                        />
+                        <Briefcase className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-slate-400" />
+                      </div>
+                    </div>
+
+                    {/* 5. Marital Status */}
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">الحالة الاجتماعية</label>
+                      <div className="grid grid-cols-3 gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => setMaritalStatus('single')}
+                          className={`py-1.5 rounded-lg text-xs font-bold transition-all border ${
+                            maritalStatus === 'single'
+                              ? 'bg-maroon-800 text-white border-maroon-800 shadow-2xs'
+                              : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                          }`}
+                        >
+                          أعزب / آنسة
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setMaritalStatus('engaged')}
+                          className={`py-1.5 rounded-lg text-xs font-bold transition-all border ${
+                            maritalStatus === 'engaged'
+                              ? 'bg-maroon-800 text-white border-maroon-800 shadow-2xs'
+                              : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                          }`}
+                        >
+                          خاطب / مخطوبة
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setMaritalStatus('married')}
+                          className={`py-1.5 rounded-lg text-xs font-bold transition-all border ${
+                            maritalStatus === 'married'
+                              ? 'bg-maroon-800 text-white border-maroon-800 shadow-2xs'
+                              : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                          }`}
+                        >
+                          متزوج / متزوجة
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* 6. Married specifics: Spouse & Children */}
+                    {maritalStatus === 'married' && (
+                      <div className="bg-white border border-amber-200 rounded-xl p-2.5 space-y-2.5">
+                        <div>
+                          <label className="block text-[11px] font-bold text-slate-700 mb-1">اسم شريك الحياة</label>
+                          <input
+                            type="text"
+                            value={spouseName}
+                            onChange={(e) => setSpouseName(e.target.value)}
+                            placeholder="اسم الزوج / الزوجة"
+                            className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-maroon-700"
+                          />
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            id="hasChildrenReg"
+                            checked={hasChildren}
+                            onChange={(e) => setHasChildren(e.target.checked)}
+                            className="w-4 h-4 text-maroon-800 rounded-sm focus:ring-maroon-700 accent-maroon-800"
+                          />
+                          <label htmlFor="hasChildrenReg" className="text-xs font-bold text-slate-700 cursor-pointer">
+                            هل يوجد أولاد؟
+                          </label>
+                        </div>
+
+                        {hasChildren && (
+                          <div>
+                            <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                              بيانات وأعمار الأبناء
+                            </label>
+                            <input
+                              type="text"
+                              value={childrenDetails}
+                              onChange={(e) => setChildrenDetails(e.target.value)}
+                              placeholder="مثال: يوسف (٥ سنوات)، مارينا (سنتين)"
+                              className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-maroon-700"
+                            />
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* 7. Address */}
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">عنوان السكن (للافتقاد)</label>
+                      <div className="relative">
+                        <input
+                          type="text"
+                          value={address}
+                          onChange={(e) => setAddress(e.target.value)}
+                          placeholder="المنطقة، الشارع، رقم العمارة، الشقة..."
+                          className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 pl-8 text-xs focus:outline-none focus:border-maroon-700"
+                        />
+                        <MapPin className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-slate-400" />
+                      </div>
+                    </div>
+
+                    {/* 8. Priest of Confession */}
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">أب الاعتراف</label>
+                      <input
+                        type="text"
+                        value={confessionFather}
+                        onChange={(e) => setConfessionFather(e.target.value)}
+                        placeholder="مثال: أبونا يوحنا / كنيسة مارمرقس..."
+                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-maroon-700"
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 

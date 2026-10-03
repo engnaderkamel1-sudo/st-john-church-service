@@ -639,8 +639,12 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser, externa
           className="flex items-center gap-2.5 sm:gap-3.5 text-right min-w-0 cursor-pointer group p-1.5 rounded-2xl hover:bg-slate-50 transition-all"
           title="اضغط لعرض وتعديل بيانات الحساب أو تسجيل الخروج"
         >
-          <div className="w-10 h-10 sm:w-13 sm:h-13 rounded-2xl bg-maroon-50 border border-maroon-200 text-maroon-900 flex items-center justify-center font-bold text-lg sm:text-xl shrink-0 shadow-xs group-hover:scale-105 transition-transform">
-            {user.fullName ? user.fullName[0] : 'م'}
+          <div className="w-10 h-10 sm:w-13 sm:h-13 rounded-2xl bg-maroon-50 border border-maroon-200 text-maroon-900 flex items-center justify-center font-bold text-lg sm:text-xl shrink-0 shadow-xs group-hover:scale-105 transition-transform overflow-hidden">
+            {user.photoUrl ? (
+              <img src={user.photoUrl} alt={user.fullName} className="w-full h-full object-cover" />
+            ) : (
+              <span>{user.fullName ? user.fullName[0] : 'م'}</span>
+            )}
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-1.5">

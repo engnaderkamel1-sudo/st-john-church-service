@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { 
   X, User, Award, CheckCircle, Calendar, FileText, Sun, Sparkles, 
-  MessageSquare, Save, Check, CheckSquare, Clock, Phone, AlertCircle
+  MessageSquare, Save, Check, CheckSquare, Clock, Phone, AlertCircle,
+  GraduationCap, Briefcase, Heart, MapPin, Users
 } from 'lucide-react';
 import { db } from '../../firebase';
 import { collection, query, where, onSnapshot, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
@@ -113,8 +114,12 @@ export default function StudentProfileModal({ student, onClose, getGradeTitle })
         {/* Header */}
         <div className="p-4 sm:p-5 border-b border-slate-100 bg-gradient-to-r from-maroon-900 to-maroon-950 text-white flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-white/10 border border-gold-400/40 text-gold-300 flex items-center justify-center font-bold text-xl shadow-xs">
-              {student.fullName ? student.fullName[0] : 'م'}
+            <div className="w-13 h-13 rounded-2xl bg-white/10 border border-gold-400/40 text-gold-300 flex items-center justify-center font-bold text-xl shadow-xs overflow-hidden shrink-0">
+              {student.photoUrl ? (
+                <img src={student.photoUrl} alt={student.fullName} className="w-full h-full object-cover" />
+              ) : (
+                <span>{student.fullName ? student.fullName[0] : 'م'}</span>
+              )}
             </div>
             <div>
               <div className="flex items-center gap-2">
@@ -254,12 +259,13 @@ export default function StudentProfileModal({ student, onClose, getGradeTitle })
                 </p>
               </div>
 
-              {/* Personal Data & Stage Card (البيانات الخاصة به وفي سنة كام) */}
-              <div className="bg-white border border-slate-200 rounded-2xl p-4 space-y-3">
+              {/* Personal Data & Comprehensive Pastoral Card */}
+              <div className="bg-white border border-slate-200 rounded-2xl p-4 space-y-4">
                 <h4 className="text-xs font-extrabold text-slate-900 flex items-center gap-2">
                   <User className="w-4 h-4 text-maroon-800" />
-                  <span>البيانات الشخصية والتعليمية:</span>
+                  <span>البيانات الشاملة للمخدوم:</span>
                 </h4>
+                
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
                   <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 flex items-center justify-between">
                     <span className="text-slate-500 font-medium">السنة الدراسية / المرحلة:</span>
@@ -267,24 +273,88 @@ export default function StudentProfileModal({ student, onClose, getGradeTitle })
                       {getGradeTitle ? getGradeTitle(student.grade || 'first') : student.grade}
                     </strong>
                   </div>
+
                   <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 flex items-center justify-between">
                     <span className="text-slate-500 font-medium">رقم التليفون:</span>
                     <strong className="text-slate-900 font-mono" dir="ltr">{student.phone || 'غير مسجل'}</strong>
                   </div>
+
+                  {student.birthDate && (
+                    <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 flex items-center justify-between">
+                      <span className="text-slate-500 font-medium">تاريخ الميلاد:</span>
+                      <strong className="text-slate-800 font-mono">{student.birthDate}</strong>
+                    </div>
+                  )}
+
+                  <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 flex items-center justify-between">
+                    <span className="text-slate-500 font-medium">النوع:</span>
+                    <strong className="text-slate-800">{student.gender === 'female' ? 'شابة' : 'شاب'}</strong>
+                  </div>
+
+                  {/* College & University */}
+                  <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 flex items-center justify-between col-span-1 sm:col-span-2">
+                    <span className="text-slate-500 font-medium flex items-center gap-1.5">
+                      <GraduationCap className="w-3.5 h-3.5 text-maroon-700" />
+                      <span>الكلية / الجامعة / الدراسة:</span>
+                    </span>
+                    <strong className="text-maroon-950 font-bold">{student.education || 'لم تُسجل بعد'}</strong>
+                  </div>
+
+                  {/* Job */}
+                  <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 flex items-center justify-between col-span-1 sm:col-span-2">
+                    <span className="text-slate-500 font-medium flex items-center gap-1.5">
+                      <Briefcase className="w-3.5 h-3.5 text-amber-700" />
+                      <span>الوظيفة / العمل:</span>
+                    </span>
+                    <strong className="text-slate-800 font-bold">{student.job || 'طالب / لم يُحدد'}</strong>
+                  </div>
+
+                  {/* Marital Status & Family */}
+                  <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 flex items-center justify-between col-span-1 sm:col-span-2">
+                    <span className="text-slate-500 font-medium flex items-center gap-1.5">
+                      <Heart className="w-3.5 h-3.5 text-rose-600" />
+                      <span>الحالة الاجتماعية:</span>
+                    </span>
+                    <div className="text-left">
+                      <span className="font-bold text-slate-800">
+                        {student.maritalStatus === 'married' ? 'متزوج / متزوجة' : student.maritalStatus === 'engaged' ? 'خاطب / مخطوبة' : 'أعزب / آنسة'}
+                      </span>
+                      {student.maritalStatus === 'married' && student.spouseName && (
+                        <span className="text-slate-500 text-[11px] block">شريك الحياة: {student.spouseName}</span>
+                      )}
+                      {student.maritalStatus === 'married' && student.hasChildren && (
+                        <span className="text-amber-800 text-[11px] font-bold block">
+                          الأولاد: {student.childrenDetails || 'يوجد أولاد'}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Address */}
+                  {student.address && (
+                    <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 flex items-center justify-between col-span-1 sm:col-span-2">
+                      <span className="text-slate-500 font-medium flex items-center gap-1.5">
+                        <MapPin className="w-3.5 h-3.5 text-emerald-700" />
+                        <span>العنوان للافتقاد:</span>
+                      </span>
+                      <strong className="text-slate-800 font-bold text-left">{student.address}</strong>
+                    </div>
+                  )}
+
+                  {/* Confession Father */}
+                  {student.confessionFather && (
+                    <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 flex items-center justify-between col-span-1 sm:col-span-2">
+                      <span className="text-slate-500 font-medium">أب الاعتراف والكنيسة:</span>
+                      <strong className="text-maroon-900 font-bold">{student.confessionFather}</strong>
+                    </div>
+                  )}
+
                   {student.email && (
                     <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 flex items-center justify-between col-span-1 sm:col-span-2">
                       <span className="text-slate-500 font-medium">البريد الإلكتروني:</span>
                       <strong className="text-slate-700 font-mono text-[11px]" dir="ltr">{student.email}</strong>
                     </div>
                   )}
-                  <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 flex items-center justify-between">
-                    <span className="text-slate-500 font-medium">الصفة في المنظومة:</span>
-                    <strong className="text-emerald-800 font-bold">مخدوم بالخدمة</strong>
-                  </div>
-                  <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 flex items-center justify-between">
-                    <span className="text-slate-500 font-medium">تاريخ التسجيل:</span>
-                    <span className="text-slate-600 font-mono">{student.createdAt?.toDate ? student.createdAt.toDate().toLocaleDateString('ar-EG') : 'مسجل'}</span>
-                  </div>
                 </div>
               </div>
 
