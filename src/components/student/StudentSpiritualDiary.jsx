@@ -12,7 +12,8 @@ export default function StudentSpiritualDiary({
   selectedHistoryMonth,
   setSelectedHistoryMonth,
   diaryRecords,
-  handleToggleDiaryItem
+  handleToggleDiaryItem,
+  diaryPointsConfig = { bible: 3, communion: 2, prayer: 1, confession: 15 }
 }) {
   const currentDayDiary = diaryRecords[selectedDiaryDate] || {
     baker: false,
@@ -98,10 +99,10 @@ export default function StudentSpiritualDiary({
           {/* Daily Prayers Grid */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {[
-              { key: 'baker', label: 'صلاة باكر', icon: Sun, pts: 5 },
-              { key: 'ghoroub', label: 'صلاة الغروب', icon: Sunset, pts: 5 },
-              { key: 'nowm', label: 'صلاة النوم', icon: Moon, pts: 5 },
-              { key: 'bible', label: 'أصحاح الإنجيل', icon: BookOpen, pts: 5 }
+              { key: 'baker', label: 'صلاة باكر', icon: Sun, pts: diaryPointsConfig?.prayer || 1 },
+              { key: 'ghoroub', label: 'صلاة الغروب', icon: Sunset, pts: diaryPointsConfig?.prayer || 1 },
+              { key: 'nowm', label: 'صلاة النوم', icon: Moon, pts: diaryPointsConfig?.prayer || 1 },
+              { key: 'bible', label: 'أصحاح الإنجيل', icon: BookOpen, pts: diaryPointsConfig?.bible || 3 }
             ].map(({ key, label, icon: Icon, pts }) => {
               const checked = currentDayDiary[key];
               return (
@@ -126,7 +127,7 @@ export default function StudentSpiritualDiary({
                   </div>
                   <div>
                     <div className="font-extrabold text-xs">{label}</div>
-                    <div className="text-[10px] text-slate-400 mt-0.5">+{pts} نقاط</div>
+                    <div className="text-[10px] text-slate-400 mt-0.5">+{pts} {pts > 1 ? 'درجات' : 'درجة'}</div>
                   </div>
                 </div>
               );
@@ -142,14 +143,14 @@ export default function StudentSpiritualDiary({
               </div>
               <button
                 disabled={!isEditableDate}
-                onClick={() => handleToggleDiaryItem('communion', 15)}
+                onClick={() => handleToggleDiaryItem('communion', diaryPointsConfig?.communion || 2)}
                 className={`text-xs font-bold px-3 py-1.5 rounded-xl border transition-all ${
                   currentDayDiary.communion
                     ? 'bg-emerald-600 text-white border-emerald-600'
                     : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100'
                 }`}
               >
-                {currentDayDiary.communion ? 'تم التناول ✓' : 'تسجيل التناول (+15)'}
+                {currentDayDiary.communion ? 'تم التناول ✓' : `تسجيل التناول (+${diaryPointsConfig?.communion || 2})`}
               </button>
             </div>
 
@@ -160,14 +161,14 @@ export default function StudentSpiritualDiary({
               </div>
               <button
                 disabled={!isEditableDate}
-                onClick={() => handleToggleDiaryItem('confession', 20)}
+                onClick={() => handleToggleDiaryItem('confession', diaryPointsConfig?.confession || 15)}
                 className={`text-xs font-bold px-3 py-1.5 rounded-xl border transition-all ${
                   currentDayDiary.confession
                     ? 'bg-maroon-800 text-white border-maroon-800'
                     : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100'
                 }`}
               >
-                {currentDayDiary.confession ? 'تم الاعتراف ✓' : 'تسجيل الاعتراف (+20)'}
+                {currentDayDiary.confession ? 'تم الاعتراف ✓' : `تسجيل الاعتراف (+${diaryPointsConfig?.confession || 15})`}
               </button>
             </div>
           </div>

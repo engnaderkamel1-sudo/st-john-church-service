@@ -1,63 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { 
   X, Award, BookOpen, Clock, CheckCircle2, ShieldCheck, 
-  Edit3, Save, Plus, Trash2, RotateCcw, AlertCircle, FileText, ChevronRight 
+  Edit3, Save, Plus, Trash2, RotateCcw, AlertCircle, FileText, ChevronRight, Sliders
 } from 'lucide-react';
 import { db } from '../../firebase';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
-
-const DEFAULT_REGULATIONS = {
-  first: {
-    title: 'لائحة تقييم سنة أولى (إعداد خدام)',
-    totalMax: 1285,
-    items: [
-      { id: '1', name: 'الحضور والانصراف بالخدمة', freq: 'أسبوعي', formula: '3 مبكر (أول 15 د) / درجتان متأخر × 47 أسبوع', max: 141, note: 'مسجل تلقائياً عبر الكاميرا/الكود' },
-      { id: '2', name: 'قراءة الكتاب المقدس', freq: 'أسبوعي', formula: '3 درجات للأسبوع (حساب نسبي يومي 3/7 د/يوم)', max: 141, note: 'تلقائي من النوتة الروحية' },
-      { id: '3', name: 'القداس الإلهي', freq: 'أسبوعي', formula: 'درجتان أسبوعياً × 47 أسبوع', max: 94, note: 'تلقائي من النوتة الروحية' },
-      { id: '4', name: 'التناول من الأسرار المقدسة', freq: 'أسبوعي', formula: 'درجتان أسبوعياً × 47 أسبوع', max: 94, note: 'تلقائي من النوتة الروحية' },
-      { id: '5', name: 'الصوم والانقطاع', freq: 'أسبوعي', formula: 'درجتان أسبوعياً × 47 أسبوع', max: 94, note: 'تلقائي من النوتة الروحية' },
-      { id: '6', name: 'النوتة والصلوات الشخصية', freq: 'أسبوعي', formula: 'درجتان للأسبوع (50% تدوين + 50% صلوات أجبية)', max: 94, note: 'تلقائي من النوتة الروحية' },
-      { id: '7', name: 'اجتماع المرحلة', freq: 'أسبوعي', formula: 'درجة أسبوعياً × 47 أسبوع', max: 47, note: 'تقييم خدام المرحلة' },
-      { id: '8', name: 'سر الاعتراف والإرشاد', freq: 'دوري', formula: '15 درجة × 6 مرات في السنة', max: 90, note: 'تقييم أب الاعتراف والخدام' },
-      { id: '9', name: 'الأبحاث التكليفية', freq: 'سنوي', formula: '40 درجة × بحثين', max: 80, note: 'تقييم أساتذة المواد' },
-      { id: '10', name: 'أنشطة وكورس المطرانية', freq: 'سنوي', formula: 'يوم المطرانية 30 + كورس المطرانية 80', max: 110, note: 'اعتماد مطرانية المعادي' },
-      { id: '11', name: 'المواد الدراسية والامتحانات', freq: 'سنوي', formula: '6 مواد دراسية × 40 درجة', max: 240, note: 'امتحانات المنصة والتحريري' },
-      { id: '12', name: 'الأنشطة التطبيقية للمواد', freq: 'سنوي', formula: '10 درجات لكل مادة × 6 مواد', max: 60, note: 'تكليفات وورش العمل' },
-      { id: '13', name: 'مشروع التخرج', freq: 'سنوي', formula: 'غير مطلوب لسنة أولى (مخصص لسنة ثانية فقط)', max: 0, note: 'سنة ثانية فقط' }
-    ]
-  },
-  second: {
-    title: 'لائحة تقييم سنة ثانية (إعداد خدام)',
-    totalMax: 1485,
-    items: [
-      { id: '1', name: 'الحضور والانصراف بالخدمة', freq: 'أسبوعي', formula: '3 مبكر (أول 15 د) / درجتان متأخر × 47 أسبوع', max: 141, note: 'مسجل تلقائياً عبر الكاميرا/الكود' },
-      { id: '2', name: 'قراءة الكتاب المقدس', freq: 'أسبوعي', formula: '3 درجات للأسبوع (حساب نسبي يومي 3/7 د/يوم)', max: 141, note: 'تلقائي من النوتة الروحية' },
-      { id: '3', name: 'القداس الإلهي', freq: 'أسبوعي', formula: 'درجتان أسبوعياً × 47 أسبوع', max: 94, note: 'تلقائي من النوتة الروحية' },
-      { id: '4', name: 'التناول من الأسرار المقدسة', freq: 'أسبوعي', formula: 'درجتان أسبوعياً × 47 أسبوع', max: 94, note: 'تلقائي من النوتة الروحية' },
-      { id: '5', name: 'الصوم والانقطاع', freq: 'أسبوعي', formula: 'درجتان أسبوعياً × 47 أسبوع', max: 94, note: 'تلقائي من النوتة الروحية' },
-      { id: '6', name: 'النوتة والصلوات الشخصية', freq: 'أسبوعي', formula: 'درجتان للأسبوع (50% تدوين + 50% صلوات أجبية)', max: 94, note: 'تلقائي من النوتة الروحية' },
-      { id: '7', name: 'اجتماع المرحلة', freq: 'أسبوعي', formula: 'درجة أسبوعياً × 47 أسبوع', max: 47, note: 'تقييم خدام المرحلة' },
-      { id: '8', name: 'سر الاعتراف والإرشاد', freq: 'دوري', formula: '15 درجة × 6 مرات في السنة', max: 90, note: 'تقييم أب الاعتراف والخدام' },
-      { id: '9', name: 'الأبحاث التكليفية', freq: 'سنوي', formula: '40 درجة × بحثين', max: 80, note: 'تقييم أساتذة المواد' },
-      { id: '10', name: 'أنشطة وكورس المطرانية', freq: 'سنوي', formula: 'يوم المطرانية 30 + كورس المطرانية 80', max: 110, note: 'اعتماد مطرانية المعادي' },
-      { id: '11', name: 'المواد الدراسية والامتحانات', freq: 'سنوي', formula: '9 مواد دراسية × 40 درجة', max: 360, note: 'امتحانات المنصة والتحريري' },
-      { id: '12', name: 'الأنشطة التطبيقية للمواد', freq: 'سنوي', formula: '10 درجات لكل مادة × 9 مواد', max: 90, note: 'تكليفات وورش العمل' },
-      { id: '13', name: 'مشروع التخرج', freq: 'سنوي', formula: 'مشروع تخرج شامل بنهاية الدورة', max: 50, note: 'مناقشة لجنة الخدام' }
-    ]
-  },
-  third: {
-    title: 'لائحة تقييم سنة ثالثة',
-    totalMax: 0,
-    items: [],
-    emptyMessage: 'لائحة سنة ثالثة قيد الإعداد والاعتماد من قِبل إدارة الخدمة ⏳'
-  },
-  elisha: {
-    title: 'لائحة تقييم فصل أليشع (تمهيدي إعداد خدام)',
-    totalMax: 0,
-    items: [],
-    emptyMessage: 'لائحة فصل أليشع قيد الإعداد والاعتماد من قِبل إدارة الخدمة ⏳'
-  }
-};
+import { DEFAULT_STAGE_REGULATIONS, recalculateItemProperties } from '../../utils/regulationsService';
 
 const STAGE_KEYS = [
   { key: 'first', label: 'سنة أولى' },
@@ -65,6 +13,28 @@ const STAGE_KEYS = [
   { key: 'third', label: 'سنة ثالثة' },
   { key: 'elisha', label: 'فصل أليشع' }
 ];
+
+const mergeStageWithDefaults = (remoteStage, defaultStage) => {
+  if (!remoteStage) return defaultStage;
+  const mergedItems = (remoteStage.items || []).map(remoteItem => {
+    const defaultItem = (defaultStage?.items || []).find(d => d.id === remoteItem.id);
+    if (!defaultItem) return remoteItem;
+    return {
+      ...defaultItem,
+      ...remoteItem,
+      configType: remoteItem.configType || defaultItem.configType,
+      config: {
+        ...(defaultItem.config || {}),
+        ...(remoteItem.config || {})
+      }
+    };
+  });
+  return {
+    ...defaultStage,
+    ...remoteStage,
+    items: mergedItems.length > 0 ? mergedItems : (defaultStage?.items || [])
+  };
+};
 
 export default function StageRegulationsModal({
   isOpen,
@@ -75,7 +45,7 @@ export default function StageRegulationsModal({
   isAdmin = false
 }) {
   const [activeStage, setActiveStage] = useState(studentGrade || initialStage);
-  const [regulations, setRegulations] = useState(DEFAULT_REGULATIONS);
+  const [regulations, setRegulations] = useState(DEFAULT_STAGE_REGULATIONS);
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -95,12 +65,12 @@ export default function StageRegulationsModal({
         const snap = await getDoc(doc(db, 'service_settings', 'stage_regulations'));
         if (snap.exists()) {
           const remoteData = snap.data();
-          setRegulations(prev => ({
-            first: remoteData.first || prev.first,
-            second: remoteData.second || prev.second,
-            third: remoteData.third || prev.third,
-            elisha: remoteData.elisha || prev.elisha
-          }));
+          setRegulations({
+            first: mergeStageWithDefaults(remoteData.first, DEFAULT_STAGE_REGULATIONS.first),
+            second: mergeStageWithDefaults(remoteData.second, DEFAULT_STAGE_REGULATIONS.second),
+            third: mergeStageWithDefaults(remoteData.third, DEFAULT_STAGE_REGULATIONS.third),
+            elisha: mergeStageWithDefaults(remoteData.elisha, DEFAULT_STAGE_REGULATIONS.elisha)
+          });
         }
       } catch (err) {
         console.error('Error fetching stage regulations:', err);
@@ -111,10 +81,10 @@ export default function StageRegulationsModal({
 
   if (!isOpen) return null;
 
-  const currentStageData = isEditing && editData ? editData : (regulations[activeStage] || DEFAULT_REGULATIONS[activeStage]);
+  const currentStageData = isEditing && editData ? editData : (regulations[activeStage] || DEFAULT_STAGE_REGULATIONS[activeStage]);
 
   const handleStartEdit = () => {
-    setEditData(JSON.parse(JSON.stringify(regulations[activeStage] || DEFAULT_REGULATIONS[activeStage])));
+    setEditData(JSON.parse(JSON.stringify(regulations[activeStage] || DEFAULT_STAGE_REGULATIONS[activeStage])));
     setIsEditing(true);
   };
 
@@ -127,6 +97,24 @@ export default function StageRegulationsModal({
     setEditData(prev => {
       const newItems = [...prev.items];
       newItems[idx] = { ...newItems[idx], [field]: value };
+      const newTotal = newItems.reduce((acc, curr) => acc + (Number(curr.max) || 0), 0);
+      return { ...prev, items: newItems, totalMax: newTotal };
+    });
+  };
+
+  const handleConfigChange = (idx, configKey, configValue) => {
+    setEditData(prev => {
+      const newItems = [...prev.items];
+      const currItem = newItems[idx];
+      const newConfig = {
+        ...(currItem.config || {}),
+        [configKey]: configValue
+      };
+      const updatedItem = recalculateItemProperties({
+        ...currItem,
+        config: newConfig
+      });
+      newItems[idx] = updatedItem;
       const newTotal = newItems.reduce((acc, curr) => acc + (Number(curr.max) || 0), 0);
       return { ...prev, items: newItems, totalMax: newTotal };
     });
@@ -355,6 +343,189 @@ export default function StageRegulationsModal({
                         )}
                       </div>
                     </div>
+
+                    {/* Dynamic Calculation Engine Inputs (Active during edit) */}
+                    {isEditing && item.config && (
+                      <div className="bg-amber-50/80 p-3 rounded-2xl border border-amber-300/80 space-y-2.5">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] font-black text-amber-900 flex items-center gap-1.5">
+                            <Sliders className="w-3.5 h-3.5 text-amber-700" />
+                            <span>إعدادات الحساب البرمجي الفعلي</span>
+                          </span>
+                          <span className="text-[10px] text-amber-800 bg-amber-200/60 px-2 py-0.5 rounded-full font-bold">
+                            تطبيق فوري بالسيستم ⚡
+                          </span>
+                        </div>
+
+                        {item.configType === 'attendance' && (
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                            <div className="bg-white p-2 rounded-xl border border-amber-200">
+                              <label className="text-[10px] text-slate-600 font-bold block mb-1">درجات المبكر</label>
+                              <input
+                                type="number"
+                                value={item.config?.earlyPoints ?? 3}
+                                onChange={(e) => handleConfigChange(idx, 'earlyPoints', Number(e.target.value))}
+                                className="w-full p-1 bg-amber-50/50 border border-amber-300 rounded-lg text-xs font-black text-center text-maroon-800 font-mono"
+                              />
+                            </div>
+                            <div className="bg-white p-2 rounded-xl border border-amber-200">
+                              <label className="text-[10px] text-slate-600 font-bold block mb-1">درجات المتأخر</label>
+                              <input
+                                type="number"
+                                value={item.config?.latePoints ?? 2}
+                                onChange={(e) => handleConfigChange(idx, 'latePoints', Number(e.target.value))}
+                                className="w-full p-1 bg-amber-50/50 border border-amber-300 rounded-lg text-xs font-black text-center text-maroon-800 font-mono"
+                              />
+                            </div>
+                            <div className="bg-white p-2 rounded-xl border border-amber-200">
+                              <label className="text-[10px] text-slate-600 font-bold block mb-1">مهلة المبكر (دقيقة)</label>
+                              <input
+                                type="number"
+                                value={item.config?.thresholdMins ?? 15}
+                                onChange={(e) => handleConfigChange(idx, 'thresholdMins', Number(e.target.value))}
+                                className="w-full p-1 bg-amber-50/50 border border-amber-300 rounded-lg text-xs font-black text-center text-maroon-800 font-mono"
+                              />
+                            </div>
+                            <div className="bg-white p-2 rounded-xl border border-amber-200">
+                              <label className="text-[10px] text-slate-600 font-bold block mb-1">عدد الأسابيع</label>
+                              <input
+                                type="number"
+                                value={item.config?.weeksCount ?? 47}
+                                onChange={(e) => handleConfigChange(idx, 'weeksCount', Number(e.target.value))}
+                                className="w-full p-1 bg-amber-50/50 border border-amber-300 rounded-lg text-xs font-black text-center text-maroon-800 font-mono"
+                              />
+                            </div>
+                          </div>
+                        )}
+
+                        {item.configType === 'weekly' && (
+                          <div className="grid grid-cols-2 gap-2">
+                            <div className="bg-white p-2 rounded-xl border border-amber-200">
+                              <label className="text-[10px] text-slate-600 font-bold block mb-1">درجة الأسبوع</label>
+                              <input
+                                type="number"
+                                value={item.config?.weeklyPoints ?? 2}
+                                onChange={(e) => handleConfigChange(idx, 'weeklyPoints', Number(e.target.value))}
+                                className="w-full p-1 bg-amber-50/50 border border-amber-300 rounded-lg text-xs font-black text-center text-maroon-800 font-mono"
+                              />
+                            </div>
+                            <div className="bg-white p-2 rounded-xl border border-amber-200">
+                              <label className="text-[10px] text-slate-600 font-bold block mb-1">عدد الأسابيع</label>
+                              <input
+                                type="number"
+                                value={item.config?.weeksCount ?? 47}
+                                onChange={(e) => handleConfigChange(idx, 'weeksCount', Number(e.target.value))}
+                                className="w-full p-1 bg-amber-50/50 border border-amber-300 rounded-lg text-xs font-black text-center text-maroon-800 font-mono"
+                              />
+                            </div>
+                          </div>
+                        )}
+
+                        {item.configType === 'multi_session' && (
+                          <div className="grid grid-cols-2 gap-2">
+                            <div className="bg-white p-2 rounded-xl border border-amber-200">
+                              <label className="text-[10px] text-slate-600 font-bold block mb-1">درجة كل جلسة / تكليف</label>
+                              <input
+                                type="number"
+                                value={item.config?.sessionPoints ?? 15}
+                                onChange={(e) => handleConfigChange(idx, 'sessionPoints', Number(e.target.value))}
+                                className="w-full p-1 bg-amber-50/50 border border-amber-300 rounded-lg text-xs font-black text-center text-maroon-800 font-mono"
+                              />
+                            </div>
+                            <div className="bg-white p-2 rounded-xl border border-amber-200">
+                              <label className="text-[10px] text-slate-600 font-bold block mb-1">عدد المرات بالسنة</label>
+                              <input
+                                type="number"
+                                value={item.config?.targetCount ?? 6}
+                                onChange={(e) => handleConfigChange(idx, 'targetCount', Number(e.target.value))}
+                                className="w-full p-1 bg-amber-50/50 border border-amber-300 rounded-lg text-xs font-black text-center text-maroon-800 font-mono"
+                              />
+                            </div>
+                          </div>
+                        )}
+
+                        {item.configType === 'bishopric' && (
+                          <div className="grid grid-cols-2 gap-2">
+                            <div className="bg-white p-2 rounded-xl border border-amber-200">
+                              <label className="text-[10px] text-slate-600 font-bold block mb-1">درجة يوم المطرانية</label>
+                              <input
+                                type="number"
+                                value={item.config?.dayPoints ?? 30}
+                                onChange={(e) => handleConfigChange(idx, 'dayPoints', Number(e.target.value))}
+                                className="w-full p-1 bg-amber-50/50 border border-amber-300 rounded-lg text-xs font-black text-center text-maroon-800 font-mono"
+                              />
+                            </div>
+                            <div className="bg-white p-2 rounded-xl border border-amber-200">
+                              <label className="text-[10px] text-slate-600 font-bold block mb-1">درجة كورس المطرانية</label>
+                              <input
+                                type="number"
+                                value={item.config?.coursePoints ?? 80}
+                                onChange={(e) => handleConfigChange(idx, 'coursePoints', Number(e.target.value))}
+                                className="w-full p-1 bg-amber-50/50 border border-amber-300 rounded-lg text-xs font-black text-center text-maroon-800 font-mono"
+                              />
+                            </div>
+                          </div>
+                        )}
+
+                        {item.configType === 'subjects_exam' && (
+                          <div className="grid grid-cols-2 gap-2">
+                            <div className="bg-white p-2 rounded-xl border border-amber-200">
+                              <label className="text-[10px] text-slate-600 font-bold block mb-1">درجة امتحان كل مادة</label>
+                              <input
+                                type="number"
+                                value={item.config?.subjectExamPoints ?? 40}
+                                onChange={(e) => handleConfigChange(idx, 'subjectExamPoints', Number(e.target.value))}
+                                className="w-full p-1 bg-amber-50/50 border border-amber-300 rounded-lg text-xs font-black text-center text-maroon-800 font-mono"
+                              />
+                            </div>
+                            <div className="bg-white p-2 rounded-xl border border-amber-200">
+                              <label className="text-[10px] text-slate-600 font-bold block mb-1">عدد المواد الدراسية</label>
+                              <input
+                                type="number"
+                                value={item.config?.subjectsCount ?? 6}
+                                onChange={(e) => handleConfigChange(idx, 'subjectsCount', Number(e.target.value))}
+                                className="w-full p-1 bg-amber-50/50 border border-amber-300 rounded-lg text-xs font-black text-center text-maroon-800 font-mono"
+                              />
+                            </div>
+                          </div>
+                        )}
+
+                        {item.configType === 'subjects_activity' && (
+                          <div className="grid grid-cols-2 gap-2">
+                            <div className="bg-white p-2 rounded-xl border border-amber-200">
+                              <label className="text-[10px] text-slate-600 font-bold block mb-1">درجة نشاط المادة</label>
+                              <input
+                                type="number"
+                                value={item.config?.subjectActivityPoints ?? 10}
+                                onChange={(e) => handleConfigChange(idx, 'subjectActivityPoints', Number(e.target.value))}
+                                className="w-full p-1 bg-amber-50/50 border border-amber-300 rounded-lg text-xs font-black text-center text-maroon-800 font-mono"
+                              />
+                            </div>
+                            <div className="bg-white p-2 rounded-xl border border-amber-200">
+                              <label className="text-[10px] text-slate-600 font-bold block mb-1">عدد المواد</label>
+                              <input
+                                type="number"
+                                value={item.config?.subjectsCount ?? 6}
+                                onChange={(e) => handleConfigChange(idx, 'subjectsCount', Number(e.target.value))}
+                                className="w-full p-1 bg-amber-50/50 border border-amber-300 rounded-lg text-xs font-black text-center text-maroon-800 font-mono"
+                              />
+                            </div>
+                          </div>
+                        )}
+
+                        {item.configType === 'single_value' && (
+                          <div className="bg-white p-2 rounded-xl border border-amber-200">
+                            <label className="text-[10px] text-slate-600 font-bold block mb-1">الدرجة المحددة</label>
+                            <input
+                              type="number"
+                              value={item.config?.singlePoints ?? 0}
+                              onChange={(e) => handleConfigChange(idx, 'singlePoints', Number(e.target.value))}
+                              className="w-full p-1 bg-amber-50/50 border border-amber-300 rounded-lg text-xs font-black text-center text-maroon-800 font-mono"
+                            />
+                          </div>
+                        )}
+                      </div>
+                    )}
 
                     {/* Formula & Explanation Field */}
                     <div className="bg-slate-50/70 p-2.5 rounded-xl border border-slate-200 space-y-1">

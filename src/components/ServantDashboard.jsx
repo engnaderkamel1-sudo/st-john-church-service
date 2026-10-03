@@ -22,6 +22,7 @@ import StudentProfileModal from './servant/StudentProfileModal';
 import ServantErrorsHub from './servant/ServantErrorsHub';
 import StageRegulationsModal from './common/StageRegulationsModal';
 import UserProfileModal from './common/UserProfileModal';
+import { calculateAttendancePoints, DEFAULT_STAGE_REGULATIONS } from '../utils/regulationsService';
 import { collection, getDocs, doc, updateDoc, setDoc, addDoc, deleteDoc, query, where, orderBy, serverTimestamp, limit, onSnapshot } from 'firebase/firestore';
 
 export default function ServantDashboard({ user, onLogout, onUpdateUser, externalMenuTrigger }) {
@@ -127,6 +128,17 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
 
   // Dynamic Service Start Time (Default: 10:30)
   const [serviceStartTime, setServiceStartTime] = useState('10:30');
+  const [stageRegulations, setStageRegulations] = useState(DEFAULT_STAGE_REGULATIONS);
+
+  // Sync Stage Regulations in real-time
+  useEffect(() => {
+    const unsubRegs = onSnapshot(doc(db, 'service_settings', 'stage_regulations'), (snap) => {
+      if (snap.exists()) {
+        setStageRegulations(snap.data());
+      }
+    }, (err) => console.warn('Regs listener err:', err));
+    return () => unsubRegs();
+  }, []);
 
   const handleUpdateServiceStartTime = async (newTime) => {
     setServiceStartTime(newTime);
@@ -232,22 +244,13 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
       const todayDateOnly = new Date().toISOString().split('T')[0];
       const recordedTime = customTime || new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
 
-      // Calculate Official Regulation Attendance Points:
-      // Early (within first 15 mins of service start) = 3 marks, Late = 2 marks
-      let pointsAwarded = 3;
-      let punctualityStatus = 'حضور مبكر في الموعد (3 درجات)';
-      try {
-        const [startH, startM] = (serviceStartTime || '10:30').split(':').map(Number);
-        const startTimeInMinutes = startH * 60 + startM;
-        const now = new Date();
-        const currentTotalMinutes = now.getHours() * 60 + now.getMinutes();
-        if (currentTotalMinutes > startTimeInMinutes + 15) {
-          pointsAwarded = 2;
-          punctualityStatus = 'حضور متأخر بعد ربع ساعة (درجتان)';
-        }
-      } catch (calcErr) {
-        pointsAwarded = 3;
-      }
+      // Calculate Official Regulation Attendance Points dynamically based on stage regulations
+      const { points: pointsAwarded, punctualityStatus } = calculateAttendancePoints({
+        stageRegulations,
+        grade: targetUser.grade || 'first',
+        serviceStartTime: serviceStartTime || '10:30',
+        currentTime: new Date()
+      });
 
       // Record attendance in Firestore
       await addDoc(collection(db, 'attendance'), {

@@ -10,6 +10,7 @@ import StudentCurriculum from './student/StudentCurriculum';
 import StudentExams from './student/StudentExams';
 import StageRegulationsModal from './common/StageRegulationsModal';
 import UserProfileModal from './common/UserProfileModal';
+import { calculateAttendancePoints, DEFAULT_STAGE_REGULATIONS, getDiaryPointsConfig } from '../utils/regulationsService';
 
 export default function StudentDashboard({ user, onLogout, onUpdateUser, externalMenuTrigger }) {
   // 6 Specified Tabs: 'attendance', 'spiritual_diary', 'curriculum', 'exams', 'tasks', 'announcements'
@@ -29,6 +30,8 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser, externa
   const [currentTimeStr, setCurrentTimeStr] = useState('');
   const [bypassTime, setBypassTime] = useState(false);
   const [servantOpenedAccess, setServantOpenedAccess] = useState(null);
+  const [serviceStartTime, setServiceStartTime] = useState('10:30');
+  const [stageRegulations, setStageRegulations] = useState(DEFAULT_STAGE_REGULATIONS);
 
   // Curriculum Firestore Live State
   const [subjectsData, setSubjectsData] = useState([]);
@@ -316,10 +319,20 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser, externa
         if (data.activePin) {
           setActiveServerPin(data.activePin.toString());
         }
+        if (data.serviceStartTime) {
+          setServiceStartTime(data.serviceStartTime);
+        }
         if (data.isOpenForAll && new Date(data.validUntil) > new Date()) {
           setBypassTime(true);
           setServantOpenedAccess({ openedBy: data.openedBy, type: 'all' });
         }
+      }
+    });
+
+    // Listen to Stage Regulations in real-time
+    const unsubRegs = onSnapshot(doc(db, 'service_settings', 'stage_regulations'), (docSnap) => {
+      if (docSnap.exists()) {
+        setStageRegulations(docSnap.data());
       }
     });
 
@@ -339,6 +352,7 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser, externa
     return () => {
       clearInterval(interval);
       unsubAll();
+      unsubRegs();
       unsubSpecific();
     };
   }, [user.id]);
@@ -377,6 +391,16 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser, externa
         return;
       }
 
+      // Calculate Official Regulation Attendance Points
+      const calcResult = calculateAttendancePoints({
+        stageRegulations,
+        grade: user.grade || 'first',
+        serviceStartTime: serviceStartTime || '10:30',
+        currentTime: new Date()
+      });
+      const pointsAwarded = calcResult.points;
+      const punctualityStatus = calcResult.punctualityStatus;
+
       // Record attendance in Firestore
       const todayStr = new Date().toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
       await addDoc(collection(db, 'attendance'), {
@@ -390,26 +414,36 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser, externa
         type: 'numeric_pin',
         pinUsed: entered,
         status: 'حاضر',
-        pointsAwarded: 10,
+        pointsAwarded: pointsAwarded,
+        punctualityStatus: punctualityStatus,
         createdAt: serverTimestamp()
       });
 
       // Update user points
       const userRef = doc(db, 'users', user.id);
       await updateDoc(userRef, {
-        points: (user.points || 0) + 10
+        points: (user.points || 0) + pointsAwarded
       });
 
       setAttendanceStatus('success');
-      setPoints(p => p + 10);
+      setPoints(p => p + pointsAwarded);
       setAttendanceRecords(prev => [
-        { id: Date.now().toString(), date: 'اليوم (بالكود الرقمي)', status: 'حاضر', time: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }), points: 10 },
+        { id: Date.now().toString(), date: `اليوم (${punctualityStatus})`, status: 'حاضر', time: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }), points: pointsAwarded },
         ...prev
       ]);
       setInputPinCode('');
     } catch (err) {
       console.error('Error submitting pin attendance:', err);
       // Fallback local registration if offline: Save to offline queue
+      const calcResult = calculateAttendancePoints({
+        stageRegulations,
+        grade: user.grade || 'first',
+        serviceStartTime: serviceStartTime || '10:30',
+        currentTime: new Date()
+      });
+      const pointsAwarded = calcResult.points;
+      const punctualityStatus = calcResult.punctualityStatus;
+
       const offlineItem = {
         userId: user.id,
         userName: user.fullName,
@@ -421,7 +455,8 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser, externa
         type: 'offline_numeric_pin',
         pinUsed: inputPinCode.trim(),
         status: 'حاضر',
-        pointsAwarded: 10,
+        pointsAwarded: pointsAwarded,
+        punctualityStatus: punctualityStatus,
         createdAt: new Date().toISOString()
       };
       try {
@@ -433,9 +468,9 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser, externa
       }
 
       setAttendanceStatus('success');
-      setPoints(p => p + 10);
+      setPoints(p => p + pointsAwarded);
       setAttendanceRecords(prev => [
-        { id: Date.now().toString(), date: 'اليوم (حفظ محلي أوفلاين 📡)', status: 'حاضر', time: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }), points: 10 },
+        { id: Date.now().toString(), date: `اليوم (${punctualityStatus} - أوفلاين 📡)`, status: 'حاضر', time: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }), points: pointsAwarded },
         ...prev
       ]);
       setOfflineSyncMessage('تم حفظ حضورك في ذاكرة الهاتف! سيتم المزامنة تلقائياً عند الاتصال بالإنترنت 📡');
@@ -448,6 +483,16 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser, externa
     setScanning(true);
     setAttendanceStatus(null);
     setTimeout(async () => {
+      // Calculate Official Regulation Attendance Points
+      const calcResult = calculateAttendancePoints({
+        stageRegulations,
+        grade: user.grade || 'first',
+        serviceStartTime: serviceStartTime || '10:30',
+        currentTime: new Date()
+      });
+      const pointsAwarded = calcResult.points;
+      const punctualityStatus = calcResult.punctualityStatus;
+
       // Record scan in Firestore or offline queue
       const todayDateOnly = new Date().toISOString().split('T')[0];
       const todayFormatted = new Date().toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
@@ -461,14 +506,15 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser, externa
         time: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }),
         type: 'qr_scan',
         status: 'حاضر',
-        pointsAwarded: 10,
+        pointsAwarded: pointsAwarded,
+        punctualityStatus: punctualityStatus,
         createdAt: serverTimestamp()
       };
 
       try {
         await addDoc(collection(db, 'attendance'), recordPayload);
         const userRef = doc(db, 'users', user.id);
-        await updateDoc(userRef, { points: (user.points || 0) + 10 });
+        await updateDoc(userRef, { points: (user.points || 0) + pointsAwarded });
       } catch (e) {
         console.warn('QR scan saved offline:', e);
         try {
@@ -480,9 +526,9 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser, externa
       }
 
       setAttendanceStatus('success');
-      setPoints(p => p + 10);
+      setPoints(p => p + pointsAwarded);
       setAttendanceRecords(prev => [
-        { id: Date.now().toString(), date: 'اليوم (مسح QR)', status: 'حاضر', time: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }), points: 10 },
+        { id: Date.now().toString(), date: `اليوم (${punctualityStatus} - مسح QR)`, status: 'حاضر', time: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }), points: pointsAwarded },
         ...prev
       ]);
       setScanning(false);
@@ -854,6 +900,7 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser, externa
           setSelectedHistoryMonth={setSelectedHistoryMonth}
           diaryRecords={diaryRecords}
           handleToggleDiaryItem={handleToggleDiaryItem}
+          diaryPointsConfig={getDiaryPointsConfig(stageRegulations, user?.grade)}
         />
       )}
 
