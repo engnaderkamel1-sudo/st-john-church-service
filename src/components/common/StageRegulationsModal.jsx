@@ -44,6 +44,7 @@ const mergeStageWithDefaults = (remoteStage, defaultStage) => {
 export default function StageRegulationsModal({
   isOpen,
   onClose,
+  initialStage = 'first',
   currentUser = null,
   isStudent = false,
   studentGrade = null,
