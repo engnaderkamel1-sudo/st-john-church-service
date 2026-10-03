@@ -167,14 +167,6 @@ export default function App() {
           onContextMenu={(e) => e.preventDefault()}
           className="fixed inset-0 z-[9999] bg-gradient-to-b from-slate-900 via-maroon-950 to-slate-950 text-white flex flex-col items-center justify-between p-6 sm:p-8 font-cairo select-none animate-in fade-in duration-300 cursor-pointer"
         >
-          <div className="w-full flex justify-center pt-2">
-            {isSplashPaused && (
-              <span className="text-[11px] bg-amber-500/20 text-amber-300 border border-amber-400/40 px-3 py-1 rounded-full font-bold animate-pulse">
-                متوقف مؤقتاً لقراءة الآية ⏸️
-              </span>
-            )}
-          </div>
-
           {/* Center Logo & Titles & Prominent Verse */}
           <div className="flex flex-col items-center text-center space-y-4 sm:space-y-5 max-w-md px-4 my-auto">
             <div className="relative group">
@@ -207,23 +199,18 @@ export default function App() {
             </div>
           </div>
 
-          {/* Bottom Progress Bar & Loading with Hint */}
+          {/* Bottom Progress Bar & Loading */}
           <div className="w-full max-w-sm space-y-2 pb-6">
             <div className="flex items-center justify-between text-xs text-gold-200/90 font-bold px-1">
-              <span>{isSplashPaused ? 'ثابت للقراءة ⏸️' : 'جاري التحميل...'}</span>
+              <span>جاري التحميل...</span>
               <span className="font-mono">{splashProgress}%</span>
             </div>
             <div className="w-full h-2.5 bg-slate-800/90 rounded-full overflow-hidden p-0.5 border border-gold-500/30 shadow-inner">
               <div 
-                className={`h-full bg-gradient-to-r from-gold-400 via-amber-400 to-gold-300 rounded-full transition-all duration-75 ease-out shadow-sm ${
-                  isSplashPaused ? 'opacity-80 animate-pulse' : ''
-                }`}
+                className="h-full bg-gradient-to-r from-gold-400 via-amber-400 to-gold-300 rounded-full transition-all duration-75 ease-out shadow-sm"
                 style={{ width: `${splashProgress}%` }}
               ></div>
             </div>
-            <p className="text-[10px] text-center text-slate-400 font-medium">
-              المس الشاشة مع الاستمرار للتوقف وقراءة الآية 📖
-            </p>
           </div>
         </div>
       )}
