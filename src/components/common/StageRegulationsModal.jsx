@@ -268,92 +268,222 @@ export default function StageRegulationsModal({
               )}
             </div>
           ) : (
-            <div className="border border-slate-200 rounded-2xl overflow-hidden shadow-xs">
-              <div className="overflow-x-auto">
-                <table className="w-full text-right text-xs border-collapse">
-                  <thead>
-                    <tr className="bg-slate-100/90 text-slate-700 font-extrabold border-b border-slate-200">
-                      <th className="p-3 text-center w-12">#</th>
-                      <th className="p-3">بند التقييم</th>
-                      <th className="p-3 text-center w-24">الدورية</th>
-                      <th className="p-3">طريقة الحساب والشرح</th>
-                      <th className="p-3 text-center w-24">الدرجة العظمى</th>
-                      <th className="p-3">طريقة الرصد</th>
-                      {isEditing && <th className="p-3 text-center w-12">حذف</th>}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 text-slate-800">
-                    {currentStageData.items.map((item, idx) => (
-                      <tr key={item.id || idx} className="hover:bg-slate-50/70 transition-colors">
-                        <td className="p-3 text-center font-bold text-slate-400 font-mono">{idx + 1}</td>
-                        <td className="p-3 font-bold text-slate-900">
-                          {isEditing ? (
+          ) : (
+            <div>
+              {/* Mobile View: High readability cards with large text (visible < md) */}
+              <div className="md:hidden space-y-3.5">
+                {currentStageData.items.map((item, idx) => (
+                  <div 
+                    key={item.id || idx} 
+                    className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs space-y-3 transition-all"
+                  >
+                    {/* Header Row: Index + Title + Delete/Badge */}
+                    <div className="flex items-start justify-between gap-2 border-b border-slate-100 pb-2.5">
+                      <div className="flex items-center gap-2 min-w-0 flex-1">
+                        <span className="w-6 h-6 rounded-lg bg-maroon-50 text-maroon-900 border border-maroon-200 flex items-center justify-center font-bold text-xs shrink-0 font-mono">
+                          {idx + 1}
+                        </span>
+                        {isEditing ? (
+                          <div className="flex-1 min-w-0">
+                            <label className="text-[10px] text-slate-500 font-bold block mb-1">اسم البند:</label>
                             <input
                               type="text"
                               value={item.name}
                               onChange={(e) => handleItemChange(idx, 'name', e.target.value)}
-                              className="w-full p-1.5 border border-slate-300 rounded-lg text-xs"
+                              className="w-full p-2 bg-slate-50 border border-slate-300 rounded-xl text-sm font-bold text-slate-900 focus:outline-none focus:border-maroon-800"
+                              placeholder="اسم بند التقييم..."
                             />
-                          ) : item.name}
-                        </td>
-                        <td className="p-3 text-center">
-                          {isEditing ? (
-                            <input
-                              type="text"
-                              value={item.freq}
-                              onChange={(e) => handleItemChange(idx, 'freq', e.target.value)}
-                              className="w-full p-1.5 border border-slate-300 rounded-lg text-xs text-center"
-                            />
-                          ) : (
-                            <span className="px-2 py-0.5 bg-slate-100 text-slate-600 rounded-md font-semibold text-[11px]">
-                              {item.freq}
-                            </span>
-                          )}
-                        </td>
-                        <td className="p-3 text-slate-600">
-                          {isEditing ? (
-                            <input
-                              type="text"
-                              value={item.formula}
-                              onChange={(e) => handleItemChange(idx, 'formula', e.target.value)}
-                              className="w-full p-1.5 border border-slate-300 rounded-lg text-xs"
-                            />
-                          ) : item.formula}
-                        </td>
-                        <td className="p-3 text-center font-black font-mono text-maroon-800 text-sm">
-                          {isEditing ? (
-                            <input
-                              type="number"
-                              value={item.max}
-                              onChange={(e) => handleItemChange(idx, 'max', Number(e.target.value))}
-                              className="w-16 p-1.5 border border-slate-300 rounded-lg text-xs text-center font-bold"
-                            />
-                          ) : item.max}
-                        </td>
-                        <td className="p-3 text-[11px] text-slate-500 font-medium">
-                          {isEditing ? (
-                            <input
-                              type="text"
-                              value={item.note}
-                              onChange={(e) => handleItemChange(idx, 'note', e.target.value)}
-                              className="w-full p-1.5 border border-slate-300 rounded-lg text-xs"
-                            />
-                          ) : item.note}
-                        </td>
-                        {isEditing && (
-                          <td className="p-3 text-center">
-                            <button
-                              onClick={() => handleDeleteItem(idx)}
-                              className="p-1 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition-all"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </td>
+                          </div>
+                        ) : (
+                          <h4 className="font-extrabold text-sm sm:text-base text-slate-900 truncate">
+                            {item.name}
+                          </h4>
                         )}
+                      </div>
+
+                      {/* Right Action: Delete if editing, or Max Grade Badge if viewing */}
+                      <div className="shrink-0 flex items-center gap-1.5">
+                        {!isEditing && (
+                          <span className="bg-amber-100 text-amber-950 border border-amber-300 px-2.5 py-1 rounded-xl text-xs font-black font-mono">
+                            {item.max} درجة
+                          </span>
+                        )}
+                        {isEditing && (
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteItem(idx)}
+                            className="p-2 text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded-xl transition-all cursor-pointer border border-rose-200"
+                            title="حذف هذا البند"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Middle Row: Frequency & Max Points */}
+                    <div className="grid grid-cols-2 gap-2.5">
+                      <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                        <span className="text-[11px] text-slate-500 font-bold block mb-1">الدورية:</span>
+                        {isEditing ? (
+                          <input
+                            type="text"
+                            value={item.freq}
+                            onChange={(e) => handleItemChange(idx, 'freq', e.target.value)}
+                            className="w-full p-1.5 bg-white border border-slate-300 rounded-lg text-xs font-bold text-slate-800 text-center focus:outline-none focus:border-maroon-800"
+                            placeholder="أسبوعي / فصلي"
+                          />
+                        ) : (
+                          <span className="text-xs font-bold text-slate-800">
+                            {item.freq || '—'}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                        <span className="text-[11px] text-slate-500 font-bold block mb-1">الدرجة العظمى:</span>
+                        {isEditing ? (
+                          <input
+                            type="number"
+                            value={item.max}
+                            onChange={(e) => handleItemChange(idx, 'max', Number(e.target.value))}
+                            className="w-full p-1.5 bg-white border border-slate-300 rounded-lg text-xs font-black text-maroon-800 text-center focus:outline-none focus:border-maroon-800 font-mono"
+                          />
+                        ) : (
+                          <span className="text-xs font-black text-maroon-800 font-mono">
+                            {item.max} درجة
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Formula & Explanation Field */}
+                    <div className="bg-slate-50/70 p-2.5 rounded-xl border border-slate-200 space-y-1">
+                      <span className="text-[11px] text-slate-500 font-bold block">طريقة الحساب والشرح:</span>
+                      {isEditing ? (
+                        <textarea
+                          rows={2}
+                          value={item.formula}
+                          onChange={(e) => handleItemChange(idx, 'formula', e.target.value)}
+                          className="w-full p-2 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-800 focus:outline-none focus:border-maroon-800 resize-none leading-relaxed"
+                          placeholder="طريقة توزيع وحساب الدرجة..."
+                        />
+                      ) : (
+                        <p className="text-xs text-slate-700 leading-relaxed font-medium">
+                          {item.formula || '—'}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Tracking Method Field */}
+                    <div className="bg-slate-50/70 p-2.5 rounded-xl border border-slate-200 flex items-center justify-between gap-2">
+                      <span className="text-[11px] text-slate-500 font-bold shrink-0">طريقة الرصد:</span>
+                      {isEditing ? (
+                        <input
+                          type="text"
+                          value={item.note}
+                          onChange={(e) => handleItemChange(idx, 'note', e.target.value)}
+                          className="w-full p-1.5 bg-white border border-slate-300 rounded-lg text-xs font-bold text-slate-800 focus:outline-none focus:border-maroon-800"
+                          placeholder="رصد تلقائي / رصد يدوي من الخادم..."
+                        />
+                      ) : (
+                        <span className="text-[11px] font-bold text-slate-600 bg-white px-2 py-0.5 rounded-md border border-slate-200">
+                          {item.note || 'تلقائي'}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Desktop Table View (visible on screens >= md) */}
+              <div className="hidden md:block border border-slate-200 rounded-2xl overflow-hidden shadow-xs">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-right text-xs border-collapse">
+                    <thead>
+                      <tr className="bg-slate-100/90 text-slate-700 font-extrabold border-b border-slate-200">
+                        <th className="p-3 text-center w-12">#</th>
+                        <th className="p-3">بند التقييم</th>
+                        <th className="p-3 text-center w-24">الدورية</th>
+                        <th className="p-3">طريقة الحساب والشرح</th>
+                        <th className="p-3 text-center w-24">الدرجة العظمى</th>
+                        <th className="p-3">طريقة الرصد</th>
+                        {isEditing && <th className="p-3 text-center w-12">حذف</th>}
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 text-slate-800">
+                      {currentStageData.items.map((item, idx) => (
+                        <tr key={item.id || idx} className="hover:bg-slate-50/70 transition-colors">
+                          <td className="p-3 text-center font-bold text-slate-400 font-mono">{idx + 1}</td>
+                          <td className="p-3 font-bold text-slate-900">
+                            {isEditing ? (
+                              <input
+                                type="text"
+                                value={item.name}
+                                onChange={(e) => handleItemChange(idx, 'name', e.target.value)}
+                                className="w-full p-2 border border-slate-300 rounded-lg text-sm font-bold"
+                              />
+                            ) : item.name}
+                          </td>
+                          <td className="p-3 text-center">
+                            {isEditing ? (
+                              <input
+                                type="text"
+                                value={item.freq}
+                                onChange={(e) => handleItemChange(idx, 'freq', e.target.value)}
+                                className="w-full p-2 border border-slate-300 rounded-lg text-xs text-center font-bold"
+                              />
+                            ) : (
+                              <span className="px-2 py-0.5 bg-slate-100 text-slate-600 rounded-md font-semibold text-[11px]">
+                                {item.freq}
+                              </span>
+                            )}
+                          </td>
+                          <td className="p-3 text-slate-600">
+                            {isEditing ? (
+                              <textarea
+                                rows={2}
+                                value={item.formula}
+                                onChange={(e) => handleItemChange(idx, 'formula', e.target.value)}
+                                className="w-full p-2 border border-slate-300 rounded-lg text-xs leading-relaxed"
+                              />
+                            ) : item.formula}
+                          </td>
+                          <td className="p-3 text-center font-black font-mono text-maroon-800 text-sm">
+                            {isEditing ? (
+                              <input
+                                type="number"
+                                value={item.max}
+                                onChange={(e) => handleItemChange(idx, 'max', Number(e.target.value))}
+                                className="w-20 p-2 border border-slate-300 rounded-lg text-sm text-center font-bold font-mono"
+                              />
+                            ) : item.max}
+                          </td>
+                          <td className="p-3 text-[11px] text-slate-500 font-medium">
+                            {isEditing ? (
+                              <input
+                                type="text"
+                                value={item.note}
+                                onChange={(e) => handleItemChange(idx, 'note', e.target.value)}
+                                className="w-full p-2 border border-slate-300 rounded-lg text-xs"
+                              />
+                            ) : item.note}
+                          </td>
+                          {isEditing && (
+                            <td className="p-3 text-center">
+                              <button
+                                onClick={() => handleDeleteItem(idx)}
+                                className="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition-all"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </td>
+                          )}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           )}
