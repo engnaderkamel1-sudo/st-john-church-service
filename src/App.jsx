@@ -219,22 +219,22 @@ export default function App() {
       <div className="min-h-screen bg-slate-50 text-slate-800 flex flex-col justify-between selection:bg-gold-500 selection:text-maroon-950 font-cairo">
       {/* Light Mode Royal Header */}
       <header className="py-2.5 sm:py-3.5 px-3 sm:px-4 border-b border-slate-200/80 bg-white shadow-sm sticky top-0 z-40 backdrop-blur-md">
-        <div className="max-w-5xl mx-auto flex items-center justify-between gap-2">
-          {/* Logo & Identity */}
-          <div className="flex items-center gap-2.5 min-w-0">
-            <img 
-              src="/church_logo.jpg" 
-              alt="شعار كنيسة القديس ماريوحنا المعمدان" 
-              className="w-9 h-9 sm:w-11 sm:h-11 rounded-full border-2 border-gold-400 object-cover shadow-sm shrink-0"
-            />
-            <div className="min-w-0">
-              <h1 className="text-xs sm:text-base md:text-lg font-bold text-maroon-900 leading-tight truncate">أسرة إعداد خدام بولس الرسول وأليشع النبي</h1>
-              <p className="text-[10px] sm:text-[11px] text-slate-500 font-medium truncate hidden sm:block">كنيسة ماريوحنا المعمدان بالمعراج - مطرانية المعادي</p>
-            </div>
-          </div>
+        <div className="max-w-5xl mx-auto flex items-center justify-between gap-2.5">
+          {/* Right Side: Menu Button & Notification Bell (RTL First) */}
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            {/* Main Menu Button */}
+            {currentUser && (
+              <button
+                type="button"
+                onClick={() => setMobileMenuTrigger(prev => prev + 1)}
+                className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 bg-gradient-to-r from-maroon-900 to-maroon-800 text-white rounded-xl text-xs font-bold shadow-xs hover:from-maroon-950 hover:to-maroon-900 active:scale-95 transition-all ring-1 ring-gold-400/40 cursor-pointer"
+                title="فتح القائمة الرئيسية للأقسام"
+              >
+                <Menu className="w-4 h-4 text-gold-300 shrink-0" />
+                <span className="hidden xs:inline">القائمة</span>
+              </button>
+            )}
 
-          {/* Right Action Icons */}
-          <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
             {/* Notification Bell */}
             <div className="relative" ref={notificationRef}>
               <button
@@ -251,7 +251,7 @@ export default function App() {
               </button>
 
               {showNotifications && (
-                <div className="absolute left-0 mt-2 w-72 bg-white border border-slate-200 rounded-2xl shadow-xl p-4 z-50 text-right space-y-2.5">
+                <div className="absolute right-0 sm:right-auto sm:left-0 mt-2 w-72 bg-white border border-slate-200 rounded-2xl shadow-xl p-4 z-50 text-right space-y-2.5">
                   <div className="font-bold text-xs text-maroon-900 border-b border-slate-100 pb-2">
                     التنبيهات والإشعارات
                   </div>
@@ -271,19 +271,25 @@ export default function App() {
                 </div>
               )}
             </div>
+          </div>
 
-            {/* Main Menu Button (Directly in Header - Freeing up full screen space) */}
-            {currentUser && (
-              <button
-                type="button"
-                onClick={() => setMobileMenuTrigger(prev => prev + 1)}
-                className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 bg-gradient-to-r from-maroon-900 to-maroon-800 text-white rounded-xl text-xs font-bold shadow-xs hover:from-maroon-950 hover:to-maroon-900 active:scale-95 transition-all ring-1 ring-gold-400/40 cursor-pointer"
-                title="فتح القائمة الرئيسية للأقسام"
-              >
-                <Menu className="w-4 h-4 text-gold-300 shrink-0" />
-                <span className="hidden xs:inline">القائمة</span>
-              </button>
-            )}
+          {/* Center Identity Text */}
+          <div className="min-w-0 text-center flex-1 px-1">
+            <h1 className="text-xs sm:text-base md:text-lg font-black text-maroon-900 leading-tight truncate">
+              أسرة إعداد خدام بولس الرسول وأليشع النبي
+            </h1>
+            <p className="text-[10px] sm:text-[11px] text-slate-500 font-medium truncate hidden sm:block">
+              كنيسة ماريوحنا المعمدان بالمعراج - مطرانية المعادي
+            </p>
+          </div>
+
+          {/* Left Side: St. John Church Logo */}
+          <div className="shrink-0 flex items-center">
+            <img 
+              src="/church_logo.jpg" 
+              alt="شعار كنيسة القديس ماريوحنا المعمدان" 
+              className="w-9 h-9 sm:w-11 sm:h-11 rounded-full border-2 border-gold-400 object-cover shadow-sm ring-1 ring-gold-400/20"
+            />
           </div>
         </div>
       </header>
