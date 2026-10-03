@@ -149,6 +149,7 @@ export default function ServantUsersHub({
                 <option value="all">عرض الكل ({allUsers.length})</option>
                 <option value="student">المخدومين فقط ({allUsers.filter(u => u.role === 'student').length})</option>
                 <option value="servant">الخدام فقط ({allUsers.filter(u => u.role === 'servant').length})</option>
+                <option value="servant_leader">أمناء الخدمة فقط ({allUsers.filter(u => u.role === 'servant_leader').length})</option>
               </select>
 
               <button
@@ -226,19 +227,31 @@ export default function ServantUsersHub({
 
                         {/* Role Badge */}
                         <span className={`inline-flex items-center gap-1 text-[11px] font-extrabold px-2.5 py-1 rounded-full shrink-0 ${
-                          item.role === 'servant'
+                          item.role === 'admin' || item.phone === '01275571569'
+                            ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                            : item.role === 'servant_leader'
+                            ? 'bg-purple-100 text-purple-900 border border-purple-200'
+                            : item.role === 'servant'
                             ? 'bg-maroon-100 text-maroon-900 border border-maroon-200'
                             : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
                         }`}>
-                          {item.role === 'servant' ? 'خادم' : 'مخدوم'}
+                          {item.role === 'admin' || item.phone === '01275571569'
+                            ? 'مشرف النظام 👑'
+                            : item.role === 'servant_leader'
+                            ? 'أمين خدمة 🛡️'
+                            : item.role === 'servant'
+                            ? 'خادم ✝️'
+                            : 'مخدوم 🎓'}
                         </span>
                       </div>
 
                       {/* Stage / Role Detail */}
                       <div className="text-xs bg-slate-50 p-2.5 rounded-xl border border-slate-100 flex items-center justify-between">
-                        <span className="text-slate-500 font-medium">المرحلة:</span>
+                        <span className="text-slate-500 font-medium">الصفة / الدور:</span>
                         <div className="font-bold text-slate-800">
-                          {item.role === 'servant' ? (
+                          {item.role === 'servant_leader' ? (
+                            <span className="text-purple-800 font-bold">أمين خدمة (متابعة نوتة الخدام)</span>
+                          ) : item.role === 'servant' ? (
                             <span className="text-maroon-800 font-bold">خادم عام (جميع المراحل)</span>
                           ) : (
                             <select
@@ -311,26 +324,21 @@ export default function ServantUsersHub({
                           </div>
                         )}
 
-                        <div className="grid grid-cols-2 gap-2">
-                          {item.role === 'student' ? (
-                            <button
-                              type="button"
-                              onClick={() => handleUpdateUserRole(item.id, 'servant')}
-                              disabled={roleUpdatingId === item.id}
-                              className="min-h-[44px] bg-maroon-800 hover:bg-maroon-700 text-white font-bold text-xs px-3 py-2 rounded-xl transition-all shadow-2xs flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
-                            >
-                              <span>ترقية لخادم ⬆️</span>
-                            </button>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => handleUpdateUserRole(item.id, 'student', item.grade || 'first')}
-                              disabled={roleUpdatingId === item.id || item.phone === '01275571569'}
-                              className="min-h-[44px] bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 font-bold text-xs px-3 py-2 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
-                            >
-                              <span>تحويل لمخدوم ⬇️</span>
-                            </button>
-                          )}
+                        {/* Role Selector Controls */}
+                        <div className="bg-slate-50 p-2 rounded-xl border border-slate-200 flex items-center justify-between gap-2">
+                          <span className="text-[11px] font-bold text-slate-600">تغيير الرتبة:</span>
+                          <select
+                            value={item.role || 'student'}
+                            disabled={roleUpdatingId === item.id || item.phone === '01275571569'}
+                            onChange={(e) => handleUpdateUserRole(item.id, e.target.value, item.grade || 'first')}
+                            className="bg-white border border-slate-300 rounded-lg px-2 py-1 text-xs font-bold text-slate-800 focus:outline-none focus:border-maroon-800"
+                          >
+                            <option value="student">مخدوم 🎓</option>
+                            <option value="servant">خادم ✝️</option>
+                            <option value="servant_leader">أمين خدمة 🛡️</option>
+                            {item.phone === '01275571569' && <option value="admin">مشرف النظام 👑</option>}
+                          </select>
+                        </div>
 
                           <button
                             type="button"
@@ -420,16 +428,28 @@ export default function ServantUsersHub({
                           <td className="py-3.5 px-3 font-mono text-slate-600" dir="ltr">{item.phone}</td>
                           <td className="py-3.5 px-3">
                             <span className={`inline-flex items-center gap-1 text-[11px] font-extrabold px-2.5 py-1 rounded-full ${
-                              item.role === 'servant'
+                              item.role === 'admin' || item.phone === '01275571569'
+                                ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                                : item.role === 'servant_leader'
+                                ? 'bg-purple-100 text-purple-900 border border-purple-200'
+                                : item.role === 'servant'
                                 ? 'bg-maroon-100 text-maroon-900 border border-maroon-200'
                                 : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
                             }`}>
-                              {item.role === 'servant' ? 'خادم' : 'مخدوم'}
+                              {item.role === 'admin' || item.phone === '01275571569'
+                                ? 'مشرف النظام 👑'
+                                : item.role === 'servant_leader'
+                                ? 'أمين خدمة 🛡️'
+                                : item.role === 'servant'
+                                ? 'خادم ✝️'
+                                : 'مخدوم 🎓'}
                             </span>
                           </td>
                           <td className="py-3.5 px-3 font-bold text-slate-700">
                             {(item.role === 'admin' || item.phone === '01275571569' || (item.email && item.email.includes('nader.kamel')))
                               ? <span className="text-amber-700 font-extrabold">مشرف التطبيق 👑</span>
+                              : item.role === 'servant_leader'
+                              ? <span className="text-purple-800 font-bold">أمين خدمة (متابعة نوتة الخدام)</span>
                               : item.role === 'servant'
                               ? <span className="text-maroon-800 font-bold">خادم عام (جميع المراحل)</span>
                               : getGradeTitle(item.grade || 'first')}
@@ -490,27 +510,17 @@ export default function ServantUsersHub({
                             )}
                           </td>
                           <td className="py-3.5 px-3">
-                            <div className="flex items-center gap-1.5">
-                              {item.role === 'student' ? (
-                                <button
-                                  type="button"
-                                  onClick={() => handleUpdateUserRole(item.id, 'servant')}
-                                  disabled={roleUpdatingId === item.id}
-                                  className="min-h-[38px] bg-maroon-800 hover:bg-maroon-700 text-white font-bold text-[11px] px-3 py-1.5 rounded-xl transition-all shadow-2xs flex items-center gap-1 cursor-pointer active:scale-95"
-                                >
-                                  {roleUpdatingId === item.id ? 'جاري...' : 'ترقية إلى خادم ⬆️'}
-                                </button>
-                              ) : (
-                                <button
-                                  type="button"
-                                  onClick={() => handleUpdateUserRole(item.id, 'student', item.grade || 'first')}
-                                  disabled={roleUpdatingId === item.id || item.phone === '01275571569'}
-                                  className="min-h-[38px] bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 font-bold text-[11px] px-3 py-1.5 rounded-xl transition-all flex items-center gap-1 cursor-pointer active:scale-95"
-                                >
-                                  {roleUpdatingId === item.id ? 'جاري...' : 'تحويل إلى مخدوم ⬇️'}
-                                </button>
-                              )}
-                            </div>
+                            <select
+                              value={item.role || 'student'}
+                              disabled={roleUpdatingId === item.id || item.phone === '01275571569'}
+                              onChange={(e) => handleUpdateUserRole(item.id, e.target.value, item.grade || 'first')}
+                              className="bg-white border border-slate-300 rounded-xl px-2.5 py-1.5 text-xs font-bold text-slate-800 focus:outline-none focus:border-maroon-800 cursor-pointer shadow-2xs"
+                            >
+                              <option value="student">مخدوم 🎓</option>
+                              <option value="servant">خادم ✝️</option>
+                              <option value="servant_leader">أمين خدمة 🛡️</option>
+                              {item.phone === '01275571569' && <option value="admin">مشرف النظام 👑</option>}
+                            </select>
                           </td>
                           <td className="py-3.5 px-3">
                             {item.role === 'servant' ? (

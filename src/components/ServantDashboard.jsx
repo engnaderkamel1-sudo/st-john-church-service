@@ -27,6 +27,8 @@ import { collection, getDocs, doc, updateDoc, setDoc, addDoc, deleteDoc, query, 
 export default function ServantDashboard({ user, onLogout, onUpdateUser, externalMenuTrigger }) {
   // Check if current user is App Administrator (Nader Reda or church prep account)
   const isAppAdmin = user && (user.role === 'admin' || user.phone === '01275571569' || (user.email && (user.email.includes('nader.kamel') || user.email.includes('st.johnmaadiservantsprep@gmail.com'))));
+  // Check if current user is Servant Leader (أمين خدمة) or Admin
+  const isServantLeader = isAppAdmin || (user && user.role === 'servant_leader');
 
   const [mainTab, setMainTab] = useState(isAppAdmin ? 'users_hub' : 'subjects_hub');
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
@@ -469,6 +471,26 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
 
     return () => unsub();
   }, [studentTrackingMonth]);
+
+  // Sync all servants' spiritual diaries ONLY for Servant Leaders and Admin
+  const [servantsDiariesList, setServantsDiariesList] = useState([]);
+  useEffect(() => {
+    if (!isServantLeader) {
+      setServantsDiariesList([]);
+      return;
+    }
+    const q = query(
+      collection(db, 'spiritual_diaries'),
+      where('userRole', 'in', ['servant', 'servant_leader']),
+      where('month', '==', studentTrackingMonth)
+    );
+    const unsub = onSnapshot(q, (snapshot) => {
+      const list = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+      setServantsDiariesList(list);
+    }, (err) => console.error('Error fetching servants spiritual diaries:', err));
+
+    return () => unsub();
+  }, [isServantLeader, studentTrackingMonth]);
 
   const handleToggleServantDiaryItem = async (key) => {
     const dayData = servantDiary[selectedDiaryDate] || {
@@ -1580,6 +1602,8 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
           setStudentTrackingMonth={setStudentTrackingMonth}
           allUsers={allUsers}
           studentsDiariesList={studentsDiariesList}
+          servantsDiariesList={servantsDiariesList}
+          isServantLeader={isServantLeader}
           selectedStudentDetail={selectedStudentDetail}
           setSelectedStudentDetail={setSelectedStudentDetail}
           onSelectStudent={(st) => setStudent360Profile(st)}

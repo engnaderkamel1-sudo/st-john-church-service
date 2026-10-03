@@ -99,7 +99,13 @@ export default function UserProfileModal({
           <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-3.5 flex items-center justify-between">
             <span className="text-xs text-slate-500 font-medium">الصفة والصلاحية:</span>
             <span className="text-xs font-black px-3 py-1 rounded-full bg-maroon-50 text-maroon-900 border border-maroon-200">
-              {isAppAdmin ? 'مشرف التطبيق 👑' : user.role === 'student' ? 'مخدوم 🎓' : 'خادم عام ✝️'}
+              {isAppAdmin 
+                ? 'مشرف التطبيق 👑' 
+                : user.role === 'servant_leader' 
+                ? 'أمين خدمة 🛡️' 
+                : user.role === 'student' 
+                ? 'مخدوم 🎓' 
+                : 'خادم عام ✝️'}
             </span>
           </div>
 
