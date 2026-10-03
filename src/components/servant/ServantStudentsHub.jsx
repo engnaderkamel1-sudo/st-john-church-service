@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Users, Search, Phone, Eye, Award, CheckCircle, AlertCircle, Sparkles, Filter, Calendar } from 'lucide-react';
+import { Users, Search, Phone, Eye, Award, CheckCircle, AlertCircle, Sparkles, Filter, Calendar, MessageCircle, BookOpen } from 'lucide-react';
 
 export default function ServantStudentsHub({
   allUsers,
@@ -169,15 +169,41 @@ export default function ServantStudentsHub({
                   </div>
                 </div>
 
-                {/* 360 Degree Profile Action Button */}
-                <button
-                  type="button"
-                  onClick={() => onSelectStudent && onSelectStudent(st)}
-                  className="w-full min-h-[42px] bg-gradient-to-r from-maroon-900 via-maroon-800 to-maroon-900 hover:from-maroon-950 hover:to-maroon-900 text-white rounded-2xl font-bold text-xs shadow-xs flex items-center justify-center gap-2 cursor-pointer active:scale-95 transition-all ring-1 ring-gold-400/30"
-                >
-                  <Eye className="w-4 h-4 text-gold-300" />
-                  <span>عرض الملف الشامل (360°) 🔍</span>
-                </button>
+                {/* Quick Action Buttons: WhatsApp & Call & 360 Profile */}
+                <div className="flex items-center gap-2 pt-1">
+                  {st.phone ? (
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <a
+                        href={`https://wa.me/20${st.phone.replace(/^0+/, '')}?text=${encodeURIComponent(`سلام ونعمة يا ${st.fullName}، أسرة خدمة القديس يوحنا المعمدان بتطمن عليك 🌹`)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="h-10 px-3 rounded-2xl bg-emerald-50 hover:bg-emerald-600 text-emerald-700 hover:text-white border border-emerald-200 flex items-center justify-center gap-1.5 text-xs font-bold transition-all shadow-2xs"
+                        title="محادثة واتساب مباشرة 💬"
+                      >
+                        <MessageCircle className="w-4 h-4" />
+                        <span className="hidden xs:inline">واتساب</span>
+                      </a>
+                      <a
+                        href={`tel:${st.phone}`}
+                        className="h-10 px-3 rounded-2xl bg-blue-50 hover:bg-blue-600 text-blue-700 hover:text-white border border-blue-200 flex items-center justify-center gap-1.5 text-xs font-bold transition-all shadow-2xs"
+                        title="اتصال هاتفي مباشر 📞"
+                      >
+                        <Phone className="w-4 h-4" />
+                        <span className="hidden xs:inline">اتصال</span>
+                      </a>
+                    </div>
+                  ) : null}
+
+                  {/* 360 Degree Profile Action Button */}
+                  <button
+                    type="button"
+                    onClick={() => onSelectStudent && onSelectStudent(st)}
+                    className="flex-1 min-h-[40px] bg-gradient-to-r from-maroon-900 via-maroon-800 to-maroon-900 hover:from-maroon-950 hover:to-maroon-900 text-white rounded-2xl font-bold text-xs shadow-xs flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 transition-all ring-1 ring-gold-400/30"
+                  >
+                    <Eye className="w-4 h-4 text-gold-300" />
+                    <span>الملف الشامل 🔍</span>
+                  </button>
+                </div>
               </div>
             );
           })}

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   X, User, Award, CheckCircle, Calendar, FileText, Sun, Sparkles, 
   MessageSquare, Save, Check, CheckSquare, Clock, Phone, AlertCircle,
-  GraduationCap, Briefcase, Heart, MapPin, Users
+  GraduationCap, Briefcase, Heart, MapPin, Users, MessageCircle
 } from 'lucide-react';
 import { db } from '../../firebase';
 import { collection, query, where, onSnapshot, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
@@ -128,10 +128,31 @@ export default function StudentProfileModal({ student, onClose, getGradeTitle })
                   {getGradeTitle ? getGradeTitle(student.grade || 'first') : student.grade}
                 </span>
               </div>
-              <div className="flex items-center gap-3 text-xs text-slate-300 mt-0.5">
-                <span className="flex items-center gap-1 font-mono" dir="ltr">
-                  <Phone className="w-3 h-3 text-gold-300" /> {student.phone}
-                </span>
+              <div className="flex flex-wrap items-center gap-2 text-xs text-slate-300 mt-1">
+                {student.phone ? (
+                  <div className="flex items-center gap-1.5">
+                    <a
+                      href={`tel:${student.phone}`}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-white/10 hover:bg-blue-600 text-white font-mono transition-colors"
+                      title="اتصال هاتفي مباشر 📞"
+                    >
+                      <Phone className="w-3 h-3 text-gold-300" />
+                      <span dir="ltr">{student.phone}</span>
+                    </a>
+                    <a
+                      href={`https://wa.me/20${student.phone.replace(/^0+/, '')}?text=${encodeURIComponent(`سلام ونعمة يا ${student.fullName}، أسرة خدمة القديس يوحنا المعمدان بتطمن عليك 🌹`)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-emerald-600/80 hover:bg-emerald-600 text-white font-bold transition-colors shadow-2xs"
+                      title="محادثة واتساب مباشرة 💬"
+                    >
+                      <MessageCircle className="w-3 h-3" />
+                      <span>واتساب</span>
+                    </a>
+                  </div>
+                ) : (
+                  <span className="text-slate-400">بدون هاتف مسجل</span>
+                )}
                 <span>•</span>
                 <span className="text-gold-300 font-bold">{student.points || 0} نقطة روحية ⭐</span>
               </div>
