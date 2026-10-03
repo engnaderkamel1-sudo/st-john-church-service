@@ -6,7 +6,7 @@ import {
   HelpCircle, Filter, Send, Layers, AlertCircle, MessageSquare, TrendingUp, Trophy, UserCog, RefreshCw,
   BellRing, Unlock, Lock, UserPlus, UserX, KeyRound, Copy, Sun, Sunset, Moon, Sparkles, Heart,
   History, Activity, Menu, X, Video, Music, ExternalLink,
-  Eye, EyeOff, Calendar, ChevronRight, FileSpreadsheet, File, BarChart3, TrendingDown, Image as ImageIcon,
+  Eye, EyeOff, Calendar, CalendarOff, ChevronRight, FileSpreadsheet, File, BarChart3, TrendingDown, Image as ImageIcon,
   AlertTriangle
 } from 'lucide-react';
 import { db } from '../firebase';
