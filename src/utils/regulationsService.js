@@ -139,6 +139,7 @@ export const DEFAULT_STAGE_REGULATIONS = {
   first: {
     title: 'لائحة تقييم سنة أولى (إعداد خدام)',
     totalMax: 1285,
+    isPublished: true,
     items: [
       {
         id: '1',
@@ -275,6 +276,7 @@ export const DEFAULT_STAGE_REGULATIONS = {
   second: {
     title: 'لائحة تقييم سنة ثانية (إعداد خدام)',
     totalMax: 1485,
+    isPublished: true,
     items: [
       {
         id: '1',
@@ -411,12 +413,14 @@ export const DEFAULT_STAGE_REGULATIONS = {
   third: {
     title: 'لائحة تقييم سنة ثالثة',
     totalMax: 0,
+    isPublished: false,
     items: JSON.parse(JSON.stringify(STAGE_TEMPLATE_ITEMS)),
     emptyMessage: 'لائحة سنة ثالثة قيد الإعداد والاعتماد من قِبل إدارة الخدمة ⏳'
   },
   elisha: {
     title: 'لائحة تقييم فصل أليشع (تمهيدي إعداد خدام)',
     totalMax: 0,
+    isPublished: false,
     items: JSON.parse(JSON.stringify(STAGE_TEMPLATE_ITEMS)),
     emptyMessage: 'لائحة فصل أليشع قيد الإعداد والاعتماد من قِبل إدارة الخدمة ⏳'
   }
