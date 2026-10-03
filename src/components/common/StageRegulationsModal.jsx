@@ -224,6 +224,39 @@ export default function StageRegulationsModal({
     }
   };
 
+  // Direct 1-Click Toggle Publish / Hide without editing
+  const [togglePublishLoading, setTogglePublishLoading] = useState(false);
+  const handleTogglePublishDirectly = async () => {
+    if (!isAdmin) return;
+    setTogglePublishLoading(true);
+    try {
+      const currentStage = regulations[activeStage] || DEFAULT_STAGE_REGULATIONS[activeStage];
+      const newPublishedStatus = !currentStage.isPublished;
+      const updatedStage = {
+        ...currentStage,
+        isPublished: newPublishedStatus
+      };
+      const updatedRegs = {
+        ...regulations,
+        [activeStage]: updatedStage
+      };
+
+      await setDoc(doc(db, 'service_settings', 'stage_regulations'), {
+        ...updatedRegs,
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+
+      setRegulations(updatedRegs);
+      setSaveSuccess(newPublishedStatus ? 'تم إظهار اللائحة للمخدومين بنجاح! 👁️' : 'تم إخفاء اللائحة عن المخدومين لحين الانتهاء من التعديل! 🔒');
+      setTimeout(() => setSaveSuccess(null), 3500);
+    } catch (err) {
+      console.error('Toggle publish error:', err);
+      alert('حدث خطأ أثناء تغيير حالة اللائحة.');
+    } finally {
+      setTogglePublishLoading(false);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-900/70 backdrop-blur-xs animate-in fade-in duration-200">
       <div className="bg-white w-full max-w-4xl rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[92vh] text-right font-sans">
@@ -280,17 +313,31 @@ export default function StageRegulationsModal({
               <div className="flex items-center gap-2">
                 <span className="text-[11px] font-black tracking-wider text-amber-800 uppercase block">المرحلة</span>
                 {isAdmin && (
-                  isStagePublished ? (
-                    <span className="text-[10px] bg-emerald-100 text-emerald-800 border border-emerald-300 px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
-                      <Globe className="w-3 h-3" />
-                      ظاهرة للطلبة ✅
-                    </span>
-                  ) : (
-                    <span className="text-[10px] bg-slate-200 text-slate-700 border border-slate-300 px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
-                      <Lock className="w-3 h-3" />
-                      مخفية مؤقتاً 🔒
-                    </span>
-                  )
+                  <button
+                    type="button"
+                    onClick={handleTogglePublishDirectly}
+                    disabled={togglePublishLoading || isEditing}
+                    className={`text-[11px] px-3 py-1 rounded-full font-bold flex items-center gap-1.5 transition-all cursor-pointer active:scale-95 shadow-2xs ${
+                      isStagePublished 
+                        ? 'bg-emerald-100 hover:bg-emerald-200 text-emerald-900 border border-emerald-300' 
+                        : 'bg-rose-100 hover:bg-rose-200 text-rose-900 border border-rose-300'
+                    }`}
+                    title={isStagePublished ? 'اضغط لإخفاء اللائحة عن المخدومين مؤقتاً لحين تعديلها' : 'اضغط لإظهار ونشر اللائحة للمخدومين فوراً'}
+                  >
+                    {togglePublishLoading ? (
+                      <span className="animate-spin text-xs">⏳</span>
+                    ) : isStagePublished ? (
+                      <>
+                        <Globe className="w-3.5 h-3.5 text-emerald-700" />
+                        <span>ظاهرة للطلبة ✅ (اضغط للإخفاء)</span>
+                      </>
+                    ) : (
+                      <>
+                        <Lock className="w-3.5 h-3.5 text-rose-700" />
+                        <span>مخفية عن الطلبة 🔒 (اضغط للإظهار)</span>
+                      </>
+                    )}
+                  </button>
                 )}
               </div>
               <h3 className="text-base font-extrabold text-slate-900 mt-0.5">{currentStageData.title}</h3>

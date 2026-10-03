@@ -1840,7 +1840,7 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
         onClose={() => setShowRegulationsModal(false)}
         initialStage={selectedGrade || 'first'}
         isStudent={false}
-        isAdmin={isAppAdmin}
+        isAdmin={isServantLeader}
       />
 
       {/* 8. User Account & Profile Modal */}
