@@ -1475,8 +1475,7 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
               </nav>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
       {/* Main Content Area (100% Full Width Real Estate) */}
       <main className="w-full space-y-6">
