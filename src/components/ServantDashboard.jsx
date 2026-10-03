@@ -18,6 +18,7 @@ import ServantUsersHub from './servant/ServantUsersHub';
 import ServantStudentsHub from './servant/ServantStudentsHub';
 import ServantManualAttendance from './servant/ServantManualAttendance';
 import StudentProfileModal from './servant/StudentProfileModal';
+import ServantErrorsHub from './servant/ServantErrorsHub';
 import StageRegulationsModal from './common/StageRegulationsModal';
 import UserProfileModal from './common/UserProfileModal';
 import { collection, getDocs, doc, updateDoc, setDoc, addDoc, deleteDoc, query, where, orderBy, serverTimestamp, limit, onSnapshot } from 'firebase/firestore';
@@ -1154,6 +1155,20 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
             </button>
           )}
 
+          {isAppAdmin && (
+            <button
+              type="button"
+              onClick={() => { setMainTab('errors_hub'); setActiveSubject(null); }}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 transition-all cursor-pointer ${
+                mainTab === 'errors_hub'
+                  ? 'bg-red-800 text-white shadow-xs'
+                  : 'bg-red-50 text-red-700 hover:bg-red-100 border border-red-200'
+              }`}
+            >
+              ⚠️ سجل الأخطاء
+            </button>
+          )}
+
           <button
             type="button"
             onClick={() => { setMainTab('subjects_hub'); setCurriculumTarget('students'); }}
@@ -1400,6 +1415,33 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
               </button>
             )}
 
+            {/* 2.1 App Admin only: Errors Hub */}
+            {isAppAdmin && (
+              <button
+                type="button"
+                onClick={() => {
+                  setMainTab('errors_hub');
+                  setActiveSubject(null);
+                  setMobileSidebarOpen(false);
+                }}
+                className={`w-full text-right py-2.5 px-3 rounded-2xl flex items-center justify-between text-xs font-bold transition-all ${
+                  mainTab === 'errors_hub'
+                    ? 'bg-red-800 text-white shadow-sm'
+                    : 'text-red-700 hover:bg-red-50 hover:text-red-900'
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <AlertTriangle className={`w-4 h-4 ${mainTab === 'errors_hub' ? 'text-white' : 'text-red-600'}`} />
+                  <span>سجل أخطاء التطبيق والبلاغات</span>
+                </div>
+                <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                  mainTab === 'errors_hub' ? 'bg-white text-red-900' : 'bg-red-100 text-red-800'
+                }`}>
+                  جديد ⚠️
+                </span>
+              </button>
+            )}
+
             {/* 3. Subjects & Curriculum for Students */}
             <button
               type="button"
@@ -1595,6 +1637,11 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
           roleUpdatingId={roleUpdatingId}
           onSelectStudent={(st) => setStudent360Profile(st)}
         />
+      )}
+
+      {/* 0.1 App Errors & Crash Reports Hub (Admin Only) */}
+      {isAppAdmin && mainTab === 'errors_hub' && (
+        <ServantErrorsHub />
       )}
 
       {/* 1. Subjects & Curriculum Management Hub */}

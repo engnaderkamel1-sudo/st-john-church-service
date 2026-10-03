@@ -5,6 +5,7 @@ import AuthModal from './components/AuthModal';
 import StudentDashboard from './components/StudentDashboard';
 import ServantDashboard from './components/ServantDashboard';
 import AutoUpdateWatcher from './components/common/AutoUpdateWatcher';
+import ErrorBoundary from './components/common/ErrorBoundary';
 
 import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore';
 
@@ -337,23 +338,24 @@ export default function App() {
 
       {/* Main Container */}
       <main className="flex-1 max-w-5xl mx-auto px-4 py-6 w-full flex flex-col justify-center">
-        {currentUser ? (
-          currentUser.role === 'student' || servantPreviewMode ? (
-            <StudentDashboard 
-              user={{ ...currentUser, role: 'student', grade: currentUser.grade || 'first' }} 
-              onLogout={handleLogout}
-              onUpdateUser={(updated) => setCurrentUser(prev => ({ ...prev, ...updated }))}
-              externalMenuTrigger={mobileMenuTrigger}
-            />
+        <ErrorBoundary currentUser={currentUser}>
+          {currentUser ? (
+            currentUser.role === 'student' || servantPreviewMode ? (
+              <StudentDashboard 
+                user={{ ...currentUser, role: 'student', grade: currentUser.grade || 'first' }} 
+                onLogout={handleLogout}
+                onUpdateUser={(updated) => setCurrentUser(prev => ({ ...prev, ...updated }))}
+                externalMenuTrigger={mobileMenuTrigger}
+              />
+            ) : (
+              <ServantDashboard 
+                user={currentUser} 
+                onLogout={handleLogout}
+                onUpdateUser={(updated) => setCurrentUser(prev => ({ ...prev, ...updated }))}
+                externalMenuTrigger={mobileMenuTrigger}
+              />
+            )
           ) : (
-            <ServantDashboard 
-              user={currentUser} 
-              onLogout={handleLogout}
-              onUpdateUser={(updated) => setCurrentUser(prev => ({ ...prev, ...updated }))}
-              externalMenuTrigger={mobileMenuTrigger}
-            />
-          )
-        ) : (
           /* Landing Screen: Clean, Direct Entry */
           <div className="w-full max-w-xl mx-auto text-center space-y-8 py-8">
             <div>
@@ -399,6 +401,7 @@ export default function App() {
             </div>
           </div>
         )}
+        </ErrorBoundary>
       </main>
 
       {/* Footer */}
