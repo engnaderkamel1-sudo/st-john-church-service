@@ -1207,22 +1207,45 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
 
               {/* Navigation Items (Unified Clean Styling) */}
               <nav className="p-2.5 space-y-1 overflow-y-auto max-h-[calc(100vh-70px)]">
-                {/* 1. Regulations */}
+                {/* 1. Attendance QR Code (Priority #1 on Fridays) */}
                 <button
                   type="button"
                   onClick={() => {
-                    setShowRegulationsModal(true);
+                    setMainTab('attendance_qr');
+                    setActiveSubject(null);
                     setMobileSidebarOpen(false);
                   }}
-                  className="w-full text-right py-2 px-3 rounded-xl flex items-center justify-between text-xs font-bold transition-all text-slate-700 hover:bg-slate-100 hover:text-maroon-900 cursor-pointer"
+                  className={`w-full text-right py-2 px-3 rounded-xl flex items-center gap-2.5 text-xs font-bold transition-all cursor-pointer ${
+                    mainTab === 'attendance_qr'
+                      ? 'bg-maroon-800 text-white shadow-xs'
+                      : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
+                  }`}
+                >
+                  <QrCode className={`w-4 h-4 ${mainTab === 'attendance_qr' ? 'text-gold-300' : 'text-maroon-800'}`} />
+                  <span>كود الحضور (QR)</span>
+                </button>
+
+                {/* 2. Manual Attendance */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMainTab('manual_attendance');
+                    setActiveSubject(null);
+                    setMobileSidebarOpen(false);
+                  }}
+                  className={`w-full text-right py-2 px-3 rounded-xl flex items-center justify-between text-xs font-bold transition-all cursor-pointer ${
+                    mainTab === 'manual_attendance'
+                      ? 'bg-maroon-800 text-white shadow-xs'
+                      : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
+                  }`}
                 >
                   <div className="flex items-center gap-2.5">
-                    <Award className="w-4 h-4 text-amber-600 shrink-0" />
-                    <span>لائحة درجات المرحلة 📋</span>
+                    <UserCheck className={`w-4 h-4 ${mainTab === 'manual_attendance' ? 'text-gold-300' : 'text-emerald-700'}`} />
+                    <span>تسجيل حضور يدوي</span>
                   </div>
                 </button>
 
-                {/* 2. Students Data Hub */}
+                {/* 3. Students Data Hub */}
                 <button
                   type="button"
                   onClick={() => {
@@ -1247,54 +1270,178 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
                   </span>
                 </button>
 
-                {/* 3. Manual Attendance */}
+                {/* 4. Students Spiritual Tracking */}
                 <button
                   type="button"
                   onClick={() => {
-                    setMainTab('manual_attendance');
+                    setMainTab('spiritual_diary');
+                    setSpiritualDiaryTab('students_tracking');
                     setActiveSubject(null);
                     setMobileSidebarOpen(false);
                   }}
                   className={`w-full text-right py-2 px-3 rounded-xl flex items-center justify-between text-xs font-bold transition-all cursor-pointer ${
-                    mainTab === 'manual_attendance'
+                    mainTab === 'spiritual_diary' && spiritualDiaryTab === 'students_tracking'
                       ? 'bg-maroon-800 text-white shadow-xs'
                       : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
                   }`}
                 >
                   <div className="flex items-center gap-2.5">
-                    <UserCheck className={`w-4 h-4 ${mainTab === 'manual_attendance' ? 'text-gold-300' : 'text-emerald-700'}`} />
-                    <span>تسجيل حضور يدوي</span>
+                    <Sun className={`w-4 h-4 ${mainTab === 'spiritual_diary' && spiritualDiaryTab === 'students_tracking' ? 'text-gold-300' : 'text-amber-500'}`} />
+                    <span>متابعة النوتة الروحية للمخدومين</span>
                   </div>
                 </button>
 
-                {/* 3.1 Holidays & Cancelled Fridays */}
+                {/* Divider */}
+                <div className="my-1 border-t border-slate-100" />
+
+                {/* 5. Question Bank & Exams */}
                 <button
                   type="button"
                   onClick={() => {
-                    setMainTab('holidays_manager');
+                    setMainTab('exams_bank_hub');
+                    setActiveSubject(null);
+                    setMobileSidebarOpen(false);
+                  }}
+                  className={`w-full text-right py-2 px-3 rounded-xl flex items-center gap-2.5 text-xs font-bold transition-all cursor-pointer ${
+                    mainTab === 'exams_bank_hub'
+                      ? 'bg-maroon-800 text-white shadow-xs'
+                      : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
+                  }`}
+                >
+                  <FileText className={`w-4 h-4 ${mainTab === 'exams_bank_hub' ? 'text-gold-300' : 'text-slate-500'}`} />
+                  <span>بنك الأسئلة والامتحانات</span>
+                </button>
+
+                {/* 6. Subjects & Curriculum for Students */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMainTab('subjects_hub');
+                    setCurriculumTarget('students');
+                    setActiveSubject(null);
+                    setMobileSidebarOpen(false);
+                  }}
+                  className={`w-full text-right py-2 px-3 rounded-xl flex items-center gap-2.5 text-xs font-bold transition-all cursor-pointer ${
+                    mainTab === 'subjects_hub' && curriculumTarget === 'students'
+                      ? 'bg-maroon-800 text-white shadow-xs'
+                      : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
+                  }`}
+                >
+                  <BookOpen className={`w-4 h-4 ${mainTab === 'subjects_hub' && curriculumTarget === 'students' ? 'text-gold-300' : 'text-slate-500'}`} />
+                  <span>مناهج ومراجع المخدومين</span>
+                </button>
+
+                {/* 7. Subjects & Curriculum for Servants */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMainTab('subjects_hub');
+                    setCurriculumTarget('servants');
+                    setActiveSubject(null);
+                    setMobileSidebarOpen(false);
+                  }}
+                  className={`w-full text-right py-2 px-3 rounded-xl flex items-center gap-2.5 text-xs font-bold transition-all cursor-pointer ${
+                    mainTab === 'subjects_hub' && curriculumTarget === 'servants'
+                      ? 'bg-maroon-800 text-white shadow-xs'
+                      : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
+                  }`}
+                >
+                  <ShieldCheck className={`w-4 h-4 ${mainTab === 'subjects_hub' && curriculumTarget === 'servants' ? 'text-gold-300' : 'text-maroon-700'}`} />
+                  <span>مناهج ومراجع الخدام</span>
+                </button>
+
+                {/* 8. Regulations */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowRegulationsModal(true);
+                    setMobileSidebarOpen(false);
+                  }}
+                  className="w-full text-right py-2 px-3 rounded-xl flex items-center justify-between text-xs font-bold transition-all text-slate-700 hover:bg-slate-100 hover:text-maroon-900 cursor-pointer"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Award className="w-4 h-4 text-amber-600 shrink-0" />
+                    <span>لائحة درجات المرحلة 📋</span>
+                  </div>
+                </button>
+
+                {/* 9. Analytics */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMainTab('analytics_hub');
                     setActiveSubject(null);
                     setMobileSidebarOpen(false);
                   }}
                   className={`w-full text-right py-2 px-3 rounded-xl flex items-center justify-between text-xs font-bold transition-all cursor-pointer ${
-                    mainTab === 'holidays_manager'
-                      ? 'bg-rose-800 text-white shadow-xs'
-                      : 'text-slate-700 hover:bg-rose-50 hover:text-rose-900'
+                    mainTab === 'analytics_hub'
+                      ? 'bg-maroon-800 text-white shadow-xs'
+                      : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
                   }`}
                 >
                   <div className="flex items-center gap-2.5">
-                    <CalendarOff className={`w-4 h-4 ${mainTab === 'holidays_manager' ? 'text-white' : 'text-rose-700'}`} />
-                    <span>إجازات الخدمة والجمع المعفاة 🗓️</span>
+                    <Award className={`w-4 h-4 ${mainTab === 'analytics_hub' ? 'text-gold-300' : 'text-slate-500'}`} />
+                    <span>الإحصائيات والأوائل</span>
                   </div>
-                  {serviceHolidays.length > 0 && (
-                    <span className={`text-[10px] min-w-5 text-center px-1.5 py-0.2 rounded-md font-bold ${
-                      mainTab === 'holidays_manager' ? 'bg-white text-rose-950' : 'bg-rose-100 text-rose-900'
-                    }`}>
-                      {serviceHolidays.length}
-                    </span>
+                  {redFlagsCount > 0 && (
+                    <span className="w-2 h-2 bg-red-500 rounded-full inline-block animate-pulse"></span>
                   )}
                 </button>
 
-                {/* 4. App Admin only: Users & Roles */}
+                {/* Divider */}
+                <div className="my-1 border-t border-slate-100" />
+
+                {/* 10. Servant Personal Spiritual Diary */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMainTab('spiritual_diary');
+                    setSpiritualDiaryTab('my_diary');
+                    setActiveSubject(null);
+                    setMobileSidebarOpen(false);
+                  }}
+                  className={`w-full text-right py-2 px-3 rounded-xl flex items-center justify-between text-xs font-bold transition-all cursor-pointer ${
+                    mainTab === 'spiritual_diary' && spiritualDiaryTab === 'my_diary'
+                      ? 'bg-maroon-800 text-white shadow-xs'
+                      : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Sun className={`w-4 h-4 ${mainTab === 'spiritual_diary' && spiritualDiaryTab === 'my_diary' ? 'text-gold-300' : 'text-amber-600'}`} />
+                    <span>نوتتي الروحية كخادم</span>
+                  </div>
+                </button>
+
+                {/* 11. Holidays & Cancelled Fridays (Admin & Servant Leader Only) */}
+                {(isAppAdmin || isServantLeader) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMainTab('holidays_manager');
+                      setActiveSubject(null);
+                      setMobileSidebarOpen(false);
+                    }}
+                    className={`w-full text-right py-2 px-3 rounded-xl flex items-center justify-between text-xs font-bold transition-all cursor-pointer ${
+                      mainTab === 'holidays_manager'
+                        ? 'bg-rose-800 text-white shadow-xs'
+                        : 'text-slate-700 hover:bg-rose-50 hover:text-rose-900'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <CalendarOff className={`w-4 h-4 ${mainTab === 'holidays_manager' ? 'text-white' : 'text-rose-700'}`} />
+                      <span>إجازات الخدمة والجمع المعفاة 🗓️</span>
+                    </div>
+                    {serviceHolidays.length > 0 && (
+                      <span className={`text-[10px] min-w-5 text-center px-1.5 py-0.2 rounded-md font-bold ${
+                        mainTab === 'holidays_manager' ? 'bg-white text-rose-950' : 'bg-rose-100 text-rose-900'
+                      }`}>
+                        {serviceHolidays.length}
+                      </span>
+                    )}
+                  </button>
+                )}
+
+                {/* 12. App Admin only: Users & Roles */}
                 {isAppAdmin && (
                   <button
                     type="button"
@@ -1324,7 +1471,7 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
                   </button>
                 )}
 
-                {/* 5. App Admin only: Activity & Login Log */}
+                {/* 13. App Admin only: Activity & Login Log */}
                 {isAppAdmin && (
                   <button
                     type="button"
@@ -1355,7 +1502,7 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
                   </button>
                 )}
 
-                {/* 6. App Admin only: Errors Hub */}
+                {/* 14. App Admin only: Errors Hub */}
                 {isAppAdmin && (
                   <button
                     type="button"
@@ -1376,123 +1523,6 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
                     </div>
                   </button>
                 )}
-
-                {/* 7. Subjects & Curriculum for Students */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMainTab('subjects_hub');
-                    setCurriculumTarget('students');
-                    setActiveSubject(null);
-                    setMobileSidebarOpen(false);
-                  }}
-                  className={`w-full text-right py-2 px-3 rounded-xl flex items-center gap-2.5 text-xs font-bold transition-all cursor-pointer ${
-                    mainTab === 'subjects_hub' && curriculumTarget === 'students'
-                      ? 'bg-maroon-800 text-white shadow-xs'
-                      : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
-                  }`}
-                >
-                  <BookOpen className={`w-4 h-4 ${mainTab === 'subjects_hub' && curriculumTarget === 'students' ? 'text-gold-300' : 'text-slate-500'}`} />
-                  <span>مناهج ومراجع المخدومين</span>
-                </button>
-
-                {/* 8. Subjects & Curriculum for Servants */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMainTab('subjects_hub');
-                    setCurriculumTarget('servants');
-                    setActiveSubject(null);
-                    setMobileSidebarOpen(false);
-                  }}
-                  className={`w-full text-right py-2 px-3 rounded-xl flex items-center gap-2.5 text-xs font-bold transition-all cursor-pointer ${
-                    mainTab === 'subjects_hub' && curriculumTarget === 'servants'
-                      ? 'bg-maroon-800 text-white shadow-xs'
-                      : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
-                  }`}
-                >
-                  <ShieldCheck className={`w-4 h-4 ${mainTab === 'subjects_hub' && curriculumTarget === 'servants' ? 'text-gold-300' : 'text-maroon-700'}`} />
-                  <span>مناهج ومراجع الخدام</span>
-                </button>
-
-                {/* 9. Question Bank & Exams */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMainTab('exams_bank_hub');
-                    setActiveSubject(null);
-                    setMobileSidebarOpen(false);
-                  }}
-                  className={`w-full text-right py-2 px-3 rounded-xl flex items-center gap-2.5 text-xs font-bold transition-all cursor-pointer ${
-                    mainTab === 'exams_bank_hub'
-                      ? 'bg-maroon-800 text-white shadow-xs'
-                      : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
-                  }`}
-                >
-                  <FileText className={`w-4 h-4 ${mainTab === 'exams_bank_hub' ? 'text-gold-300' : 'text-slate-500'}`} />
-                  <span>بنك الأسئلة والامتحانات</span>
-                </button>
-
-                {/* 10. Analytics */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMainTab('analytics_hub');
-                    setActiveSubject(null);
-                    setMobileSidebarOpen(false);
-                  }}
-                  className={`w-full text-right py-2 px-3 rounded-xl flex items-center justify-between text-xs font-bold transition-all cursor-pointer ${
-                    mainTab === 'analytics_hub'
-                      ? 'bg-maroon-800 text-white shadow-xs'
-                      : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5">
-                    <Award className={`w-4 h-4 ${mainTab === 'analytics_hub' ? 'text-gold-300' : 'text-slate-500'}`} />
-                    <span>الإحصائيات والأوائل</span>
-                  </div>
-                  {redFlagsCount > 0 && (
-                    <span className="w-2 h-2 bg-red-500 rounded-full inline-block animate-pulse"></span>
-                  )}
-                </button>
-
-                {/* 11. Spiritual Diary */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMainTab('spiritual_diary');
-                    setActiveSubject(null);
-                    setMobileSidebarOpen(false);
-                  }}
-                  className={`w-full text-right py-2 px-3 rounded-xl flex items-center justify-between text-xs font-bold transition-all cursor-pointer ${
-                    mainTab === 'spiritual_diary'
-                      ? 'bg-maroon-800 text-white shadow-xs'
-                      : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5">
-                    <Sun className={`w-4 h-4 ${mainTab === 'spiritual_diary' ? 'text-gold-300' : 'text-amber-500'}`} />
-                    <span>النوتة الروحية والمتابعة</span>
-                  </div>
-                </button>
-
-                {/* 12. Attendance QR Code */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMainTab('attendance_qr');
-                    setActiveSubject(null);
-                    setMobileSidebarOpen(false);
-                  }}
-                  className={`w-full text-right py-2 px-3 rounded-xl flex items-center gap-2.5 text-xs font-bold transition-all cursor-pointer ${
-                    mainTab === 'attendance_qr'
-                      ? 'bg-maroon-800 text-white shadow-xs'
-                      : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
-                  }`}
-                >
-                  <QrCode className={`w-4 h-4 ${mainTab === 'attendance_qr' ? 'text-gold-300' : 'text-slate-500'}`} />
-                  <span>كود الحضور (QR)</span>
-                </button>
               </nav>
             </div>
           </div>
