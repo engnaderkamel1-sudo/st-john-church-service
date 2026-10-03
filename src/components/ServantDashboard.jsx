@@ -1186,313 +1186,293 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
           {/* Drawer Slide-in from Right (RTL) */}
           <div className="fixed inset-y-0 right-0 max-w-xs w-full bg-white shadow-2xl z-50 flex flex-col justify-between border-l border-slate-200 animate-in slide-in-from-right duration-250">
             {/* Drawer Header */}
-            <div>
-              <div className="flex items-center justify-between p-4 border-b border-slate-100 bg-slate-50/80">
+              {/* Drawer Header (Compact & Clean) */}
+              <div className="flex items-center justify-between px-3.5 py-2.5 border-b border-slate-100 bg-slate-50/70">
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-maroon-900 text-gold-300 flex items-center justify-center font-bold">
-                    <ShieldCheck className="w-5 h-5" />
+                  <div className="w-6 h-6 rounded-md bg-maroon-900 text-gold-300 flex items-center justify-center font-bold">
+                    <ShieldCheck className="w-3.5 h-3.5" />
                   </div>
-                  <div>
-                    <span className="text-xs font-bold text-slate-800 block">أقسام الخدمة واللوحة</span>
-                    <span className="text-[10px] text-slate-400 font-medium">لوحة الخدام المركزية</span>
-                  </div>
+                  <span className="text-xs font-black text-slate-800">أقسام الخدمة</span>
                 </div>
                 <button
                   type="button"
                   onClick={() => setMobileSidebarOpen(false)}
-                  className="w-8 h-8 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 flex items-center justify-center transition-colors"
+                  className="w-7 h-7 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 flex items-center justify-center transition-colors cursor-pointer"
                   title="إغلاق القائمة"
                 >
                   <X className="w-4 h-4" />
                 </button>
               </div>
 
-              {/* Navigation Items */}
-              <nav className="p-3 space-y-1.5 overflow-y-auto max-h-[calc(100vh-140px)]">
-            {/* Official Regulations Item inside Drawer Menu */}
-            <button
-              type="button"
-              onClick={() => {
-                setShowRegulationsModal(true);
-                setMobileSidebarOpen(false);
-              }}
-              className="w-full text-right py-2.5 px-3 rounded-2xl flex items-center justify-between text-xs font-bold transition-all text-amber-900 bg-amber-50 hover:bg-amber-100 border border-amber-200 cursor-pointer mb-2"
-            >
-              <div className="flex items-center gap-2.5">
-                <Award className="w-4 h-4 text-amber-600 shrink-0" />
-                <span>لائحة التقييم والدرجات 📜</span>
-              </div>
-              <span className="text-[10px] bg-amber-200/80 text-amber-950 font-bold px-2 py-0.5 rounded-full">
-                المعتمدة
-              </span>
-            </button>
-            {/* 0. All Servants & Admins: Direct Student Data Hub */}
-            <button
-              type="button"
-              onClick={() => {
-                setMainTab('students_hub');
-                setActiveSubject(null);
-                setMobileSidebarOpen(false);
-              }}
-              className={`w-full text-right py-2.5 px-3 rounded-2xl flex items-center justify-between text-xs font-bold transition-all ${
-                mainTab === 'students_hub'
-                  ? 'bg-maroon-800 text-white shadow-sm'
-                  : 'text-slate-700 hover:bg-slate-50 hover:text-slate-900'
-              }`}
-            >
-              <div className="flex items-center gap-2.5">
-                <Users className={`w-4 h-4 ${mainTab === 'students_hub' ? 'text-gold-300' : 'text-maroon-700'}`} />
-                <span>بيانات المخدومين والملف الشامل</span>
-              </div>
-              <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
-                mainTab === 'students_hub' ? 'bg-gold-400 text-maroon-950' : 'bg-slate-100 text-slate-600'
-              }`}>
-                {(allUsers || []).filter(u => u.role === 'student').length}
-              </span>
-            </button>
+              {/* Navigation Items (Unified Clean Styling) */}
+              <nav className="p-2.5 space-y-1 overflow-y-auto max-h-[calc(100vh-70px)]">
+                {/* 1. Regulations */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowRegulationsModal(true);
+                    setMobileSidebarOpen(false);
+                  }}
+                  className="w-full text-right py-2 px-3 rounded-xl flex items-center justify-between text-xs font-bold transition-all text-slate-700 hover:bg-slate-100 hover:text-maroon-900 cursor-pointer"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Award className="w-4 h-4 text-amber-600 shrink-0" />
+                    <span>لائحة درجات المرحلة 📋</span>
+                  </div>
+                </button>
 
-            {/* 0.1 All Servants: Manual Attendance with Arrival Time */}
-            <button
-              type="button"
-              onClick={() => {
-                setMainTab('manual_attendance');
-                setActiveSubject(null);
-                setMobileSidebarOpen(false);
-              }}
-              className={`w-full text-right py-2.5 px-3 rounded-2xl flex items-center justify-between text-xs font-bold transition-all ${
-                mainTab === 'manual_attendance'
-                  ? 'bg-maroon-800 text-white shadow-sm'
-                  : 'text-slate-700 hover:bg-slate-50 hover:text-slate-900'
-              }`}
-            >
-              <div className="flex items-center gap-2.5">
-                <UserCheck className={`w-4 h-4 ${mainTab === 'manual_attendance' ? 'text-gold-300' : 'text-emerald-700'}`} />
-                <span>تسجيل حضور يدوي</span>
-              </div>
-              <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
-                mainTab === 'manual_attendance' ? 'bg-gold-400 text-maroon-950' : 'bg-emerald-50 text-emerald-800 border border-emerald-200'
-              }`}>
-                يدوي ✍️
-              </span>
-            </button>
-
-            {/* 1. App Admin only: Users & Roles */}
-            {isAppAdmin && (
-              <button
-                type="button"
-                onClick={() => {
-                  setMainTab('users_hub');
-                  setUserHubSubTab('accounts');
-                  setActiveSubject(null);
-                  setMobileSidebarOpen(false);
-                }}
-                className={`w-full text-right py-2.5 px-3 rounded-2xl flex items-center justify-between text-xs font-bold transition-all ${
-                  mainTab === 'users_hub' && userHubSubTab === 'accounts'
-                    ? 'bg-maroon-800 text-white shadow-sm'
-                    : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
-                }`}
-              >
-                <div className="flex items-center gap-2.5">
-                  <UserCog className={`w-4 h-4 ${mainTab === 'users_hub' && userHubSubTab === 'accounts' ? 'text-gold-300' : 'text-maroon-700'}`} />
-                  <span>المستخدمين والأدوار</span>
-                </div>
-                {allUsers.length > 0 && (
-                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
-                    mainTab === 'users_hub' && userHubSubTab === 'accounts' ? 'bg-gold-400 text-maroon-950' : 'bg-slate-100 text-slate-600'
+                {/* 2. Students Data Hub */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMainTab('students_hub');
+                    setActiveSubject(null);
+                    setMobileSidebarOpen(false);
+                  }}
+                  className={`w-full text-right py-2 px-3 rounded-xl flex items-center justify-between text-xs font-bold transition-all cursor-pointer ${
+                    mainTab === 'students_hub'
+                      ? 'bg-maroon-800 text-white shadow-xs'
+                      : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Users className={`w-4 h-4 ${mainTab === 'students_hub' ? 'text-gold-300' : 'text-slate-500'}`} />
+                    <span>بيانات ومتابعة المخدومين</span>
+                  </div>
+                  <span className={`text-[10px] min-w-5 text-center px-1.5 py-0.2 rounded-md font-bold ${
+                    mainTab === 'students_hub' ? 'bg-gold-400 text-maroon-950' : 'bg-slate-100 text-slate-600'
                   }`}>
-                    {allUsers.length}
+                    {(allUsers || []).filter(u => u.role === 'student').length}
                   </span>
-                )}
-              </button>
-            )}
+                </button>
 
-            {/* 2. App Admin only: Activity & Login Log */}
-            {isAppAdmin && (
-              <button
-                type="button"
-                onClick={() => {
-                  setMainTab('users_hub');
-                  setUserHubSubTab('login_history');
-                  fetchLoginLogs();
-                  setActiveSubject(null);
-                  setMobileSidebarOpen(false);
-                }}
-                className={`w-full text-right py-2.5 px-3 rounded-2xl flex items-center justify-between text-xs font-bold transition-all ${
-                  mainTab === 'users_hub' && userHubSubTab === 'login_history'
-                    ? 'bg-maroon-800 text-white shadow-sm'
-                    : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
-                }`}
-              >
-                <div className="flex items-center gap-2.5">
-                  <History className={`w-4 h-4 ${mainTab === 'users_hub' && userHubSubTab === 'login_history' ? 'text-gold-300' : 'text-amber-600'}`} />
-                  <span>سجل النشاط والدخول</span>
-                </div>
-                {loginLogs.length > 0 && (
-                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
-                    mainTab === 'users_hub' && userHubSubTab === 'login_history' ? 'bg-gold-400 text-maroon-950' : 'bg-slate-100 text-slate-600'
+                {/* 3. Manual Attendance */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMainTab('manual_attendance');
+                    setActiveSubject(null);
+                    setMobileSidebarOpen(false);
+                  }}
+                  className={`w-full text-right py-2 px-3 rounded-xl flex items-center justify-between text-xs font-bold transition-all cursor-pointer ${
+                    mainTab === 'manual_attendance'
+                      ? 'bg-maroon-800 text-white shadow-xs'
+                      : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <UserCheck className={`w-4 h-4 ${mainTab === 'manual_attendance' ? 'text-gold-300' : 'text-emerald-700'}`} />
+                    <span>تسجيل حضور يدوي</span>
+                  </div>
+                </button>
+
+                {/* 4. App Admin only: Users & Roles */}
+                {isAppAdmin && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMainTab('users_hub');
+                      setUserHubSubTab('accounts');
+                      setActiveSubject(null);
+                      setMobileSidebarOpen(false);
+                    }}
+                    className={`w-full text-right py-2 px-3 rounded-xl flex items-center justify-between text-xs font-bold transition-all cursor-pointer ${
+                      mainTab === 'users_hub' && userHubSubTab === 'accounts'
+                        ? 'bg-maroon-800 text-white shadow-xs'
+                        : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <UserCog className={`w-4 h-4 ${mainTab === 'users_hub' && userHubSubTab === 'accounts' ? 'text-gold-300' : 'text-slate-500'}`} />
+                      <span>المستخدمين والأدوار</span>
+                    </div>
+                    {allUsers.length > 0 && (
+                      <span className={`text-[10px] min-w-5 text-center px-1.5 py-0.2 rounded-md font-bold ${
+                        mainTab === 'users_hub' && userHubSubTab === 'accounts' ? 'bg-gold-400 text-maroon-950' : 'bg-slate-100 text-slate-600'
+                      }`}>
+                        {allUsers.length}
+                      </span>
+                    )}
+                  </button>
+                )}
+
+                {/* 5. App Admin only: Activity & Login Log */}
+                {isAppAdmin && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMainTab('users_hub');
+                      setUserHubSubTab('login_history');
+                      fetchLoginLogs();
+                      setActiveSubject(null);
+                      setMobileSidebarOpen(false);
+                    }}
+                    className={`w-full text-right py-2 px-3 rounded-xl flex items-center justify-between text-xs font-bold transition-all cursor-pointer ${
+                      mainTab === 'users_hub' && userHubSubTab === 'login_history'
+                        ? 'bg-maroon-800 text-white shadow-xs'
+                        : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <History className={`w-4 h-4 ${mainTab === 'users_hub' && userHubSubTab === 'login_history' ? 'text-gold-300' : 'text-slate-500'}`} />
+                      <span>سجل النشاط والدخول</span>
+                    </div>
+                    {loginLogs.length > 0 && (
+                      <span className={`text-[10px] min-w-5 text-center px-1.5 py-0.2 rounded-md font-bold ${
+                        mainTab === 'users_hub' && userHubSubTab === 'login_history' ? 'bg-gold-400 text-maroon-950' : 'bg-slate-100 text-slate-600'
+                      }`}>
+                        {loginLogs.length}
+                      </span>
+                    )}
+                  </button>
+                )}
+
+                {/* 6. App Admin only: Errors Hub */}
+                {isAppAdmin && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMainTab('errors_hub');
+                      setActiveSubject(null);
+                      setMobileSidebarOpen(false);
+                    }}
+                    className={`w-full text-right py-2 px-3 rounded-xl flex items-center justify-between text-xs font-bold transition-all cursor-pointer ${
+                      mainTab === 'errors_hub'
+                        ? 'bg-rose-800 text-white shadow-xs'
+                        : 'text-slate-700 hover:bg-rose-50 hover:text-rose-900'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <AlertTriangle className={`w-4 h-4 ${mainTab === 'errors_hub' ? 'text-white' : 'text-rose-600'}`} />
+                      <span>بلاغات وأخطاء التطبيق</span>
+                    </div>
+                  </button>
+                )}
+
+                {/* 7. Subjects & Curriculum for Students */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMainTab('subjects_hub');
+                    setCurriculumTarget('students');
+                    setActiveSubject(null);
+                    setMobileSidebarOpen(false);
+                  }}
+                  className={`w-full text-right py-2 px-3 rounded-xl flex items-center gap-2.5 text-xs font-bold transition-all cursor-pointer ${
+                    mainTab === 'subjects_hub' && curriculumTarget === 'students'
+                      ? 'bg-maroon-800 text-white shadow-xs'
+                      : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
+                  }`}
+                >
+                  <BookOpen className={`w-4 h-4 ${mainTab === 'subjects_hub' && curriculumTarget === 'students' ? 'text-gold-300' : 'text-slate-500'}`} />
+                  <span>مناهج ومراجع المخدومين</span>
+                </button>
+
+                {/* 8. Subjects & Curriculum for Servants */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMainTab('subjects_hub');
+                    setCurriculumTarget('servants');
+                    setActiveSubject(null);
+                    setMobileSidebarOpen(false);
+                  }}
+                  className={`w-full text-right py-2 px-3 rounded-xl flex items-center justify-between text-xs font-bold transition-all cursor-pointer ${
+                    mainTab === 'subjects_hub' && curriculumTarget === 'servants'
+                      ? 'bg-maroon-800 text-white shadow-xs'
+                      : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <ShieldCheck className={`w-4 h-4 ${mainTab === 'subjects_hub' && curriculumTarget === 'servants' ? 'text-gold-300' : 'text-maroon-700'}`} />
+                    <span>مناهج ومراجع الخدام</span>
+                  </div>
+                  <span className={`text-[9px] px-1.5 py-0.2 rounded-md font-bold ${
+                    mainTab === 'subjects_hub' && curriculumTarget === 'servants' ? 'bg-gold-400 text-maroon-950' : 'bg-amber-100 text-amber-900'
                   }`}>
-                    {loginLogs.length}
+                    خاص 🔒
                   </span>
-                )}
-              </button>
-            )}
+                </button>
 
-            {/* 2.1 App Admin only: Errors Hub */}
-            {isAppAdmin && (
-              <button
-                type="button"
-                onClick={() => {
-                  setMainTab('errors_hub');
-                  setActiveSubject(null);
-                  setMobileSidebarOpen(false);
-                }}
-                className={`w-full text-right py-2.5 px-3 rounded-2xl flex items-center justify-between text-xs font-bold transition-all ${
-                  mainTab === 'errors_hub'
-                    ? 'bg-red-800 text-white shadow-sm'
-                    : 'text-red-700 hover:bg-red-50 hover:text-red-900'
-                }`}
-              >
-                <div className="flex items-center gap-2.5">
-                  <AlertTriangle className={`w-4 h-4 ${mainTab === 'errors_hub' ? 'text-white' : 'text-red-600'}`} />
-                  <span>سجل أخطاء التطبيق والبلاغات</span>
-                </div>
-                <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
-                  mainTab === 'errors_hub' ? 'bg-white text-red-900' : 'bg-red-100 text-red-800'
-                }`}>
-                  جديد ⚠️
-                </span>
-              </button>
-            )}
+                {/* 9. Question Bank & Exams */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMainTab('exams_bank_hub');
+                    setActiveSubject(null);
+                    setMobileSidebarOpen(false);
+                  }}
+                  className={`w-full text-right py-2 px-3 rounded-xl flex items-center gap-2.5 text-xs font-bold transition-all cursor-pointer ${
+                    mainTab === 'exams_bank_hub'
+                      ? 'bg-maroon-800 text-white shadow-xs'
+                      : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
+                  }`}
+                >
+                  <FileText className={`w-4 h-4 ${mainTab === 'exams_bank_hub' ? 'text-gold-300' : 'text-slate-500'}`} />
+                  <span>بنك الأسئلة والامتحانات</span>
+                </button>
 
-            {/* 3. Subjects & Curriculum for Students */}
-            <button
-              type="button"
-              onClick={() => {
-                setMainTab('subjects_hub');
-                setCurriculumTarget('students');
-                setActiveSubject(null);
-                setMobileSidebarOpen(false);
-              }}
-              className={`w-full text-right py-2.5 px-3 rounded-2xl flex items-center gap-2.5 text-xs font-bold transition-all ${
-                mainTab === 'subjects_hub' && curriculumTarget === 'students'
-                  ? 'bg-maroon-800 text-white shadow-sm'
-                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
-              }`}
-            >
-              <BookOpen className={`w-4 h-4 ${mainTab === 'subjects_hub' && curriculumTarget === 'students' ? 'text-gold-300' : 'text-slate-500'}`} />
-              <span>مناهج ومراجع المخدومين</span>
-            </button>
+                {/* 10. Analytics */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMainTab('analytics_hub');
+                    setActiveSubject(null);
+                    setMobileSidebarOpen(false);
+                  }}
+                  className={`w-full text-right py-2 px-3 rounded-xl flex items-center justify-between text-xs font-bold transition-all cursor-pointer ${
+                    mainTab === 'analytics_hub'
+                      ? 'bg-maroon-800 text-white shadow-xs'
+                      : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Award className={`w-4 h-4 ${mainTab === 'analytics_hub' ? 'text-gold-300' : 'text-slate-500'}`} />
+                    <span>الإحصائيات والأوائل</span>
+                  </div>
+                  {redFlagsCount > 0 && (
+                    <span className="w-2 h-2 bg-red-500 rounded-full inline-block animate-pulse"></span>
+                  )}
+                </button>
 
-            {/* 3.1 Subjects & Curriculum for Servants */}
-            <button
-              type="button"
-              onClick={() => {
-                setMainTab('subjects_hub');
-                setCurriculumTarget('servants');
-                setActiveSubject(null);
-                setMobileSidebarOpen(false);
-              }}
-              className={`w-full text-right py-2.5 px-3 rounded-2xl flex items-center justify-between text-xs font-bold transition-all ${
-                mainTab === 'subjects_hub' && curriculumTarget === 'servants'
-                  ? 'bg-maroon-800 text-white shadow-sm'
-                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
-              }`}
-            >
-              <div className="flex items-center gap-2.5">
-                <ShieldCheck className={`w-4 h-4 ${mainTab === 'subjects_hub' && curriculumTarget === 'servants' ? 'text-gold-300' : 'text-maroon-700'}`} />
-                <span>مناهج ومراجع الخدام</span>
-              </div>
-              <span className={`text-[9px] px-1.5 py-0.5 rounded-md font-bold ${
-                mainTab === 'subjects_hub' && curriculumTarget === 'servants' ? 'bg-gold-400 text-maroon-950' : 'bg-amber-100 text-amber-900'
-              }`}>
-                خاص 🔒
-              </span>
-            </button>
+                {/* 11. Spiritual Diary */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMainTab('spiritual_diary');
+                    setActiveSubject(null);
+                    setMobileSidebarOpen(false);
+                  }}
+                  className={`w-full text-right py-2 px-3 rounded-xl flex items-center justify-between text-xs font-bold transition-all cursor-pointer ${
+                    mainTab === 'spiritual_diary'
+                      ? 'bg-maroon-800 text-white shadow-xs'
+                      : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Sun className={`w-4 h-4 ${mainTab === 'spiritual_diary' ? 'text-gold-300' : 'text-amber-500'}`} />
+                    <span>النوتة الروحية والمتابعة</span>
+                  </div>
+                </button>
 
-            {/* 4. Exam & Question Bank */}
-            <button
-              type="button"
-              onClick={() => {
-                setMainTab('exams_bank_hub');
-                setActiveSubject(null);
-                setMobileSidebarOpen(false);
-              }}
-              className={`w-full text-right py-2.5 px-3 rounded-2xl flex items-center gap-2.5 text-xs font-bold transition-all ${
-                mainTab === 'exams_bank_hub'
-                  ? 'bg-maroon-800 text-white shadow-sm'
-                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
-              }`}
-            >
-              <FileText className={`w-4 h-4 ${mainTab === 'exams_bank_hub' ? 'text-gold-300' : 'text-slate-500'}`} />
-              <span>بنك الأسئلة والامتحانات</span>
-            </button>
-
-            {/* 5. Analytics & Top Students */}
-            <button
-              type="button"
-              onClick={() => {
-                setMainTab('analytics_hub');
-                setActiveSubject(null);
-                setMobileSidebarOpen(false);
-              }}
-              className={`w-full text-right py-2.5 px-3 rounded-2xl flex items-center justify-between text-xs font-bold transition-all ${
-                mainTab === 'analytics_hub'
-                  ? 'bg-maroon-800 text-white shadow-sm'
-                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
-              }`}
-            >
-              <div className="flex items-center gap-2.5">
-                <Award className={`w-4 h-4 ${mainTab === 'analytics_hub' ? 'text-gold-300' : 'text-slate-500'}`} />
-                <span>الإحصائيات والأوائل</span>
-              </div>
-              {redFlagsCount > 0 && (
-                <span className="w-2 h-2 bg-red-500 rounded-full inline-block animate-pulse"></span>
-              )}
-            </button>
-
-            {/* 6. Spiritual Diary & Pastoral Tracking */}
-            <button
-              type="button"
-              onClick={() => {
-                setMainTab('spiritual_diary');
-                setActiveSubject(null);
-                setMobileSidebarOpen(false);
-              }}
-              className={`w-full text-right py-2.5 px-3 rounded-2xl flex items-center justify-between text-xs font-bold transition-all ${
-                mainTab === 'spiritual_diary'
-                  ? 'bg-maroon-800 text-white shadow-sm'
-                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
-              }`}
-            >
-              <div className="flex items-center gap-2.5">
-                <Sun className={`w-4 h-4 ${mainTab === 'spiritual_diary' ? 'text-gold-300' : 'text-amber-500'}`} />
-                <span>النوتة الروحية والمتابعة</span>
-              </div>
-            </button>
-
-            {/* 7. Attendance QR Code */}
-            <button
-              type="button"
-              onClick={() => {
-                setMainTab('attendance_qr');
-                setActiveSubject(null);
-                setMobileSidebarOpen(false);
-              }}
-              className={`w-full text-right py-2.5 px-3 rounded-2xl flex items-center gap-2.5 text-xs font-bold transition-all ${
-                mainTab === 'attendance_qr'
-                  ? 'bg-maroon-800 text-white shadow-sm'
-                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
-              }`}
-            >
-              <QrCode className={`w-4 h-4 ${mainTab === 'attendance_qr' ? 'text-gold-300' : 'text-slate-500'}`} />
-              <span>كود الحضور (QR)</span>
-            </button>
-          </nav>
-            </div>
-
-            {/* Drawer Footer */}
-            <div className="p-4 border-t border-slate-100 bg-slate-50/50 text-center text-[11px] text-slate-400">
-              كنيسة القديس ماريوحنا المعمدان بالمعراج
+                {/* 12. Attendance QR Code */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMainTab('attendance_qr');
+                    setActiveSubject(null);
+                    setMobileSidebarOpen(false);
+                  }}
+                  className={`w-full text-right py-2 px-3 rounded-xl flex items-center gap-2.5 text-xs font-bold transition-all cursor-pointer ${
+                    mainTab === 'attendance_qr'
+                      ? 'bg-maroon-800 text-white shadow-xs'
+                      : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
+                  }`}
+                >
+                  <QrCode className={`w-4 h-4 ${mainTab === 'attendance_qr' ? 'text-gold-300' : 'text-slate-500'}`} />
+                  <span>كود الحضور (QR)</span>
+                </button>
+              </nav>
             </div>
           </div>
         </div>
