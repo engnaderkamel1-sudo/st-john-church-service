@@ -122,16 +122,25 @@ export default function App() {
     return map[grade] || grade || 'عام';
   };
 
-  // 5-Second Splash Screen State
+  // 5-Second Splash Screen State (with Hold-to-Pause for reading verse)
   const [showSplash, setShowSplash] = useState(true);
   const [splashProgress, setSplashProgress] = useState(0);
+  const [isSplashPaused, setIsSplashPaused] = useState(false);
+  const isSplashPausedRef = useRef(false);
 
   useEffect(() => {
-    const startTime = Date.now();
-    const duration = 5000; // 5 seconds
+    isSplashPausedRef.current = isSplashPaused;
+  }, [isSplashPaused]);
+
+  useEffect(() => {
+    const duration = 5000; // 5 seconds total active
+    let elapsed = 0;
+    const intervalTime = 50;
 
     const timer = setInterval(() => {
-      const elapsed = Date.now() - startTime;
+      if (isSplashPausedRef.current) return;
+
+      elapsed += intervalTime;
       const progress = Math.min(Math.round((elapsed / duration) * 100), 100);
       setSplashProgress(progress);
 
@@ -139,31 +148,44 @@ export default function App() {
         clearInterval(timer);
         setShowSplash(false);
       }
-    }, 50);
+    }, intervalTime);
 
     return () => clearInterval(timer);
   }, []);
 
   return (
     <>
-      {/* 5-Second Full Screen Splash Screen */}
+      {/* 5-Second Full Screen Splash Screen (Hold to Pause) */}
       {showSplash && (
-        <div className="fixed inset-0 z-[9999] bg-gradient-to-b from-slate-900 via-maroon-950 to-slate-950 text-white flex flex-col items-center justify-between p-8 font-cairo select-none animate-in fade-in duration-300">
-          <div className="w-full flex justify-center pt-2"></div>
+        <div 
+          onTouchStart={() => setIsSplashPaused(true)}
+          onTouchEnd={() => setIsSplashPaused(false)}
+          onMouseDown={() => setIsSplashPaused(true)}
+          onMouseUp={() => setIsSplashPaused(false)}
+          onContextMenu={(e) => e.preventDefault()}
+          className="fixed inset-0 z-[9999] bg-gradient-to-b from-slate-900 via-maroon-950 to-slate-950 text-white flex flex-col items-center justify-between p-6 sm:p-8 font-cairo select-none animate-in fade-in duration-300 cursor-pointer"
+        >
+          <div className="w-full flex justify-center pt-2">
+            {isSplashPaused && (
+              <span className="text-[11px] bg-amber-500/20 text-amber-300 border border-amber-400/40 px-3 py-1 rounded-full font-bold animate-pulse">
+                متوقف مؤقتاً لقراءة الآية ⏸️
+              </span>
+            )}
+          </div>
 
           {/* Center Logo & Titles & Prominent Verse */}
-          <div className="flex flex-col items-center text-center space-y-5 max-w-md px-4 my-auto">
+          <div className="flex flex-col items-center text-center space-y-4 sm:space-y-5 max-w-md px-4 my-auto">
             <div className="relative group">
               <div className="absolute -inset-4 bg-gradient-to-r from-gold-500/30 to-amber-600/30 rounded-full blur-xl animate-pulse"></div>
               <img 
                 src="/church_logo.jpg" 
                 alt="شعار كنيسة القديس ماريوحنا المعمدان" 
-                className="w-36 h-36 sm:w-44 sm:h-44 rounded-full border-4 border-gold-400 object-cover shadow-2xl relative z-10 ring-4 ring-gold-400/20"
+                className="w-32 h-32 sm:w-44 sm:h-44 rounded-full border-4 border-gold-400 object-cover shadow-2xl relative z-10 ring-4 ring-gold-400/20"
               />
             </div>
 
             <div className="space-y-1.5">
-              <h2 className="text-sm sm:text-base font-bold text-slate-200">
+              <h2 className="text-xs sm:text-base font-bold text-slate-200">
                 كنيسة القديس ماريوحنا المعمدان بالمعراج - مطرانية المعادي
               </h2>
               <div className="h-0.5 w-16 bg-gold-400/60 mx-auto rounded-full"></div>
@@ -183,18 +205,23 @@ export default function App() {
             </div>
           </div>
 
-          {/* Bottom Progress Bar & Loading */}
-          <div className="w-full max-w-sm space-y-2.5 pb-6">
+          {/* Bottom Progress Bar & Loading with Hint */}
+          <div className="w-full max-w-sm space-y-2 pb-6">
             <div className="flex items-center justify-between text-xs text-gold-200/90 font-bold px-1">
-              <span>جاري التحميل...</span>
+              <span>{isSplashPaused ? 'ثابت للقراءة ⏸️' : 'جاري التحميل...'}</span>
               <span className="font-mono">{splashProgress}%</span>
             </div>
             <div className="w-full h-2.5 bg-slate-800/90 rounded-full overflow-hidden p-0.5 border border-gold-500/30 shadow-inner">
               <div 
-                className="h-full bg-gradient-to-r from-gold-400 via-amber-400 to-gold-300 rounded-full transition-all duration-75 ease-out shadow-sm"
+                className={`h-full bg-gradient-to-r from-gold-400 via-amber-400 to-gold-300 rounded-full transition-all duration-75 ease-out shadow-sm ${
+                  isSplashPaused ? 'opacity-80 animate-pulse' : ''
+                }`}
                 style={{ width: `${splashProgress}%` }}
               ></div>
             </div>
+            <p className="text-[10px] text-center text-slate-400 font-medium">
+              المس الشاشة مع الاستمرار للتوقف وقراءة الآية 📖
+            </p>
           </div>
         </div>
       )}
