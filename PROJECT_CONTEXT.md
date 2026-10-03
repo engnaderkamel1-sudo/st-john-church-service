@@ -6,7 +6,7 @@
 
 ## 1. 🏗️ نظرة عامة على المشروع (Overview & Tech Stack)
 - **المشروع:** منصة رقمية متكاملة لـ «أسرة إعداد خدام بولس الرسول وأليشع النبي» بكنيسة القديس ماريوحنا المعمدان بالمعراج - مطرانية المعادي.
-- **نوع التطبيق:** Progressive Web App (PWA) متجاوب بالكامل مع الموبايل والتابلت والديسكتوب.
+- **نوع التطبيق:** Progressive Web App (PWA) مبني بمعمارية (Mobile-First) فائقة التجاوب مع شاشات الهواتف والتابلت والديسكتوب.
 - **التقنيات المستخدمة:** React (Vite) + Tailwind CSS + Lucide Icons + Firebase Firestore & Auth.
 - **الاستضافة:** Vercel متصلة بمستودع GitHub:
   - المستودع: `engnaderkamel1-sudo/st-john-church-service` (الفرع الأساسي: `main`).

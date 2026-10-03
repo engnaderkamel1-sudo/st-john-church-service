@@ -1060,53 +1060,46 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser }) {
       <button
         type="button"
         onClick={() => setMobileSidebarOpen(true)}
-        className="fixed top-28 right-0 z-40 bg-gradient-to-l from-maroon-900 to-maroon-800 text-white rounded-l-2xl shadow-xl py-2.5 px-3 flex items-center gap-2 text-xs font-black ring-2 ring-gold-400/40 hover:from-maroon-950 hover:to-maroon-900 cursor-pointer transition-all active:scale-95"
+        className="fixed top-28 right-0 z-40 bg-gradient-to-l from-maroon-900 via-maroon-800 to-amber-950 text-white rounded-l-2xl shadow-2xl py-2.5 px-3 flex items-center gap-1.5 text-xs font-black ring-2 ring-gold-400/40 hover:from-maroon-950 hover:to-maroon-900 cursor-pointer transition-all active:scale-95"
         title="فتح القائمة الرئيسية لجميع الأقسام"
       >
         <Menu className="w-4 h-4 text-gold-300" />
-        <span className="hidden sm:inline">أقسام الخدمة</span>
-        <span>☰</span>
+        <span>القائمة الرئيسية</span>
       </button>
 
       {/* Servant Profile Card (Clickable to open user account & profile modal) */}
-      <div className="bg-white border border-slate-200 rounded-3xl p-4 sm:p-5 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
-        <div 
-          onClick={() => setShowProfileModal(true)}
-          className="flex items-center gap-3.5 w-full sm:w-auto cursor-pointer group hover:bg-slate-50/80 p-2 rounded-2xl transition-all"
-          title="اضغط لعرض وتعديل بيانات الحساب أو تسجيل الخروج"
-        >
-          <div className="w-13 h-13 rounded-2xl bg-maroon-800 text-white flex items-center justify-center font-bold text-xl shrink-0 shadow-xs group-hover:scale-105 transition-transform">
-            <ShieldCheck className="w-7 h-7 text-gold-300" />
+      <div 
+        onClick={() => setShowProfileModal(true)}
+        className="bg-white border border-slate-200 rounded-3xl p-3.5 sm:p-5 shadow-sm flex items-center justify-between gap-3 cursor-pointer group hover:bg-slate-50/80 transition-all"
+        title="اضغط لعرض وتعديل بيانات الحساب أو تسجيل الخروج"
+      >
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-11 h-11 sm:w-13 sm:h-13 rounded-2xl bg-maroon-800 text-white flex items-center justify-center font-bold text-lg sm:text-xl shrink-0 shadow-xs group-hover:scale-105 transition-transform">
+            <ShieldCheck className="w-6 h-6 sm:w-7 sm:h-7 text-gold-300" />
           </div>
-          <div>
+          <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <h2 className="text-base sm:text-lg font-extrabold text-slate-900 group-hover:text-maroon-800 transition-colors">
+              <h2 className="text-sm sm:text-base font-extrabold text-slate-900 group-hover:text-maroon-800 transition-colors truncate">
                 {user.fullName || 'أمين الخدمة'}
               </h2>
-              <span className="text-[10px] bg-amber-50 group-hover:bg-amber-100 text-amber-900 border border-amber-200 px-2 py-0.5 rounded-full font-bold transition-colors">
+              <span className="text-[10px] bg-amber-50 group-hover:bg-amber-100 text-amber-900 border border-amber-200 px-2 py-0.5 rounded-full font-bold transition-colors shrink-0">
                 بياناتي ⚙️
               </span>
             </div>
-            <div className="flex items-center gap-2 text-xs text-slate-500 mt-1">
-              <span className="bg-maroon-50 text-maroon-900 border border-maroon-200 font-bold px-2.5 py-0.5 rounded-full text-[10px]">
+            <div className="flex items-center gap-1.5 text-xs text-slate-500 mt-0.5">
+              <span className="bg-maroon-50 text-maroon-900 border border-maroon-200 font-bold px-2 py-0.5 rounded-full text-[10px]">
                 {isAppAdmin ? 'مشرف التطبيق 👑' : 'لوحة الخدام'}
               </span>
-              <span>
+              <span className="text-[11px] truncate">
                 الصفة: {isAppAdmin ? 'مشرف التطبيق' : 'خادم عام (كافة المراحل)'}
               </span>
             </div>
           </div>
         </div>
 
-        {/* Action Button: لائحة التقييم والدرجات */}
-        <button
-          type="button"
-          onClick={() => setShowRegulationsModal(true)}
-          className="w-full sm:w-auto px-4 py-2.5 bg-gradient-to-r from-amber-600 via-amber-700 to-amber-800 hover:from-amber-700 hover:to-amber-900 text-white text-xs sm:text-sm font-extrabold rounded-2xl shadow-sm transition-all flex items-center justify-center gap-2 ring-1 ring-amber-400/40 cursor-pointer"
-        >
-          <Award className="w-4 h-4 text-amber-200" />
-          <span>لائحة التقييم والدرجات 📜</span>
-        </button>
+        <div className="text-slate-400 group-hover:text-maroon-800 transition-colors shrink-0">
+          <ChevronLeft className="w-5 h-5" />
+        </div>
       </div>
 
       {/* Clear Horizontal Navigation Bar showing all sections clearly */}
@@ -1236,6 +1229,15 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser }) {
           >
             📷 كود الحضور
           </button>
+
+          <button
+            type="button"
+            onClick={() => setShowRegulationsModal(true)}
+            className="px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 transition-all cursor-pointer bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 flex items-center gap-1 shadow-2xs"
+          >
+            <Award className="w-3.5 h-3.5 text-amber-600" />
+            <span>لائحة التقييم 📜</span>
+          </button>
         </div>
       </div>
 
@@ -1274,6 +1276,23 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser }) {
 
               {/* Navigation Items */}
               <nav className="p-3 space-y-1.5 overflow-y-auto max-h-[calc(100vh-140px)]">
+            {/* Official Regulations Item inside Drawer Menu */}
+            <button
+              type="button"
+              onClick={() => {
+                setShowRegulationsModal(true);
+                setMobileSidebarOpen(false);
+              }}
+              className="w-full text-right py-2.5 px-3 rounded-2xl flex items-center justify-between text-xs font-bold transition-all text-amber-900 bg-amber-50 hover:bg-amber-100 border border-amber-200 cursor-pointer mb-2"
+            >
+              <div className="flex items-center gap-2.5">
+                <Award className="w-4 h-4 text-amber-600 shrink-0" />
+                <span>لائحة التقييم والدرجات 📜</span>
+              </div>
+              <span className="text-[10px] bg-amber-200/80 text-amber-950 font-bold px-2 py-0.5 rounded-full">
+                المعتمدة
+              </span>
+            </button>
             {/* 0. All Servants & Admins: Direct Student Data Hub */}
             <button
               type="button"
