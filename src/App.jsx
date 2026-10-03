@@ -167,8 +167,8 @@ export default function App() {
                 كنيسة القديس ماريوحنا المعمدان بالمعراج - مطرانية المعادي
               </h2>
               <div className="h-0.5 w-16 bg-gold-400/60 mx-auto rounded-full"></div>
-              <h1 className="text-2xl sm:text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-gold-200 via-gold-400 to-amber-200">
-                خدمة أليشع النبي وإعداد خدام
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-gold-200 via-gold-400 to-amber-200">
+                أسرة إعداد خدام بولس الرسول وأليشع النبي
               </h1>
             </div>
 
@@ -211,7 +211,7 @@ export default function App() {
               className="w-9 h-9 sm:w-11 sm:h-11 rounded-full border-2 border-gold-400 object-cover shadow-sm shrink-0"
             />
             <div className="min-w-0">
-              <h1 className="text-xs sm:text-base md:text-lg font-bold text-maroon-900 leading-tight truncate">خدمة أليشع النبي وإعداد خدام</h1>
+              <h1 className="text-xs sm:text-base md:text-lg font-bold text-maroon-900 leading-tight truncate">أسرة إعداد خدام بولس الرسول وأليشع النبي</h1>
               <p className="text-[10px] sm:text-[11px] text-slate-500 font-medium truncate hidden sm:block">كنيسة ماريوحنا المعمدان بالمعراج - مطرانية المعادي</p>
             </div>
           </div>
@@ -317,8 +317,8 @@ export default function App() {
               <span className="inline-block bg-maroon-50 border border-maroon-200 text-maroon-900 px-4 py-1 rounded-full text-xs font-bold mb-3 shadow-xs">
                 كنيسة القديس ماريوحنا المعمدان بالمعراج
               </span>
-              <h2 className="text-2xl sm:text-4xl font-extrabold text-slate-900 tracking-tight leading-snug">
-                خدمة أليشع النبي وإعداد خدام
+              <h2 className="text-xl sm:text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight leading-snug">
+                أسرة إعداد خدام بولس الرسول وأليشع النبي
               </h2>
             </div>
 

@@ -805,7 +805,7 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser }) {
 
             {/* Drawer Footer */}
             <div className="p-4 border-t border-slate-100 bg-slate-50/50 text-center text-[11px] text-slate-400">
-              خدمة أليشع النبي وإعداد خدام
+              أسرة إعداد خدام بولس الرسول وأليشع النبي
             </div>
           </div>
         </div>
