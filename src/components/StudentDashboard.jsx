@@ -8,11 +8,13 @@ import StudentAttendance from './student/StudentAttendance';
 import StudentSpiritualDiary from './student/StudentSpiritualDiary';
 import StudentCurriculum from './student/StudentCurriculum';
 import StudentExams from './student/StudentExams';
+import StageRegulationsModal from './common/StageRegulationsModal';
 
 export default function StudentDashboard({ user }) {
   // 6 Specified Tabs: 'attendance', 'spiritual_diary', 'curriculum', 'exams', 'tasks', 'announcements'
   const [activeTab, setActiveTab] = useState('attendance');
   const [isNavDrawerOpen, setIsNavDrawerOpen] = useState(false);
+  const [showRegulationsModal, setShowRegulationsModal] = useState(false);
   const [isWithinTime, setIsWithinTime] = useState(false);
   const [currentTimeStr, setCurrentTimeStr] = useState('');
   const [bypassTime, setBypassTime] = useState(false);
@@ -591,8 +593,18 @@ export default function StudentDashboard({ user }) {
           </div>
         </div>
 
-        {/* Stats */}
+        {/* Stats & Regulations */}
         <div className="flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={() => setShowRegulationsModal(true)}
+            className="bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 px-3 py-1.5 rounded-2xl text-xs font-black transition-all flex items-center gap-1.5 shadow-2xs cursor-pointer"
+            title="عرض لائحة تقييم مرحلتي وتوزيع الدرجات"
+          >
+            <Award className="w-3.5 h-3.5 text-amber-600" />
+            <span className="hidden sm:inline">لائحة التقييم</span>
+            <span>📜</span>
+          </button>
           <div className="bg-slate-50 border border-slate-200 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-2xl text-center">
             <span className="text-[9px] sm:text-[10px] text-slate-500 block font-medium">النقاط</span>
             <span className="text-xs sm:text-sm font-extrabold text-maroon-800">{points} ⭐</span>
@@ -662,6 +674,24 @@ export default function StudentDashboard({ user }) {
 
               {/* Navigation Items */}
               <nav className="p-3 space-y-1.5 overflow-y-auto max-h-[calc(100vh-140px)]">
+                {/* Official Stage Regulation Button */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowRegulationsModal(true);
+                    setIsNavDrawerOpen(false);
+                  }}
+                  className="w-full text-right py-3 px-3.5 rounded-2xl flex items-center justify-between text-xs font-bold text-amber-900 bg-amber-50 hover:bg-amber-100 border border-amber-200/80 transition-all cursor-pointer mb-2"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Award className="w-4 h-4 text-amber-600 shrink-0" />
+                    <span>لائحة مرحلتي وتوزيع الدرجات 📜</span>
+                  </div>
+                  <span className="text-[10px] bg-amber-200/70 text-amber-900 font-bold px-2 py-0.5 rounded-full">
+                    معتمدة
+                  </span>
+                </button>
+
                 <button
                   type="button"
                   onClick={() => {
@@ -928,6 +958,15 @@ export default function StudentDashboard({ user }) {
           )}
         </div>
       )}
+
+      {/* Official Stage Regulation Modal for Student */}
+      <StageRegulationsModal
+        isOpen={showRegulationsModal}
+        onClose={() => setShowRegulationsModal(false)}
+        studentGrade={user?.grade || 'first'}
+        isStudent={true}
+        isAdmin={false}
+      />
     </div>
   );
 }

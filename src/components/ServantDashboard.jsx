@@ -18,6 +18,7 @@ import ServantUsersHub from './servant/ServantUsersHub';
 import ServantStudentsHub from './servant/ServantStudentsHub';
 import ServantManualAttendance from './servant/ServantManualAttendance';
 import StudentProfileModal from './servant/StudentProfileModal';
+import StageRegulationsModal from './common/StageRegulationsModal';
 import { collection, getDocs, doc, updateDoc, setDoc, addDoc, deleteDoc, query, where, orderBy, serverTimestamp, limit, onSnapshot } from 'firebase/firestore';
 
 export default function ServantDashboard({ user }) {
@@ -27,6 +28,7 @@ export default function ServantDashboard({ user }) {
   const [mainTab, setMainTab] = useState(isAppAdmin ? 'users_hub' : 'subjects_hub');
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [selectedGrade, setSelectedGrade] = useState('first');
+  const [showRegulationsModal, setShowRegulationsModal] = useState(false);
 
   // Registered Users Management & Approval State
   const [allUsers, setAllUsers] = useState([]);
@@ -1074,6 +1076,16 @@ export default function ServantDashboard({ user }) {
             </div>
           </div>
         </div>
+
+        {/* Action Button: لائحة التقييم والدرجات */}
+        <button
+          type="button"
+          onClick={() => setShowRegulationsModal(true)}
+          className="w-full sm:w-auto px-4 py-2.5 bg-gradient-to-r from-amber-600 via-amber-700 to-amber-800 hover:from-amber-700 hover:to-amber-900 text-white text-xs sm:text-sm font-extrabold rounded-2xl shadow-sm transition-all flex items-center justify-center gap-2 ring-1 ring-amber-400/40 cursor-pointer"
+        >
+          <Award className="w-4 h-4 text-amber-200" />
+          <span>لائحة التقييم والدرجات 📜</span>
+        </button>
       </div>
 
       {/* Top Floating Appbar with Menu Trigger and Active Tab Pill */}
@@ -1556,6 +1568,15 @@ export default function ServantDashboard({ user }) {
           onClose={() => setStudent360Profile(null)}
         />
       )}
+
+      {/* 7. Official Multi-Stage Regulation Modal */}
+      <StageRegulationsModal
+        isOpen={showRegulationsModal}
+        onClose={() => setShowRegulationsModal(false)}
+        initialStage={selectedGrade || 'first'}
+        isStudent={false}
+        isAdmin={isAppAdmin}
+      />
       </main>
     </div>
   );
