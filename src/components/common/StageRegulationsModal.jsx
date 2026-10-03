@@ -16,7 +16,11 @@ const STAGE_KEYS = [
 
 const mergeStageWithDefaults = (remoteStage, defaultStage) => {
   if (!remoteStage) return defaultStage;
-  const mergedItems = (remoteStage.items || []).map(remoteItem => {
+  const baseItems = (remoteStage.items && remoteStage.items.length > 0)
+    ? remoteStage.items
+    : (defaultStage?.items || []);
+
+  const mergedItems = baseItems.map(remoteItem => {
     const defaultItem = (defaultStage?.items || []).find(d => d.id === remoteItem.id);
     if (!defaultItem) return remoteItem;
     return {
@@ -291,9 +295,15 @@ export default function StageRegulationsModal({
                       {/* Right Action: Delete if editing, or Max Grade Badge if viewing */}
                       <div className="shrink-0 flex items-center gap-1.5">
                         {!isEditing && (
-                          <span className="bg-amber-100 text-amber-950 border border-amber-300 px-2.5 py-1 rounded-xl text-xs font-black font-mono">
-                            {item.max} درجة
-                          </span>
+                          Number(item.max) > 0 ? (
+                            <span className="bg-amber-100 text-amber-950 border border-amber-300 px-2.5 py-1 rounded-xl text-xs font-black font-mono">
+                              {item.max} درجة
+                            </span>
+                          ) : (
+                            <span className="bg-slate-100 text-slate-500 border border-slate-200 px-2.5 py-1 rounded-xl text-[11px] font-bold">
+                              غير محدد (0)
+                            </span>
+                          )
                         )}
                         {isEditing && (
                           <button
@@ -399,25 +409,37 @@ export default function StageRegulationsModal({
                         )}
 
                         {item.configType === 'weekly' && (
-                          <div className="grid grid-cols-2 gap-2">
-                            <div className="bg-white p-2 rounded-xl border border-amber-200">
-                              <label className="text-[10px] text-slate-600 font-bold block mb-1">درجة الأسبوع</label>
-                              <input
-                                type="number"
-                                value={item.config?.weeklyPoints ?? 2}
-                                onChange={(e) => handleConfigChange(idx, 'weeklyPoints', Number(e.target.value))}
-                                className="w-full p-1 bg-amber-50/50 border border-amber-300 rounded-lg text-xs font-black text-center text-maroon-800 font-mono"
-                              />
+                          <div className="space-y-2">
+                            <div className="grid grid-cols-2 gap-2">
+                              <div className="bg-white p-2 rounded-xl border border-amber-200">
+                                <label className="text-[10px] text-slate-600 font-bold block mb-1">درجة الأسبوع</label>
+                                <input
+                                  type="number"
+                                  value={item.config?.weeklyPoints ?? 0}
+                                  onChange={(e) => handleConfigChange(idx, 'weeklyPoints', Number(e.target.value))}
+                                  className="w-full p-1 bg-amber-50/50 border border-amber-300 rounded-lg text-xs font-black text-center text-maroon-800 font-mono"
+                                />
+                              </div>
+                              <div className="bg-white p-2 rounded-xl border border-amber-200">
+                                <label className="text-[10px] text-slate-600 font-bold block mb-1">عدد الأسابيع</label>
+                                <input
+                                  type="number"
+                                  value={item.config?.weeksCount ?? 47}
+                                  onChange={(e) => handleConfigChange(idx, 'weeksCount', Number(e.target.value))}
+                                  className="w-full p-1 bg-amber-50/50 border border-amber-300 rounded-lg text-xs font-black text-center text-maroon-800 font-mono"
+                                />
+                              </div>
                             </div>
-                            <div className="bg-white p-2 rounded-xl border border-amber-200">
-                              <label className="text-[10px] text-slate-600 font-bold block mb-1">عدد الأسابيع</label>
-                              <input
-                                type="number"
-                                value={item.config?.weeksCount ?? 47}
-                                onChange={(e) => handleConfigChange(idx, 'weeksCount', Number(e.target.value))}
-                                className="w-full p-1 bg-amber-50/50 border border-amber-300 rounded-lg text-xs font-black text-center text-maroon-800 font-mono"
-                              />
-                            </div>
+                            {item.id === '2' && (
+                              <div className="bg-amber-100/70 border border-amber-300/80 rounded-xl p-2 text-[10px] text-amber-950 flex items-center justify-between font-medium">
+                                <span>📖 الحساب النسبي اليومي التلقائي:</span>
+                                <span className="font-black font-mono bg-white px-2 py-0.5 rounded-lg border border-amber-300 text-maroon-800">
+                                  {Number(item.config?.weeklyPoints) > 0 
+                                    ? `(${(Number(item.config?.weeklyPoints) / 7).toFixed(2)} د/يوم × 7 أيام = ${item.config?.weeklyPoints} درجات)` 
+                                    : '0 درجة / يوم'}
+                                </span>
+                              </div>
+                            )}
                           </div>
                         )}
 
@@ -619,7 +641,7 @@ export default function StageRegulationsModal({
                               />
                             ) : item.formula}
                           </td>
-                          <td className="p-3 text-center font-black font-mono text-maroon-800 text-sm">
+                          <td className="p-3 text-center font-black font-mono text-sm">
                             {isEditing ? (
                               <input
                                 type="number"
@@ -627,7 +649,13 @@ export default function StageRegulationsModal({
                                 onChange={(e) => handleItemChange(idx, 'max', Number(e.target.value))}
                                 className="w-20 p-2 border border-slate-300 rounded-lg text-sm text-center font-bold font-mono"
                               />
-                            ) : item.max}
+                            ) : (
+                              Number(item.max) > 0 ? (
+                                <span className="text-maroon-800">{item.max}</span>
+                              ) : (
+                                <span className="text-slate-400 font-normal">0 (غير محدد)</span>
+                              )
+                            )}
                           </td>
                           <td className="p-3 text-[11px] text-slate-500 font-medium">
                             {isEditing ? (

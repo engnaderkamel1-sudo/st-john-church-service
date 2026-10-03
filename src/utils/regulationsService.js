@@ -1,6 +1,140 @@
 import { db } from '../firebase';
 import { doc, getDoc } from 'firebase/firestore';
 
+// Standard template with 13 standard regulation evaluation items (zeroed by default)
+export const STAGE_TEMPLATE_ITEMS = [
+  {
+    id: '1',
+    name: 'الحضور والانصراف بالخدمة',
+    freq: 'أسبوعي',
+    formula: '0 مبكر / 0 متأخر × 47 أسبوع',
+    max: 0,
+    note: 'مسجل تلقائياً عبر الكاميرا/الكود',
+    configType: 'attendance',
+    config: { earlyPoints: 0, latePoints: 0, thresholdMins: 15, weeksCount: 47 }
+  },
+  {
+    id: '2',
+    name: 'قراءة الكتاب المقدس',
+    freq: 'أسبوعي',
+    formula: '0 درجات للأسبوع (حساب نسبي يومي)',
+    max: 0,
+    note: 'تلقائي من النوتة الروحية',
+    configType: 'weekly',
+    config: { weeklyPoints: 0, weeksCount: 47 }
+  },
+  {
+    id: '3',
+    name: 'القداس الإلهي',
+    freq: 'أسبوعي',
+    formula: '0 درجات أسبوعياً × 47 أسبوع',
+    max: 0,
+    note: 'تلقائي من النوتة الروحية',
+    configType: 'weekly',
+    config: { weeklyPoints: 0, weeksCount: 47 }
+  },
+  {
+    id: '4',
+    name: 'التناول من الأسرار المقدسة',
+    freq: 'أسبوعي',
+    formula: '0 درجات أسبوعياً × 47 أسبوع',
+    max: 0,
+    note: 'تلقائي من النوتة الروحية',
+    configType: 'weekly',
+    config: { weeklyPoints: 0, weeksCount: 47 }
+  },
+  {
+    id: '5',
+    name: 'الصوم والانقطاع',
+    freq: 'أسبوعي',
+    formula: '0 درجات أسبوعياً × 47 أسبوع',
+    max: 0,
+    note: 'تلقائي من النوتة الروحية',
+    configType: 'weekly',
+    config: { weeklyPoints: 0, weeksCount: 47 }
+  },
+  {
+    id: '6',
+    name: 'النوتة والصلوات الشخصية',
+    freq: 'أسبوعي',
+    formula: '0 درجات للأسبوع (صلوات وتدوين)',
+    max: 0,
+    note: 'تلقائي من النوتة الروحية',
+    configType: 'weekly',
+    config: { weeklyPoints: 0, weeksCount: 47 }
+  },
+  {
+    id: '7',
+    name: 'اجتماع المرحلة',
+    freq: 'أسبوعي',
+    formula: '0 درجات أسبوعياً × 47 أسبوع',
+    max: 0,
+    note: 'تقييم خدام المرحلة',
+    configType: 'weekly',
+    config: { weeklyPoints: 0, weeksCount: 47 }
+  },
+  {
+    id: '8',
+    name: 'سر الاعتراف والإرشاد',
+    freq: 'دوري',
+    formula: '0 درجات × 6 مرات في السنة',
+    max: 0,
+    note: 'تقييم أب الاعتراف والخدام',
+    configType: 'multi_session',
+    config: { sessionPoints: 0, targetCount: 6 }
+  },
+  {
+    id: '9',
+    name: 'الأبحاث التكليفية',
+    freq: 'سنوي',
+    formula: '0 درجات × بحثين',
+    max: 0,
+    note: 'تقييم أساتذة المواد',
+    configType: 'multi_session',
+    config: { sessionPoints: 0, targetCount: 2 }
+  },
+  {
+    id: '10',
+    name: 'أنشطة وكورس المطرانية',
+    freq: 'سنوي',
+    formula: 'يوم المطرانية 0 + كورس المطرانية 0',
+    max: 0,
+    note: 'اعتماد مطرانية المعادي',
+    configType: 'bishopric',
+    config: { dayPoints: 0, coursePoints: 0 }
+  },
+  {
+    id: '11',
+    name: 'المواد الدراسية والامتحانات',
+    freq: 'سنوي',
+    formula: '0 مواد دراسية × 0 درجة',
+    max: 0,
+    note: 'امتحانات المنصة والتحريري',
+    configType: 'subjects_exam',
+    config: { subjectExamPoints: 0, subjectsCount: 0 }
+  },
+  {
+    id: '12',
+    name: 'الأنشطة التطبيقية للمواد',
+    freq: 'سنوي',
+    formula: '0 درجات لكل مادة',
+    max: 0,
+    note: 'تكليفات وورش العمل',
+    configType: 'subjects_activity',
+    config: { subjectActivityPoints: 0, subjectsCount: 0 }
+  },
+  {
+    id: '13',
+    name: 'مشروع التخرج',
+    freq: 'سنوي',
+    formula: 'مشروع تخرج نهاية الدورة',
+    max: 0,
+    note: 'مناقشة لجنة الخدام',
+    configType: 'single_value',
+    config: { singlePoints: 0 }
+  }
+];
+
 export const DEFAULT_STAGE_REGULATIONS = {
   first: {
     title: 'لائحة تقييم سنة أولى (إعداد خدام)',
@@ -277,13 +411,13 @@ export const DEFAULT_STAGE_REGULATIONS = {
   third: {
     title: 'لائحة تقييم سنة ثالثة',
     totalMax: 0,
-    items: [],
+    items: JSON.parse(JSON.stringify(STAGE_TEMPLATE_ITEMS)),
     emptyMessage: 'لائحة سنة ثالثة قيد الإعداد والاعتماد من قِبل إدارة الخدمة ⏳'
   },
   elisha: {
     title: 'لائحة تقييم فصل أليشع (تمهيدي إعداد خدام)',
     totalMax: 0,
-    items: [],
+    items: JSON.parse(JSON.stringify(STAGE_TEMPLATE_ITEMS)),
     emptyMessage: 'لائحة فصل أليشع قيد الإعداد والاعتماد من قِبل إدارة الخدمة ⏳'
   }
 };
