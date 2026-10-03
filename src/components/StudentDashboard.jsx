@@ -1057,9 +1057,6 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser, externa
                 {previewPhotoModal.title}
               </h4>
             )}
-            <p className="text-[11px] text-slate-400 font-medium">
-              اضغط في أي مكان في الشاشة للإغلاق
-            </p>
           </div>
         </div>
       )}
