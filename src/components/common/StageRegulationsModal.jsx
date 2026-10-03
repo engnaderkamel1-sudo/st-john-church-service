@@ -268,7 +268,6 @@ export default function StageRegulationsModal({
               )}
             </div>
           ) : (
-          ) : (
             <div>
               {/* Mobile View: High readability cards with large text (visible < md) */}
               <div className="md:hidden space-y-3.5">
