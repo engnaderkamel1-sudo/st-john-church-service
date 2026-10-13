@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { 
   X, User, Phone, Lock, BookOpen, GraduationCap, ShieldAlert, Mail, KeyRound, 
-  ArrowRight, CheckCircle2, Camera, Heart, MapPin, Briefcase, Calendar, Users
+  ArrowRight, ArrowLeft, CheckCircle2, Camera, Heart, MapPin, Briefcase, Calendar, Users
 } from 'lucide-react';
 import { db, auth } from '../firebase';
 import { collection, addDoc, getDocs, query, where, serverTimestamp } from 'firebase/firestore';
@@ -35,7 +35,7 @@ export default function AuthModal({ isOpen, onClose, initialRole = 'student', in
   const [childrenDetails, setChildrenDetails] = useState('');
   const [address, setAddress] = useState('');
   const [confessionFather, setConfessionFather] = useState('');
-  const [showExtendedFields, setShowExtendedFields] = useState(false);
+  const [currentStep, setCurrentStep] = useState(1); // 1: Account, 2: Personal & Church, 3: Social & Work
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -49,7 +49,7 @@ export default function AuthModal({ isOpen, onClose, initialRole = 'student', in
       setResetSuccess(null);
       setRegistrationPendingSuccess(null);
       setResetIdentifier('');
-      setShowExtendedFields(false);
+      setCurrentStep(1);
     }
   }, [isOpen, initialMode, initialRole]);
 
@@ -125,9 +125,76 @@ export default function AuthModal({ isOpen, onClose, initialRole = 'student', in
     }
   };
 
+  const handleNextStep = (e) => {
+    e?.preventDefault?.();
+    setError('');
+
+    if (currentStep === 1) {
+      if (!fullName.trim()) {
+        setError('يرجى إدخال الاسم ثلاثي');
+        return;
+      }
+      if (!email.trim() || !/\S+@\S+\.\S+/.test(email.trim())) {
+        setError('يرجى إدخال بريد إلكتروني صحيح (إلزامي)');
+        return;
+      }
+      if (!phone.trim()) {
+        setError('يرجى إدخال رقم الهاتف');
+        return;
+      }
+      if (!password.trim() || password.trim().length < 6) {
+        setError('كلمة المرور يجب ألا تقل عن 6 أحرف أو أرقام');
+        return;
+      }
+      setCurrentStep(2);
+    } else if (currentStep === 2) {
+      if (!birthDate) {
+        setError('يرجى تحديد تاريخ الميلاد');
+        return;
+      }
+      if (!confessionFather.trim()) {
+        setError('يرجى إدخال اسم أب الاعتراف أو الكنيسة');
+        return;
+      }
+      if (!address.trim()) {
+        setError('يرجى إدخال عنوان السكن أو المنطقة');
+        return;
+      }
+      setCurrentStep(3);
+    }
+  };
+
+  const handlePrevStep = () => {
+    setError('');
+    setCurrentStep((prev) => Math.max(1, prev - 1));
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+
+    // If on registration, ensure all steps are completed and validated
+    if (!isLogin) {
+      if (currentStep < 3) {
+        handleNextStep(e);
+        return;
+      }
+
+      // Step 3 validation
+      if (!education.trim()) {
+        setError('يرجى إدخال المؤهل الدراسي أو الكلية / المدرسة');
+        return;
+      }
+      if (!job.trim()) {
+        setError('يرجى إدخال الوظيفة أو مجال العمل (أو اكتب طالب)');
+        return;
+      }
+      if (maritalStatus === 'married' && !spouseName.trim()) {
+        setError('يرجى إدخال اسم الزوج / الزوجة');
+        return;
+      }
+    }
+
     setLoading(true);
 
     try {
@@ -430,400 +497,515 @@ export default function AuthModal({ isOpen, onClose, initialRole = 'student', in
               </div>
             )}
 
+            {/* REGISTRATION STEPPER INDICATOR */}
             {!isLogin && (
-              <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-3">
-                <label className="block text-xs font-bold text-slate-700 mb-2">اختر صفتك في الخدمة:</label>
-                <div className="grid grid-cols-2 gap-2 bg-slate-200/70 p-1 rounded-xl">
-                  <button
-                    type="button"
-                    onClick={() => setRole('student')}
-                    className={`py-2 px-3 rounded-lg font-bold text-xs transition-all flex items-center justify-center gap-1.5 ${
-                      role === 'student'
-                        ? 'bg-white text-maroon-900 shadow-sm'
-                        : 'text-slate-600 hover:text-slate-900'
-                    }`}
-                  >
-                    <GraduationCap className="w-4 h-4" />
-                    <span>مخدوم</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setRole('servant')}
-                    className={`py-2 px-3 rounded-lg font-bold text-xs transition-all flex items-center justify-center gap-1.5 ${
-                      role === 'servant'
-                        ? 'bg-maroon-800 text-white shadow-sm'
-                        : 'text-slate-600 hover:text-slate-900'
-                    }`}
-                  >
-                    <BookOpen className="w-4 h-4" />
-                    <span>خادم</span>
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {!isLogin && (
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">الاسم ثلاثي</label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    required
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    placeholder="مثال: جورج سمير حنا"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 pl-10 text-xs focus:outline-none focus:border-maroon-700 focus:bg-white transition-colors"
+              <div className="bg-slate-50 border border-slate-200/90 rounded-2xl p-3">
+                <div className="flex items-center justify-between relative">
+                  <div className="absolute top-1/2 left-4 right-4 h-0.5 bg-slate-200 -translate-y-1/2 z-0" />
+                  <div 
+                    className="absolute top-1/2 right-4 h-0.5 bg-maroon-700 -translate-y-1/2 z-0 transition-all duration-300"
+                    style={{ width: currentStep === 1 ? '0%' : currentStep === 2 ? '50%' : '100%' }}
                   />
-                  <User className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
-                </div>
-              </div>
-            )}
 
-            {!isLogin && (
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="block text-xs font-bold text-slate-700">
-                    البريد الإلكتروني <span className="text-[10px] text-slate-400 font-normal">(اختياري)</span>
-                  </label>
-                  <span className="text-[10px] text-amber-700 font-medium">مفيد لاستعادة الحساب</span>
-                </div>
-                <div className="relative">
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="example@domain.com (اختياري)"
-                    dir="ltr"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 pl-10 text-xs text-right focus:outline-none focus:border-maroon-700 focus:bg-white transition-colors"
-                  />
-                  <Mail className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
-                </div>
-              </div>
-            )}
-
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">رقم الهاتف</label>
-              <div className="relative">
-                <input
-                  type="tel"
-                  required
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="01XXXXXXXXX"
-                  dir="ltr"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 pl-10 text-xs text-right focus:outline-none focus:border-maroon-700 focus:bg-white transition-colors"
-                />
-                <Phone className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
-              </div>
-            </div>
-
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <label className="block text-xs font-bold text-slate-700">كلمة المرور</label>
-                {isLogin && (
-                  <button
-                    type="button"
-                    onClick={() => { setIsForgot(true); setError(''); setResetSuccess(''); }}
-                    className="text-[11px] text-maroon-700 hover:text-maroon-900 font-bold hover:underline"
-                  >
-                    نسيت كلمة السر؟
-                  </button>
-                )}
-              </div>
-              <div className="relative">
-                <input
-                  type="password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 pl-10 text-xs focus:outline-none focus:border-maroon-700 focus:bg-white transition-colors"
-                />
-                <Lock className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
-              </div>
-            </div>
-
-            {/* Grade selection for student */}
-            {!isLogin && role === 'student' && (
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">المرحلة الدراسية</label>
-                <select
-                  value={grade}
-                  onChange={(e) => setGrade(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:border-maroon-700 focus:bg-white transition-colors"
-                >
-                  <option value="first">سنة أولى</option>
-                  <option value="second">سنة ثانية</option>
-                  <option value="third">سنة ثالثة</option>
-                  <option value="elisha">فصل أليشع (إعداد خدام)</option>
-                </select>
-              </div>
-            )}
-
-            {/* Extended Profile Optional / Pastoral Fields (Toggleable Accordion) */}
-            {!isLogin && (
-              <div className="border border-amber-200/90 bg-amber-50/50 rounded-2xl p-3.5 space-y-3 transition-all">
-                <button
-                  type="button"
-                  onClick={() => setShowExtendedFields(!showExtendedFields)}
-                  className="w-full flex items-center justify-between text-xs font-bold text-maroon-900 cursor-pointer"
-                >
-                  <div className="flex items-center gap-2">
-                    <Heart className="w-4 h-4 text-amber-600" />
-                    <span>البيانات الشخصية والاجتماعية (اختياري)</span>
+                  {/* Step 1 Pill */}
+                  <div className="relative z-10 flex flex-col items-center">
+                    <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
+                      currentStep >= 1 ? 'bg-maroon-800 text-white shadow-xs' : 'bg-slate-200 text-slate-500'
+                    }`}>
+                      1
+                    </div>
+                    <span className={`text-[10px] mt-1 font-bold ${currentStep === 1 ? 'text-maroon-900' : 'text-slate-500'}`}>
+                      الحساب
+                    </span>
                   </div>
-                  <span className="text-[10px] bg-amber-200/80 text-amber-900 px-2 py-0.5 rounded-full font-bold">
-                    {showExtendedFields ? 'إخفاء ▲' : 'إكمال البيانات (صورة، كلية، أسرة) ▼'}
-                  </span>
-                </button>
 
-                {showExtendedFields && (
-                  <div className="space-y-3 pt-2 border-t border-amber-200/60 animate-in fade-in duration-200">
-                    {/* 1. Profile Picture Upload */}
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                        الصورة الشخصية
-                      </label>
-                      <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 rounded-2xl bg-white border border-slate-200 flex items-center justify-center overflow-hidden shrink-0 shadow-2xs">
-                          {photoUrl ? (
-                            <img src={photoUrl} alt="Preview" className="w-full h-full object-cover" />
-                          ) : (
-                            <Camera className="w-5 h-5 text-slate-400" />
-                          )}
-                        </div>
-                        <div className="flex-1">
-                          <label className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-300 hover:border-maroon-700 rounded-xl text-xs font-bold text-slate-700 shadow-2xs transition-all">
-                            <Camera className="w-3.5 h-3.5 text-maroon-700" />
-                            <span>{photoUrl ? 'تغيير الصورة' : 'اختر صورة من جهازك'}</span>
-                            <input
-                              type="file"
-                              accept="image/*"
-                              className="hidden"
-                              onChange={async (e) => {
-                                const file = e.target.files?.[0];
-                                if (file) {
-                                  try {
-                                    const compressed = await compressImage(file, 400, 0.72);
-                                    if (compressed) setPhotoUrl(compressed);
-                                  } catch (err) {
-                                    console.error('Image compression error:', err);
-                                  }
-                                }
-                              }}
-                            />
-                          </label>
-                          {photoUrl && (
-                            <button
-                              type="button"
-                              onClick={() => setPhotoUrl('')}
-                              className="text-[10px] text-rose-600 hover:underline mr-2 font-bold"
-                            >
-                              إزالة الصورة
-                            </button>
-                          )}
-                        </div>
-                      </div>
+                  {/* Step 2 Pill */}
+                  <div className="relative z-10 flex flex-col items-center">
+                    <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
+                      currentStep >= 2 ? 'bg-maroon-800 text-white shadow-xs' : 'bg-slate-200 text-slate-500'
+                    }`}>
+                      2
                     </div>
+                    <span className={`text-[10px] mt-1 font-bold ${currentStep === 2 ? 'text-maroon-900' : 'text-slate-500'}`}>
+                      الشخصية
+                    </span>
+                  </div>
 
-                    {/* 2. Gender & Birth Date */}
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label className="block text-[11px] font-bold text-slate-700 mb-1">النوع</label>
-                        <select
-                          value={gender}
-                          onChange={(e) => setGender(e.target.value)}
-                          className="w-full bg-white border border-slate-200 rounded-xl px-2.5 py-2 text-xs focus:outline-none focus:border-maroon-700"
-                        >
-                          <option value="male">شاب (ذكر)</option>
-                          <option value="female">شابة (أنثى)</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-[11px] font-bold text-slate-700 mb-1">تاريخ الميلاد</label>
-                        <input
-                          type="date"
-                          value={birthDate}
-                          onChange={(e) => setBirthDate(e.target.value)}
-                          className="w-full bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs focus:outline-none focus:border-maroon-700"
-                        />
-                      </div>
+                  {/* Step 3 Pill */}
+                  <div className="relative z-10 flex flex-col items-center">
+                    <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
+                      currentStep === 3 ? 'bg-maroon-800 text-white shadow-xs' : 'bg-slate-200 text-slate-500'
+                    }`}>
+                      3
                     </div>
+                    <span className={`text-[10px] mt-1 font-bold ${currentStep === 3 ? 'text-maroon-900' : 'text-slate-500'}`}>
+                      الاجتماعية
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
 
-                    {/* 3. College & University */}
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                        الكلية / الجامعة / المؤهل الدراسي
-                      </label>
-                      <div className="relative">
-                        <input
-                          type="text"
-                          value={education}
-                          onChange={(e) => setEducation(e.target.value)}
-                          placeholder="مثال: هندسة عين شمس، تجارة حلوان..."
-                          className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 pl-8 text-xs focus:outline-none focus:border-maroon-700"
-                        />
-                        <GraduationCap className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-slate-400" />
-                      </div>
+            {/* --- STEP 1: ACCOUNT & BASIC CREDENTIALS (OR LOGIN) --- */}
+            {(isLogin || currentStep === 1) && (
+              <div className="space-y-3.5 animate-in fade-in duration-200">
+                {!isLogin && (
+                  <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-3">
+                    <label className="block text-xs font-bold text-slate-700 mb-2">اختر صفتك في الخدمة:</label>
+                    <div className="grid grid-cols-2 gap-2 bg-slate-200/70 p-1 rounded-xl">
+                      <button
+                        type="button"
+                        onClick={() => setRole('student')}
+                        className={`py-2 px-3 rounded-lg font-bold text-xs transition-all flex items-center justify-center gap-1.5 ${
+                          role === 'student'
+                            ? 'bg-white text-maroon-900 shadow-sm'
+                            : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                      >
+                        <GraduationCap className="w-4 h-4" />
+                        <span>مخدوم</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setRole('servant')}
+                        className={`py-2 px-3 rounded-lg font-bold text-xs transition-all flex items-center justify-center gap-1.5 ${
+                          role === 'servant'
+                            ? 'bg-maroon-800 text-white shadow-sm'
+                            : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                      >
+                        <BookOpen className="w-4 h-4" />
+                        <span>خادم</span>
+                      </button>
                     </div>
+                  </div>
+                )}
 
-                    {/* 4. Job / Profession */}
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-700 mb-1">الوظيفة أو مجال العمل</label>
-                      <div className="relative">
-                        <input
-                          type="text"
-                          value={job}
-                          onChange={(e) => setJob(e.target.value)}
-                          placeholder="مثال: طالب، مهندس برمجيات، محاسب..."
-                          className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 pl-8 text-xs focus:outline-none focus:border-maroon-700"
-                        />
-                        <Briefcase className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-slate-400" />
-                      </div>
-                    </div>
-
-                    {/* 5. Marital Status */}
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-700 mb-1">الحالة الاجتماعية</label>
-                      <div className="grid grid-cols-3 gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => setMaritalStatus('single')}
-                          className={`py-1.5 rounded-lg text-xs font-bold transition-all border ${
-                            maritalStatus === 'single'
-                              ? 'bg-maroon-800 text-white border-maroon-800 shadow-2xs'
-                              : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
-                          }`}
-                        >
-                          أعزب / آنسة
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setMaritalStatus('engaged')}
-                          className={`py-1.5 rounded-lg text-xs font-bold transition-all border ${
-                            maritalStatus === 'engaged'
-                              ? 'bg-maroon-800 text-white border-maroon-800 shadow-2xs'
-                              : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
-                          }`}
-                        >
-                          خاطب / مخطوبة
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setMaritalStatus('married')}
-                          className={`py-1.5 rounded-lg text-xs font-bold transition-all border ${
-                            maritalStatus === 'married'
-                              ? 'bg-maroon-800 text-white border-maroon-800 shadow-2xs'
-                              : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
-                          }`}
-                        >
-                          متزوج / متزوجة
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* 6. Married specifics: Spouse & Children */}
-                    {maritalStatus === 'married' && (
-                      <div className="bg-white border border-amber-200 rounded-xl p-2.5 space-y-2.5">
-                        <div>
-                          <label className="block text-[11px] font-bold text-slate-700 mb-1">اسم شريك الحياة</label>
-                          <input
-                            type="text"
-                            value={spouseName}
-                            onChange={(e) => setSpouseName(e.target.value)}
-                            placeholder="اسم الزوج / الزوجة"
-                            className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-maroon-700"
-                          />
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="checkbox"
-                            id="hasChildrenReg"
-                            checked={hasChildren}
-                            onChange={(e) => setHasChildren(e.target.checked)}
-                            className="w-4 h-4 text-maroon-800 rounded-sm focus:ring-maroon-700 accent-maroon-800"
-                          />
-                          <label htmlFor="hasChildrenReg" className="text-xs font-bold text-slate-700 cursor-pointer">
-                            هل يوجد أولاد؟
-                          </label>
-                        </div>
-
-                        {hasChildren && (
-                          <div>
-                            <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                              بيانات وأعمار الأبناء
-                            </label>
-                            <input
-                              type="text"
-                              value={childrenDetails}
-                              onChange={(e) => setChildrenDetails(e.target.value)}
-                              placeholder="مثال: يوسف (٥ سنوات)، مارينا (سنتين)"
-                              className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-maroon-700"
-                            />
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {/* 7. Address */}
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-700 mb-1">عنوان السكن (للافتقاد)</label>
-                      <div className="relative">
-                        <input
-                          type="text"
-                          value={address}
-                          onChange={(e) => setAddress(e.target.value)}
-                          placeholder="المنطقة، الشارع، رقم العمارة، الشقة..."
-                          className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 pl-8 text-xs focus:outline-none focus:border-maroon-700"
-                        />
-                        <MapPin className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-slate-400" />
-                      </div>
-                    </div>
-
-                    {/* 8. Priest of Confession */}
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-700 mb-1">أب الاعتراف</label>
+                {!isLogin && (
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      الاسم ثلاثي <span className="text-red-500">*</span>
+                    </label>
+                    <div className="relative">
                       <input
                         type="text"
-                        value={confessionFather}
-                        onChange={(e) => setConfessionFather(e.target.value)}
-                        placeholder="مثال: أبونا يوحنا / كنيسة مارمرقس..."
+                        required
+                        value={fullName}
+                        onChange={(e) => setFullName(e.target.value)}
+                        placeholder="مثال: جورج سمير حنا"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 pl-10 text-xs focus:outline-none focus:border-maroon-700 focus:bg-white transition-colors"
+                      />
+                      <User className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
+                    </div>
+                  </div>
+                )}
+
+                {!isLogin && (
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-xs font-bold text-slate-700">
+                        البريد الإلكتروني <span className="text-red-500">*</span>
+                      </label>
+                      <span className="text-[10px] text-maroon-700 font-bold">إلزامي لتأمين الحساب واستعادته</span>
+                    </div>
+                    <div className="relative">
+                      <input
+                        type="email"
+                        required
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder="example@domain.com"
+                        dir="ltr"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 pl-10 text-xs text-right focus:outline-none focus:border-maroon-700 focus:bg-white transition-colors"
+                      />
+                      <Mail className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
+                    </div>
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    رقم الهاتف {!isLogin && <span className="text-red-500">*</span>}
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="tel"
+                      required
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      placeholder="01XXXXXXXXX"
+                      dir="ltr"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 pl-10 text-xs text-right focus:outline-none focus:border-maroon-700 focus:bg-white transition-colors"
+                    />
+                    <Phone className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-bold text-slate-700">
+                      كلمة المرور {!isLogin && <span className="text-red-500">*</span>}
+                    </label>
+                    {isLogin && (
+                      <button
+                        type="button"
+                        onClick={() => { setIsForgot(true); setError(''); setResetSuccess(''); }}
+                        className="text-[11px] text-maroon-700 hover:text-maroon-900 font-bold hover:underline"
+                      >
+                        نسيت كلمة السر؟
+                      </button>
+                    )}
+                  </div>
+                  <div className="relative">
+                    <input
+                      type="password"
+                      required
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="••••••••"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 pl-10 text-xs focus:outline-none focus:border-maroon-700 focus:bg-white transition-colors"
+                    />
+                    <Lock className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
+                  </div>
+                </div>
+
+                {/* Grade selection for student */}
+                {!isLogin && role === 'student' && (
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      المرحلة الدراسية <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      value={grade}
+                      onChange={(e) => setGrade(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:border-maroon-700 focus:bg-white transition-colors"
+                    >
+                      <option value="first">سنة أولى</option>
+                      <option value="second">سنة ثانية</option>
+                      <option value="third">سنة ثالثة</option>
+                      <option value="elisha">فصل أليشع (إعداد خدام)</option>
+                    </select>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* --- STEP 2: PERSONAL & CHURCH INFO --- */}
+            {!isLogin && currentStep === 2 && (
+              <div className="space-y-3.5 animate-in fade-in duration-200">
+                {/* 1. Profile Picture Upload */}
+                <div className="bg-slate-50 border border-slate-200/90 rounded-2xl p-3">
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                    الصورة الشخصية
+                  </label>
+                  <div className="flex items-center gap-3">
+                    <div className="w-14 h-14 rounded-2xl bg-white border border-slate-200 flex items-center justify-center overflow-hidden shrink-0 shadow-2xs">
+                      {photoUrl ? (
+                        <img src={photoUrl} alt="Preview" className="w-full h-full object-cover" />
+                      ) : (
+                        <Camera className="w-6 h-6 text-slate-400" />
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <label className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-300 hover:border-maroon-700 rounded-xl text-xs font-bold text-slate-700 shadow-2xs transition-all">
+                        <Camera className="w-3.5 h-3.5 text-maroon-700" />
+                        <span>{photoUrl ? 'تغيير الصورة' : 'اختر صورة شخصية'}</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              try {
+                                const compressed = await compressImage(file, 400, 0.72);
+                                if (compressed) setPhotoUrl(compressed);
+                              } catch (err) {
+                                console.error('Image compression error:', err);
+                              }
+                            }
+                          }}
+                        />
+                      </label>
+                      {photoUrl && (
+                        <button
+                          type="button"
+                          onClick={() => setPhotoUrl('')}
+                          className="text-[10px] text-rose-600 hover:underline mr-2 font-bold"
+                        >
+                          إزالة الصورة
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2. Gender & Birth Date */}
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      النوع <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      value={gender}
+                      onChange={(e) => setGender(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-2.5 text-xs focus:outline-none focus:border-maroon-700 focus:bg-white"
+                    >
+                      <option value="male">شاب (ذكر)</option>
+                      <option value="female">شابة (أنثى)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      تاريخ الميلاد <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="date"
+                      required
+                      value={birthDate}
+                      onChange={(e) => setBirthDate(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-2 text-xs focus:outline-none focus:border-maroon-700 focus:bg-white"
+                    />
+                  </div>
+                </div>
+
+                {/* 3. Confession Father & Church */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    أب الاعتراف والكنيسة <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      required
+                      value={confessionFather}
+                      onChange={(e) => setConfessionFather(e.target.value)}
+                      placeholder="مثال: أبونا يوحنا / كنيسة مارمرقس"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:border-maroon-700 focus:bg-white"
+                    />
+                  </div>
+                </div>
+
+                {/* 4. Address */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    عنوان السكن أو المنطقة <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      required
+                      value={address}
+                      onChange={(e) => setAddress(e.target.value)}
+                      placeholder="المنطقة، الشارع، رقم العمارة (للافتقاد)..."
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 pl-8 text-xs focus:outline-none focus:border-maroon-700 focus:bg-white"
+                    />
+                    <MapPin className="w-3.5 h-3.5 absolute left-2.5 top-3 text-slate-400" />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* --- STEP 3: WORK, EDUCATION & SOCIAL STATUS --- */}
+            {!isLogin && currentStep === 3 && (
+              <div className="space-y-3.5 animate-in fade-in duration-200">
+                {/* 1. Education / School / College */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    المؤهل الدراسي أو الكلية / المدرسة <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      required
+                      value={education}
+                      onChange={(e) => setEducation(e.target.value)}
+                      placeholder="مثال: كلية هندسة حلوان، ثانوية عامة، تجارة..."
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 pl-8 text-xs focus:outline-none focus:border-maroon-700 focus:bg-white"
+                    />
+                    <GraduationCap className="w-3.5 h-3.5 absolute left-2.5 top-3 text-slate-400" />
+                  </div>
+                </div>
+
+                {/* 2. Job / Profession */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    الوظيفة أو مجال العمل <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      required
+                      value={job}
+                      onChange={(e) => setJob(e.target.value)}
+                      placeholder="مثال: طالب، مهندس، محاسب..."
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 pl-8 text-xs focus:outline-none focus:border-maroon-700 focus:bg-white"
+                    />
+                    <Briefcase className="w-3.5 h-3.5 absolute left-2.5 top-3 text-slate-400" />
+                  </div>
+                </div>
+
+                {/* 3. Marital Status */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    الحالة الاجتماعية <span className="text-red-500">*</span>
+                  </label>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setMaritalStatus('single')}
+                      className={`py-2 rounded-xl text-xs font-bold transition-all border ${
+                        maritalStatus === 'single'
+                          ? 'bg-maroon-800 text-white border-maroon-800 shadow-2xs'
+                          : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                      }`}
+                    >
+                      أعزب / آنسة
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setMaritalStatus('engaged')}
+                      className={`py-2 rounded-xl text-xs font-bold transition-all border ${
+                        maritalStatus === 'engaged'
+                          ? 'bg-maroon-800 text-white border-maroon-800 shadow-2xs'
+                          : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                      }`}
+                    >
+                      خاطب / مخطوبة
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setMaritalStatus('married')}
+                      className={`py-2 rounded-xl text-xs font-bold transition-all border ${
+                        maritalStatus === 'married'
+                          ? 'bg-maroon-800 text-white border-maroon-800 shadow-2xs'
+                          : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                      }`}
+                    >
+                      متزوج / متزوجة
+                    </button>
+                  </div>
+                </div>
+
+                {/* 4. Married specifics */}
+                {maritalStatus === 'married' && (
+                  <div className="bg-slate-50 border border-slate-200/90 rounded-2xl p-3 space-y-3">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                        اسم شريك الحياة <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={spouseName}
+                        onChange={(e) => setSpouseName(e.target.value)}
+                        placeholder="اسم الزوج / الزوجة"
                         className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-maroon-700"
                       />
                     </div>
+
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        id="hasChildrenReg"
+                        checked={hasChildren}
+                        onChange={(e) => setHasChildren(e.target.checked)}
+                        className="w-4 h-4 text-maroon-800 rounded-sm focus:ring-maroon-700 accent-maroon-800"
+                      />
+                      <label htmlFor="hasChildrenReg" className="text-xs font-bold text-slate-700 cursor-pointer">
+                        هل يوجد أولاد؟
+                      </label>
+                    </div>
+
+                    {hasChildren && (
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                          بيانات وأعمار الأبناء
+                        </label>
+                        <input
+                          type="text"
+                          value={childrenDetails}
+                          onChange={(e) => setChildrenDetails(e.target.value)}
+                          placeholder="مثال: كيرلس (٤ سنوات)، دميانة (سنتين)"
+                          className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-maroon-700"
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Servant General Access Notice on Final Step */}
+                {role === 'servant' && (
+                  <div className="bg-maroon-50 border border-maroon-200 text-maroon-900 text-xs p-3 rounded-xl font-bold flex items-center gap-2">
+                    <BookOpen className="w-4 h-4 text-maroon-700 shrink-0" />
+                    <span>حسابك كخادم سيمنحك صلاحية الإشراف والمتابعة فور الاعتماد.</span>
                   </div>
                 )}
               </div>
             )}
 
-            {/* Servant General Access Notice */}
-            {!isLogin && role === 'servant' && (
-              <div className="space-y-2">
-                <div className="bg-maroon-50 border border-maroon-200 text-maroon-900 text-xs p-3 rounded-xl font-bold flex items-center gap-2">
-                  <BookOpen className="w-4 h-4 text-maroon-700 shrink-0" />
-                  <span>الصفة: خادم عام (صلاحية كاملة لجميع المراحل وإعداد الخدام)</span>
+            {/* ACTION BUTTONS */}
+            <div className="pt-2 space-y-2">
+              {isLogin ? (
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full bg-maroon-800 hover:bg-maroon-700 text-white font-bold py-3 px-4 rounded-xl shadow-md transition-all flex items-center justify-center gap-2 text-xs"
+                >
+                  {loading ? <span>جاري التحقق...</span> : <span>تسجيل الدخول</span>}
+                </button>
+              ) : currentStep < 3 ? (
+                <div className="flex items-center gap-2">
+                  {currentStep > 1 && (
+                    <button
+                      type="button"
+                      onClick={handlePrevStep}
+                      className="w-1/3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-3 px-3 rounded-xl transition-all flex items-center justify-center gap-1.5 text-xs"
+                    >
+                      <ArrowRight className="w-3.5 h-3.5" />
+                      <span>السابق</span>
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={handleNextStep}
+                    className={`flex-1 bg-maroon-800 hover:bg-maroon-700 text-white font-bold py-3 px-4 rounded-xl shadow-md transition-all flex items-center justify-center gap-2 text-xs`}
+                  >
+                    <span>{currentStep === 1 ? 'متابعة: البيانات الشخصية' : 'متابعة: الدراسة والعمل'}</span>
+                    <ArrowLeft className="w-3.5 h-3.5" />
+                  </button>
                 </div>
-                <div className="bg-amber-50 border border-amber-200 text-amber-800 text-[11px] p-2.5 rounded-xl font-bold flex items-center gap-1.5">
-                  <CheckCircle2 className="w-4 h-4 text-amber-600 shrink-0" />
-                  <span>دخول فوري مباشر: حسابك كخادم عام سيفعل تلقائياً لتجربة المنظومة فوراً.</span>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handlePrevStep}
+                    className="w-1/3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-3 px-3 rounded-xl transition-all flex items-center justify-center gap-1.5 text-xs"
+                  >
+                    <ArrowRight className="w-3.5 h-3.5" />
+                    <span>السابق</span>
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="flex-1 bg-maroon-800 hover:bg-maroon-700 text-white font-bold py-3 px-4 rounded-xl shadow-md transition-all flex items-center justify-center gap-2 text-xs"
+                  >
+                    {loading ? <span>جاري تسجيل الحساب...</span> : <span>تأكيد إنشاء الحساب 🚀</span>}
+                  </button>
                 </div>
-              </div>
-            )}
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-maroon-800 hover:bg-maroon-700 text-white font-bold py-3 px-4 rounded-xl shadow-md transition-all flex items-center justify-center gap-2 mt-4 text-xs"
-            >
-              {loading ? <span>جاري التحقق...</span> : <span>{isLogin ? 'تسجيل الدخول' : 'تأكيد إنشاء الحساب'}</span>}
-            </button>
+              )}
+            </div>
 
             {/* Toggle Login / Register */}
-            <div className="text-center pt-2">
+            <div className="text-center pt-1">
               <button
                 type="button"
-                onClick={() => { setIsLogin(!isLogin); setIsForgot(false); setError(''); }}
+                onClick={() => { 
+                  setIsLogin(!isLogin); 
+                  setIsForgot(false); 
+                  setError('');
+                  setCurrentStep(1);
+                }}
                 className="text-xs text-maroon-800 hover:text-maroon-900 font-semibold underline"
               >
                 {isLogin ? 'ليس لديك حساب؟ إنشاء حساب جديد' : 'لديك حساب بالفعل؟ تسجيل الدخول'}
