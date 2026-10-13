@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { X, Lightbulb, Send, CheckCircle2, AlertCircle } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { X, Lightbulb, Send, CheckCircle2, AlertCircle, Mic, Square, Trash2, Volume2 } from 'lucide-react';
 import { db } from '../../firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
@@ -10,6 +10,25 @@ export default function FeatureRequestModal({ isOpen, onClose, currentUser }) {
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+
+  // Voice Note Recording State
+  const [isRecording, setIsRecording] = useState(false);
+  const [audioUrl, setAudioUrl] = useState(null);
+  const [audioDataUrl, setAudioDataUrl] = useState(null);
+  const [recordingSeconds, setRecordingSeconds] = useState(0);
+
+  const mediaRecorderRef = useRef(null);
+  const audioChunksRef = useRef([]);
+  const timerRef = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+        mediaRecorderRef.current.stop();
+      }
+    };
+  }, []);
 
   if (!isOpen) return null;
 
@@ -23,10 +42,72 @@ export default function FeatureRequestModal({ isOpen, onClose, currentUser }) {
     { id: 'عام', label: 'فكرة أو اقتراح عام' }
   ];
 
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = recorder;
+      audioChunksRef.current = [];
+
+      recorder.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) {
+          audioChunksRef.current.push(e.data);
+        }
+      };
+
+      recorder.onstop = () => {
+        const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        const previewUrl = URL.createObjectURL(blob);
+        setAudioUrl(previewUrl);
+
+        // Convert blob to base64 DataURL for persistent storage in Firestore
+        const reader = new FileReader();
+        reader.readAsDataURL(blob);
+        reader.onloadend = () => {
+          setAudioDataUrl(reader.result);
+        };
+
+        setIsRecording(false);
+        stream.getTracks().forEach((track) => track.stop());
+      };
+
+      recorder.start();
+      setIsRecording(true);
+      setRecordingSeconds(0);
+      setAudioUrl(null);
+      setAudioDataUrl(null);
+
+      timerRef.current = setInterval(() => {
+        setRecordingSeconds((prev) => {
+          if (prev >= 60) {
+            stopRecording();
+            return 60;
+          }
+          return prev + 1;
+        });
+      }, 1000);
+    } catch (err) {
+      alert('تعذر فتح الميكروفون: يرجى السماح بصلاحية الميكروفون من إعدادات المتصفح.');
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+      mediaRecorderRef.current.stop();
+      if (timerRef.current) clearInterval(timerRef.current);
+    }
+  };
+
+  const deleteRecording = () => {
+    setAudioUrl(null);
+    setAudioDataUrl(null);
+    setRecordingSeconds(0);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!title.trim() || !description.trim()) {
-      setErrorMsg('يرجى ملء عنوان الاقتراح وتفاصيل الفكرة بوضوح.');
+    if (!title.trim() && !audioDataUrl) {
+      setErrorMsg('يرجى كتابة عنوان الاقتراح أو تسجيل فويس نوت صوتي للفكرة.');
       return;
     }
 
@@ -35,9 +116,10 @@ export default function FeatureRequestModal({ isOpen, onClose, currentUser }) {
 
     try {
       await addDoc(collection(db, 'feature_suggestions'), {
-        title: title.trim(),
+        title: title.trim() || 'اقتراح صوتي (فويس نوت)',
         category,
         description: description.trim(),
+        audioDataUrl: audioDataUrl || null,
         userId: currentUser?.id || 'guest',
         userName: currentUser?.fullName || 'مستخدم مجهول',
         userPhone: currentUser?.phone || '',
@@ -52,6 +134,7 @@ export default function FeatureRequestModal({ isOpen, onClose, currentUser }) {
         setSuccess(false);
         setTitle('');
         setDescription('');
+        deleteRecording();
         onClose();
       }, 2000);
     } catch (err) {
@@ -64,7 +147,7 @@ export default function FeatureRequestModal({ isOpen, onClose, currentUser }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3.5 sm:p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-200 font-cairo text-right">
-      <div className="bg-white border border-slate-200 rounded-3xl max-w-sm sm:max-w-md w-full p-5 sm:p-6 shadow-2xl space-y-4">
+      <div className="bg-white border border-slate-200 rounded-3xl max-w-sm sm:max-w-md w-full p-5 sm:p-6 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-100 pb-3">
           <div className="flex items-center gap-2.5">
@@ -73,7 +156,7 @@ export default function FeatureRequestModal({ isOpen, onClose, currentUser }) {
             </div>
             <div>
               <h3 className="text-base font-extrabold text-slate-900">اقترح ميزة أو وظيفة جديدة</h3>
-              <p className="text-[11px] text-slate-500">شاركنا أفكارك لتطوير المنصة وخدمة أفضل</p>
+              <p className="text-[11px] text-slate-500">شاركنا أفكارك لتطوير المنصة والخدمة</p>
             </div>
           </div>
           <button
@@ -121,14 +204,61 @@ export default function FeatureRequestModal({ isOpen, onClose, currentUser }) {
 
             {/* Description */}
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">تفاصيل الفكرة وكيف تفيد الخدمة</label>
+              <label className="block text-xs font-bold text-slate-700 mb-1">تفاصيل الفكرة (نصياً أو بالتسجيل الصوتي)</label>
               <textarea
-                rows={4}
+                rows={3}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="اشرح الفكرة والهدف منها وكيف ستسهل على الخادم أو المخدوم..."
                 className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-xs font-semibold focus:outline-none focus:border-maroon-700 resize-none"
               />
+            </div>
+
+            {/* Voice Note Recording Section */}
+            <div className="p-3 bg-amber-50/70 border border-amber-200/80 rounded-2xl space-y-2">
+              <span className="text-[11px] font-bold text-amber-950 block">تسجيل فويس نوت صوتي للفكرة (اختياري 🎙️)</span>
+              
+              {!audioUrl && !isRecording && (
+                <button
+                  type="button"
+                  onClick={startRecording}
+                  className="w-full py-2 px-3 rounded-xl bg-white hover:bg-amber-100/70 border border-amber-300 text-amber-900 font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-2xs"
+                >
+                  <Mic className="w-4 h-4 text-amber-600" />
+                  <span>اضغط لتسجيل فويس نوت صوتي</span>
+                </button>
+              )}
+
+              {isRecording && (
+                <div className="flex items-center justify-between p-2 bg-rose-50 border border-rose-200 rounded-xl animate-pulse">
+                  <div className="flex items-center gap-2 text-rose-700 font-bold text-xs">
+                    <span className="w-2.5 h-2.5 rounded-full bg-rose-600 animate-ping" />
+                    <span>جاري التسجيل... ({recordingSeconds} ثانية)</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={stopRecording}
+                    className="py-1 px-3 bg-rose-600 text-white font-bold text-xs rounded-lg flex items-center gap-1 cursor-pointer"
+                  >
+                    <Square className="w-3 h-3" />
+                    <span>إيقاف</span>
+                  </button>
+                </div>
+              )}
+
+              {audioUrl && (
+                <div className="flex items-center gap-2 p-2 bg-white border border-amber-200 rounded-xl">
+                  <audio controls src={audioUrl} className="h-8 flex-1" />
+                  <button
+                    type="button"
+                    onClick={deleteRecording}
+                    className="p-1.5 text-rose-500 hover:text-rose-700 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer"
+                    title="حذف التسجيل"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
             </div>
 
             {errorMsg && (
@@ -142,7 +272,7 @@ export default function FeatureRequestModal({ isOpen, onClose, currentUser }) {
             <div className="flex items-center gap-2.5 pt-1">
               <button
                 type="submit"
-                disabled={submitting}
+                disabled={submitting || isRecording}
                 className="flex-1 py-2.5 px-3 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-bold text-xs shadow-md transition-all active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
               >
                 <Send className="w-3.5 h-3.5" />

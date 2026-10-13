@@ -7,9 +7,10 @@ export default function AutoUpdateWatcher() {
   const [isUpdating, setIsUpdating] = useState(false);
 
   useEffect(() => {
-    // 1. Identify the current running main script in the DOM
+    // 1. Identify the current running main script & stylesheet in the DOM
     const currentScript = document.querySelector('script[src*="assets/"], script[src*="src/main"]');
-    const initialSrc = currentScript ? currentScript.getAttribute('src') : '';
+    const currentLink = document.querySelector('link[rel="stylesheet"][href*="assets/"]');
+    const initialSrc = (currentScript ? currentScript.getAttribute('src') : '') + '|' + (currentLink ? currentLink.getAttribute('href') : '');
     setCurrentScriptSrc(initialSrc);
 
     // 2. Function to check server for new index.html with cache-busting
@@ -29,9 +30,10 @@ export default function AutoUpdateWatcher() {
         const parser = new DOMParser();
         const doc = parser.parseFromString(htmlText, 'text/html');
         const remoteScript = doc.querySelector('script[src*="assets/"]');
-        const remoteSrc = remoteScript ? remoteScript.getAttribute('src') : '';
+        const remoteLink = doc.querySelector('link[rel="stylesheet"][href*="assets/"]');
+        const remoteSrc = (remoteScript ? remoteScript.getAttribute('src') : '') + '|' + (remoteLink ? remoteLink.getAttribute('href') : '');
 
-        // If a new hashed asset is deployed on Vercel
+        // If a new hashed asset or stylesheet is deployed on Vercel
         if (remoteSrc && initialSrc && remoteSrc !== initialSrc) {
           console.log('[AutoUpdateWatcher] New version detected:', remoteSrc, 'Current:', initialSrc);
           setUpdateAvailable(true);
@@ -54,30 +56,33 @@ export default function AutoUpdateWatcher() {
     // Check periodically every 2 minutes
     const interval = setInterval(checkForUpdates, 120000);
 
-    // Initial check after 10 seconds
-    const initialTimer = setTimeout(checkForUpdates, 10000);
+    // Initial checks after 3 seconds and 30 seconds
+    const initialTimer1 = setTimeout(checkForUpdates, 3000);
+    const initialTimer2 = setTimeout(checkForUpdates, 30000);
 
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('focus', checkForUpdates);
       clearInterval(interval);
-      clearTimeout(initialTimer);
+      clearTimeout(initialTimer1);
+      clearTimeout(initialTimer2);
     };
   }, []);
 
   const handleApplyUpdate = () => {
     setIsUpdating(true);
+    const cleanUrl = window.location.origin + window.location.pathname + '?_v=' + Date.now() + (window.location.hash || '');
     // Hard reload bypassing cache
     if ('caches' in window) {
       caches.keys().then((names) => {
         Promise.all(names.map((name) => caches.delete(name))).then(() => {
-          window.location.reload(true);
+          window.location.href = cleanUrl;
         });
       }).catch(() => {
-        window.location.reload(true);
+        window.location.href = cleanUrl;
       });
     } else {
-      window.location.reload(true);
+      window.location.href = cleanUrl;
     }
   };
 

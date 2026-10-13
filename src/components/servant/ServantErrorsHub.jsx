@@ -242,6 +242,14 @@ ${item.errorStack || item.componentStack || 'لا توجد تفاصيل إضاف
                   </div>
                 </div>
 
+                {/* Voice Note Audio Player if attached */}
+                {item.audioDataUrl && (
+                  <div className="mt-3 p-2.5 bg-rose-50/80 border border-rose-200 rounded-2xl flex items-center gap-3">
+                    <span className="text-[11px] font-bold text-rose-950 shrink-0">فويس نوت مرفق 🎙️:</span>
+                    <audio controls src={item.audioDataUrl} className="h-8 flex-1 max-w-md" />
+                  </div>
+                )}
+
                 {/* Expanded Technical Details */}
                 {isExpanded && (
                   <div className="mt-3.5 pt-3 border-t border-slate-100 text-xs space-y-2">

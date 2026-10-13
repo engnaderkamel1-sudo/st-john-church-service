@@ -167,9 +167,18 @@ export default function ServantSuggestionsHub() {
                   </div>
                 </div>
 
-                <div className="p-3 bg-slate-50 rounded-2xl text-xs text-slate-700 leading-relaxed font-medium">
-                  {item.description}
-                </div>
+                {item.description && (
+                  <div className="p-3 bg-slate-50 rounded-2xl text-xs text-slate-700 leading-relaxed font-medium">
+                    {item.description}
+                  </div>
+                )}
+
+                {item.audioDataUrl && (
+                  <div className="p-2.5 bg-amber-50/70 border border-amber-200/80 rounded-2xl flex items-center gap-3">
+                    <span className="text-[11px] font-bold text-amber-950 shrink-0">فويس نوت صوتي 🎙️:</span>
+                    <audio controls src={item.audioDataUrl} className="h-8 flex-1 max-w-md" />
+                  </div>
+                )}
               </div>
             );
           })}
