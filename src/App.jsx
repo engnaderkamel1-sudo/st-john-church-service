@@ -223,6 +223,15 @@ export default function App() {
     return () => clearInterval(timer);
   }, []);
 
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e) => {
+      e.preventDefault();
+      window.deferredPrompt = e;
+    };
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+  }, []);
+
   return (
     <>
       {/* 5-Second Full Screen Splash Screen (Hold to Pause) */}
@@ -233,8 +242,22 @@ export default function App() {
           onMouseDown={() => setIsSplashPaused(true)}
           onMouseUp={() => setIsSplashPaused(false)}
           onContextMenu={(e) => e.preventDefault()}
-          className="fixed inset-0 z-[9999] bg-gradient-to-b from-slate-900 via-maroon-950 to-slate-950 text-white flex flex-col items-center justify-between p-6 sm:p-8 font-cairo select-none animate-in fade-in duration-300 cursor-pointer"
+          className="fixed inset-0 z-[9999] bg-gradient-to-b from-slate-900 via-maroon-950 to-slate-950 text-white flex flex-col items-center justify-between p-6 sm:p-8 font-cairo select-none animate-in fade-in duration-300 cursor-pointer relative"
         >
+          {/* Top Floating Skip Button (تخطي شاشة البداية) */}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowSplash(false);
+            }}
+            className="absolute top-4 left-4 sm:top-6 sm:left-6 z-20 px-3.5 py-1.5 rounded-full bg-white/10 hover:bg-white/20 active:scale-95 border border-white/20 text-white text-xs font-bold backdrop-blur-md transition-all flex items-center gap-1.5 cursor-pointer shadow-lg group"
+            title="تخطي شاشة البداية"
+          >
+            <span>تخطي</span>
+            <ChevronLeft className="w-3.5 h-3.5 rotate-180 group-hover:-translate-x-0.5 transition-transform" />
+          </button>
+
           {/* Center Logo & Titles & Prominent Verse */}
           <div className="flex flex-col items-center text-center space-y-4 sm:space-y-5 max-w-md px-4 my-auto">
             <div className="relative group">

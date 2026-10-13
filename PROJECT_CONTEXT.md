@@ -103,8 +103,15 @@
 6. `ServantUsersHub.jsx`: إدارة المستخدمين والاعتماد، الحضور والغياب اليدوي، وسجل النشاط والدخول، وإعدادات مفتاح الذكاء الاصطناعي (AI Config).
 7. `ServantAiStudioModal.jsx`: الاستوديو الذكي لتحويل المستندات والكتب لامتحانات وشرائح تفاعلية وملخصات.
 8. `AiPresentationViewer.jsx`: مشغل شرائح العرض التقديمي للـ Data Show في القاعة ملء الشاشة.
+9. `ServantSuggestionsHub.jsx`: لوحة إدارة ومتابعة اقتراحات الميزات المرسلة من الخدام والطلبة (خاص بالمشرف).
 
-### ج. الخدمات المركزية (`src/services/`):
+### ج. المكونات المشتركة وسهولة الاستخدام (`src/components/common/`):
+1. `InstallPromptModal.jsx`: نافذة تثبيت التطبيق الذكية (Smart PWA Guide: خطوات iOS Safari المخصصة وتثبيت Android/Desktop المباشر).
+2. `FeatureRequestModal.jsx`: نافذة اقترح ميزة أو وظيفة جديدة مع تصنيف الأقسام والرفع لـ Firestore (`feature_suggestions`).
+3. `ErrorReportModal.jsx`: نافذة إبلاغ سريع عن عطل مع التقاط تلقائي للجهاز والمتصفح والرفع لـ Firestore (`app_errors`).
+4. `UpdatesChangelogModal.jsx`: سجل تحديثات المنظومة مع الوقت النسبي، فحص السيرفر، ومسح الذاكرة المؤقتة (خاص بالمشرف).
+
+### د. الخدمات المركزية (`src/services/`):
 - `geminiService.js`: خدمة الاتصال بـ Google Gemini Multimodal API والمدمج بها التعليمات الكنسية الأرثوذكسية وتوليد الـ JSON المنظم.
 
 ---

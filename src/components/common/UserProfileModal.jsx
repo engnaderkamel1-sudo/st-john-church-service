@@ -1,12 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   X, User, Phone, Mail, ShieldCheck, KeyRound, 
   LogOut, Save, CheckCircle2, AlertCircle, Edit2,
-  Camera, Heart, MapPin, Briefcase, GraduationCap, Users, Calendar
+  Camera, Heart, MapPin, Briefcase, GraduationCap, Users, Calendar,
+  Bell, Lightbulb, Smartphone, AlertTriangle, Rocket, Sparkles
 } from 'lucide-react';
 import { db } from '../../firebase';
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { compressImage } from '../../utils/imageCompressor';
+import InstallPromptModal from './InstallPromptModal';
+import FeatureRequestModal from './FeatureRequestModal';
+import ErrorReportModal from './ErrorReportModal';
+import UpdatesChangelogModal from './UpdatesChangelogModal';
 
 export default function UserProfileModal({
   isOpen,
@@ -35,6 +40,32 @@ export default function UserProfileModal({
   const [saving, setSaving] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
+
+  // Usability & Tools Modals State
+  const [showInstallModal, setShowInstallModal] = useState(false);
+  const [showFeatureRequestModal, setShowFeatureRequestModal] = useState(false);
+  const [showErrorReportModal, setShowErrorReportModal] = useState(false);
+  const [showUpdatesModal, setShowUpdatesModal] = useState(false);
+  const [hasNotificationPermission, setHasNotificationPermission] = useState(() => {
+    return typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted';
+  });
+
+  const handleToggleNotification = async () => {
+    if (typeof window === 'undefined' || !('Notification' in window)) {
+      alert('متصفحك لا يدعم الإشعارات المباشرة.');
+      return;
+    }
+    if (Notification.permission === 'granted') {
+      setHasNotificationPermission(true);
+      return;
+    }
+    try {
+      const perm = await Notification.requestPermission();
+      setHasNotificationPermission(perm === 'granted');
+    } catch {
+      // ignore
+    }
+  };
 
   // Sync state if user changes
   React.useEffect(() => {
@@ -156,6 +187,69 @@ export default function UserProfileModal({
                 ? 'مخدوم 🎓' 
                 : 'خادم عام ✝️'}
             </span>
+          </div>
+
+          {/* Quick Usability Tools Panel (مطابقة لتصميم المشورة) */}
+          <div className="space-y-2 p-3.5 rounded-2xl bg-slate-50/80 border border-slate-200/90">
+            {/* Notification Permission Toggle */}
+            <button
+              type="button"
+              onClick={handleToggleNotification}
+              className={`w-full text-xs py-2 px-3 rounded-xl border font-bold flex items-center justify-between transition-all cursor-pointer ${
+                hasNotificationPermission
+                  ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                  : 'bg-emerald-600 hover:bg-emerald-700 border-emerald-600 text-white shadow-xs'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <Bell className="w-4 h-4" />
+                <span>{hasNotificationPermission ? 'الإشعارات مفعلة بنجاح' : 'اضغط لتفعيل الإشعارات'}</span>
+              </div>
+              <span className="text-[11px] opacity-75">{hasNotificationPermission ? '✓' : '👈'}</span>
+            </button>
+
+            {/* Suggest Feature */}
+            <button
+              type="button"
+              onClick={() => setShowFeatureRequestModal(true)}
+              className="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs transition-all active:scale-95 cursor-pointer"
+            >
+              <Lightbulb className="w-4 h-4" />
+              <span>اقترح ميزة أو وظيفة جديدة</span>
+            </button>
+
+            {/* Install App & Report Error */}
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setShowInstallModal(true)}
+                className="text-xs py-2 px-2.5 rounded-xl bg-slate-800 hover:bg-slate-900 border border-slate-700 text-white font-bold flex items-center justify-center gap-1.5 shadow-2xs transition-all cursor-pointer active:scale-95"
+              >
+                <Smartphone className="w-3.5 h-3.5 text-amber-300" />
+                <span>تثبيت التطبيق</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setShowErrorReportModal(true)}
+                className="text-xs py-2 px-2.5 rounded-xl bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-800 font-bold flex items-center justify-center gap-1.5 shadow-2xs transition-all cursor-pointer active:scale-95"
+              >
+                <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
+                <span>إبلاغ عن عطل</span>
+              </button>
+            </div>
+
+            {/* Admin Exclusive: Changelog Updates */}
+            {isAppAdmin && (
+              <button
+                type="button"
+                onClick={() => setShowUpdatesModal(true)}
+                className="w-full py-2 px-3 rounded-xl bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-900 font-extrabold text-xs flex items-center justify-center gap-2 shadow-2xs transition-all cursor-pointer active:scale-95"
+              >
+                <Rocket className="w-4 h-4 text-indigo-600" />
+                <span>سجل تحديثات المنظومة (خاص بالمشرف) 🚀</span>
+              </button>
+            )}
           </div>
 
           {/* Form */}
@@ -478,6 +572,29 @@ export default function UserProfileModal({
         </div>
 
       </div>
+
+      {/* Usability & Tools Modals */}
+      <InstallPromptModal
+        isOpen={showInstallModal}
+        onClose={() => setShowInstallModal(false)}
+        deferredPrompt={typeof window !== 'undefined' ? window.deferredPrompt : null}
+      />
+      <FeatureRequestModal
+        isOpen={showFeatureRequestModal}
+        onClose={() => setShowFeatureRequestModal(false)}
+        currentUser={user}
+      />
+      <ErrorReportModal
+        isOpen={showErrorReportModal}
+        onClose={() => setShowErrorReportModal(false)}
+        currentUser={user}
+      />
+      {isAppAdmin && (
+        <UpdatesChangelogModal
+          isOpen={showUpdatesModal}
+          onClose={() => setShowUpdatesModal(false)}
+        />
+      )}
     </div>
   );
 }
