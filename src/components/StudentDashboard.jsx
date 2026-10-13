@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Award, QrCode, Sun, BookOpen, FileText, CheckSquare, Bell, Check, Menu, X 
+  Award, QrCode, Sun, BookOpen, FileText, CheckSquare, Bell, Check, Menu, X, LogOut 
 } from 'lucide-react';
 import { db } from '../firebase';
 import { collection, addDoc, query, where, getDocs, doc, getDoc, onSnapshot, serverTimestamp, updateDoc, setDoc } from 'firebase/firestore';
@@ -674,12 +674,12 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser, externa
           </div>
         </div>
 
-        {/* Stats & Regulations */}
-        <div className="flex items-center gap-2 shrink-0">
+        {/* Stats & Regulations & Logout */}
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           <button
             type="button"
             onClick={() => setShowRegulationsModal(true)}
-            className="bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 px-3 py-1.5 rounded-2xl text-xs font-black transition-all flex items-center gap-1.5 shadow-2xs cursor-pointer"
+            className="bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 px-2.5 sm:px-3 py-1.5 rounded-2xl text-xs font-black transition-all flex items-center gap-1.5 shadow-2xs cursor-pointer"
             title="عرض لائحة تقييم مرحلتي وتوزيع الدرجات"
           >
             <Award className="w-3.5 h-3.5 text-amber-600" />
@@ -690,6 +690,20 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser, externa
             <span className="text-[9px] sm:text-[10px] text-slate-500 block font-medium">النقاط</span>
             <span className="text-xs sm:text-sm font-extrabold text-maroon-800">{points} ⭐</span>
           </div>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (window.confirm('هل تريد بالتأكيد تسجيل الخروج؟')) {
+                onLogout();
+              }
+            }}
+            className="p-2 sm:px-3 sm:py-1.5 rounded-2xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 flex items-center gap-1.5 text-xs font-bold transition-all shadow-2xs cursor-pointer active:scale-95"
+            title="تسجيل الخروج"
+          >
+            <LogOut className="w-4 h-4 text-rose-600" />
+            <span className="hidden md:inline">خروج</span>
+          </button>
         </div>
       </div>
 

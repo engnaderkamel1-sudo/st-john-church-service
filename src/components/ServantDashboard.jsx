@@ -8,7 +8,8 @@ import {
   History, Activity, Menu, X, Video, Music, ExternalLink,
   Eye, EyeOff, Calendar, CalendarOff, ChevronRight, FileSpreadsheet, File, BarChart3, TrendingDown, Image as ImageIcon,
   AlertTriangle,
-  Cake
+  Cake,
+  LogOut
 } from 'lucide-react';
 import { db } from '../firebase';
 import ServantSpiritualDiary from './servant/ServantSpiritualDiary';
@@ -1253,10 +1254,24 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
               </span>
             </div>
           </div>
-        </div>
-
-        <div className="text-slate-400 group-hover:text-maroon-800 transition-colors shrink-0">
-          <ChevronLeft className="w-5 h-5" />
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (window.confirm('هل تريد بالتأكيد تسجيل الخروج؟')) {
+                onLogout();
+              }
+            }}
+            className="p-2 sm:px-3 sm:py-1.5 rounded-2xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 flex items-center gap-1.5 text-xs font-bold transition-all shadow-2xs cursor-pointer active:scale-95"
+            title="تسجيل الخروج"
+          >
+            <LogOut className="w-4 h-4 text-rose-600" />
+            <span className="hidden sm:inline">تسجيل الخروج</span>
+          </button>
+          <div className="text-slate-400 group-hover:text-maroon-800 transition-colors shrink-0">
+            <ChevronLeft className="w-5 h-5" />
+          </div>
         </div>
       </div>
 

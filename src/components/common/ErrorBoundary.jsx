@@ -12,8 +12,10 @@ export default class ErrorBoundary extends React.Component {
       errorInfo: null,
       reportSent: false,
       sendingReport: false,
-      sendErrorMsg: ''
+      sendErrorMsg: '',
+      reportSentAuto: false
     };
+    this.hasReported = false;
   }
 
   static getDerivedStateFromError(error) {
@@ -23,13 +25,24 @@ export default class ErrorBoundary extends React.Component {
   componentDidCatch(error, errorInfo) {
     this.setState({ errorInfo });
     console.error('App Caught Error via ErrorBoundary:', error, errorInfo);
+    // Automatic immediate logging to Admin account in Firestore
+    if (!this.hasReported) {
+      this.hasReported = true;
+      this.sendReportAutomatically(error, errorInfo);
+    }
   }
 
-  handleSendReport = async () => {
-    this.setState({ sendingReport: true, sendErrorMsg: '' });
+  sendReportAutomatically = async (error, errorInfo) => {
     try {
-      const { error, errorInfo } = this.state;
       const currentUser = this.props.currentUser || null;
+      let cachedUser = null;
+      try {
+        const stored = localStorage.getItem('currentUser') || localStorage.getItem('user');
+        if (stored) cachedUser = JSON.parse(stored);
+      } catch (e) {
+        // ignore storage parse errors
+      }
+      const effectiveUser = currentUser || cachedUser;
 
       const payload = {
         errorMessage: error?.message || 'Unknown Error',
@@ -39,12 +52,52 @@ export default class ErrorBoundary extends React.Component {
         userAgent: navigator?.userAgent || 'Unknown Device',
         screenWidth: window?.innerWidth || 0,
         screenHeight: window?.innerHeight || 0,
-        platform: navigator?.platform || '',
-        user: currentUser ? {
-          id: currentUser.id || '',
-          fullName: currentUser.fullName || 'غير معروف',
-          phone: currentUser.phone || '',
-          role: currentUser.role || ''
+        platform: navigator?.userAgentData?.platform || navigator?.platform || '',
+        user: effectiveUser ? {
+          id: effectiveUser.id || '',
+          fullName: effectiveUser.fullName || 'غير معروف',
+          phone: effectiveUser.phone || '',
+          role: effectiveUser.role || ''
+        } : { guest: true },
+        url: window.location.href,
+        status: 'unresolved',
+        createdAt: serverTimestamp(),
+        timestampFormatted: new Date().toLocaleString('ar-EG')
+      };
+
+      await addDoc(collection(db, 'app_errors'), payload);
+      this.setState({ reportSent: true, reportSentAuto: true });
+    } catch (err) {
+      console.error('Failed to automatically log error to Firestore:', err);
+    }
+  };
+
+  handleSendReport = async () => {
+    this.setState({ sendingReport: true, sendErrorMsg: '' });
+    try {
+      const { error, errorInfo } = this.state;
+      const currentUser = this.props.currentUser || null;
+      let cachedUser = null;
+      try {
+        const stored = localStorage.getItem('currentUser') || localStorage.getItem('user');
+        if (stored) cachedUser = JSON.parse(stored);
+      } catch (e) {}
+      const effectiveUser = currentUser || cachedUser;
+
+      const payload = {
+        errorMessage: error?.message || 'Unknown Error',
+        errorName: error?.name || 'Error',
+        errorStack: error?.stack || '',
+        componentStack: errorInfo?.componentStack || '',
+        userAgent: navigator?.userAgent || 'Unknown Device',
+        screenWidth: window?.innerWidth || 0,
+        screenHeight: window?.innerHeight || 0,
+        platform: navigator?.userAgentData?.platform || navigator?.platform || '',
+        user: effectiveUser ? {
+          id: effectiveUser.id || '',
+          fullName: effectiveUser.fullName || 'غير معروف',
+          phone: effectiveUser.phone || '',
+          role: effectiveUser.role || ''
         } : { guest: true },
         url: window.location.href,
         status: 'unresolved',
@@ -98,7 +151,7 @@ export default class ErrorBoundary extends React.Component {
               <div className="bg-emerald-950/60 border border-emerald-500/40 text-emerald-300 p-3.5 rounded-2xl text-xs flex items-center gap-2">
                 <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
                 <span className="font-bold">
-                  تم إرسال تقرير الخطأ بنجاح إلى المشرف! سيتم مراجعته وإصلاحه قريباً. 🙏
+                  تم إرسال تقرير وكود الخطأ تلقائياً إلى حساب الأدمن لمراجعته وحله. 🙏
                 </span>
               </div>
             ) : sendErrorMsg ? (
