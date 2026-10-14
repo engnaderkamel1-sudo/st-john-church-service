@@ -1259,6 +1259,7 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
               </span>
             </div>
           </div>
+        </div>
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           <button
             type="button"
