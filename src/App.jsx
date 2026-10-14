@@ -510,11 +510,20 @@ export default function App() {
         <ErrorBoundary currentUser={currentUser}>
           {currentUser ? (() => {
             const effectiveRole = previewRole || currentUser.role;
+            const isPreviewing = Boolean(previewRole && previewRole !== currentUser.role);
 
             if (effectiveRole === 'student') {
+              const emulatedStudent = {
+                ...currentUser,
+                role: 'student',
+                grade: currentUser.grade || 'first',
+                isPreviewMode: isPreviewing,
+              };
+
               return (
                 <StudentDashboard 
-                  user={{ ...currentUser, role: 'student', grade: currentUser.grade || 'first' }} 
+                  key={`student_${effectiveRole}`}
+                  user={emulatedStudent} 
                   onLogout={handleLogout}
                   onUpdateUser={(updated) => setCurrentUser(prev => ({ ...prev, ...updated }))}
                   externalMenuTrigger={mobileMenuTrigger}
@@ -526,13 +535,12 @@ export default function App() {
             const emulatedUser = {
               ...currentUser,
               role: effectiveRole,
-              // If previewing regular servant or servant leader, disable admin bypass phone/email
-              phone: effectiveRole === 'admin' ? currentUser.phone : (previewRole ? '01000000000' : currentUser.phone),
-              email: effectiveRole === 'admin' ? currentUser.email : (previewRole ? 'servant@church.com' : currentUser.email)
+              isPreviewMode: isPreviewing,
             };
 
             return (
               <ServantDashboard 
+                key={`servant_${effectiveRole}`}
                 user={emulatedUser} 
                 onLogout={handleLogout}
                 onUpdateUser={(updated) => setCurrentUser(prev => ({ ...prev, ...updated }))}

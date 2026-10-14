@@ -57,7 +57,14 @@ export default function UserProfileModal({
 
   if (!isOpen || !user) return null;
 
-  const isAppAdmin = user && (user.role === 'admin' || user.phone === '01275571569' || (user.email && (user.email.includes('nader.kamel') || user.email.includes('st.johnmaadiservantsprep@gmail.com'))));
+  const isAppAdmin = Boolean(
+    user && 
+    !user.isPreviewMode &&
+    user.role !== 'student' &&
+    user.role !== 'servant' &&
+    user.role !== 'servant_leader' &&
+    (user.role === 'admin' || user.phone === '01275571569' || (user.email && (user.email.includes('nader.kamel') || user.email.includes('st.johnmaadiservantsprep@gmail.com'))))
+  );
 
   const handleSaveProfile = async (e) => {
     e.preventDefault();

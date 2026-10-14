@@ -35,7 +35,14 @@ import { collection, getDocs, doc, updateDoc, setDoc, addDoc, deleteDoc, query, 
 
 export default function ServantDashboard({ user, onLogout, onUpdateUser, externalMenuTrigger }) {
   // Check if current user is App Administrator (Nader Reda or church prep account)
-  const isAppAdmin = user && (user.role === 'admin' || user.phone === '01275571569' || (user.email && (user.email.includes('nader.kamel') || user.email.includes('st.johnmaadiservantsprep@gmail.com'))));
+  const isAppAdmin = Boolean(
+    user && 
+    !user.isPreviewMode &&
+    user.role !== 'servant' &&
+    user.role !== 'servant_leader' &&
+    user.role !== 'student' &&
+    (user.role === 'admin' || user.phone === '01275571569' || (user.email && (user.email.includes('nader.kamel') || user.email.includes('st.johnmaadiservantsprep@gmail.com'))))
+  );
   // Check if current user is Servant Leader (أمين خدمة) or Admin
   const isServantLeader = isAppAdmin || (user && user.role === 'servant_leader');
 
@@ -1251,10 +1258,10 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
             </div>
             <div className="flex items-center gap-1.5 text-xs text-slate-500 mt-0.5">
               <span className="bg-maroon-50 text-maroon-900 border border-maroon-200 font-bold px-2 py-0.5 rounded-full text-[10px]">
-                {isAppAdmin ? 'مشرف التطبيق 👑' : 'لوحة الخدام'}
+                {isAppAdmin ? 'مشرف التطبيق 👑' : isServantLeader ? 'أمين خدمة 🛡️' : 'لوحة الخدام'}
               </span>
               <span className="text-[11px] truncate">
-                الصفة: {isAppAdmin ? 'مشرف التطبيق' : 'خادم عام (كافة المراحل)'}
+                الصفة: {isAppAdmin ? 'مشرف التطبيق' : isServantLeader ? 'أمين خدمة' : 'خادم عام (كافة المراحل)'}
               </span>
             </div>
           </div>

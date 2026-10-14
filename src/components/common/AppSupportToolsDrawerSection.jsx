@@ -17,13 +17,13 @@ export default function AppSupportToolsDrawerSection({ user, onCloseDrawer }) {
     return typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted';
   });
 
-  const isAppAdmin = user && (
-    user.role === 'admin' || 
-    user.phone === '01275571569' || 
-    (user.email && (
-      user.email.includes('nader.kamel') || 
-      user.email.includes('st.johnmaadiservantsprep@gmail.com')
-    ))
+  const isAppAdmin = Boolean(
+    user && 
+    !user.isPreviewMode &&
+    user.role !== 'student' &&
+    user.role !== 'servant' &&
+    user.role !== 'servant_leader' &&
+    (user.role === 'admin' || user.phone === '01275571569' || (user.email && (user.email.includes('nader.kamel') || user.email.includes('st.johnmaadiservantsprep@gmail.com'))))
   );
 
   const handleToggleNotification = async () => {
