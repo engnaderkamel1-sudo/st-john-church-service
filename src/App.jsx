@@ -232,6 +232,18 @@ export default function App() {
     return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
   }, []);
 
+  // Lock body scroll while splash is active to prevent any background layout bleed
+  useEffect(() => {
+    if (showSplash) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [showSplash]);
+
   return (
     <>
       {/* 5-Second Full Screen Splash Screen (Hold to Pause) */}
@@ -242,7 +254,8 @@ export default function App() {
           onMouseDown={() => setIsSplashPaused(true)}
           onMouseUp={() => setIsSplashPaused(false)}
           onContextMenu={(e) => e.preventDefault()}
-          className="fixed inset-0 z-[9999] bg-gradient-to-b from-slate-900 via-maroon-950 to-slate-950 text-white flex flex-col items-center justify-between p-6 sm:p-8 font-cairo select-none animate-in fade-in duration-300 cursor-pointer relative"
+          style={{ position: 'fixed', inset: 0, width: '100vw', height: '100vh', zIndex: 99999 }}
+          className="fixed inset-0 w-screen h-screen z-[99999] bg-gradient-to-b from-slate-900 via-maroon-950 to-slate-950 text-white flex flex-col items-center justify-between p-6 sm:p-8 font-cairo select-none animate-in fade-in duration-300 cursor-pointer overflow-hidden"
         >
           {/* Top Floating Skip Button (تخطي شاشة البداية) */}
           <button
