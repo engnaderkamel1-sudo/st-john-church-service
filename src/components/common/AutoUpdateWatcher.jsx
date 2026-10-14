@@ -37,6 +37,21 @@ export default function AutoUpdateWatcher() {
         if (remoteSrc && initialSrc && remoteSrc !== initialSrc) {
           console.log('[AutoUpdateWatcher] New version detected:', remoteSrc, 'Current:', initialSrc);
           setUpdateAvailable(true);
+          return;
+        }
+
+        // Secondary check: version.json
+        try {
+          const verRes = await fetch(`/version.json?_t=${Date.now()}`, { cache: 'no-store' });
+          if (verRes.ok) {
+            const verData = await verRes.json();
+            const currentLocalVer = localStorage.getItem('app_version');
+            if (currentLocalVer && verData.version && verData.version !== currentLocalVer) {
+              setUpdateAvailable(true);
+            }
+          }
+        } catch (vErr) {
+          // ignore
         }
       } catch (err) {
         // Silent catch: network offline or minor fetch error
@@ -71,19 +86,27 @@ export default function AutoUpdateWatcher() {
 
   const handleApplyUpdate = () => {
     setIsUpdating(true);
-    const cleanUrl = window.location.origin + window.location.pathname + '?_v=' + Date.now() + (window.location.hash || '');
-    // Hard reload bypassing cache
-    if ('caches' in window) {
-      caches.keys().then((names) => {
-        Promise.all(names.map((name) => caches.delete(name))).then(() => {
+    fetch(`/version.json?_t=${Date.now()}`, { cache: 'no-store' })
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.version) localStorage.setItem('app_version', d.version);
+      })
+      .catch(() => {})
+      .finally(() => {
+        const cleanUrl = window.location.origin + window.location.pathname + '?_v=' + Date.now() + (window.location.hash || '');
+        // Hard reload bypassing cache
+        if ('caches' in window) {
+          caches.keys().then((names) => {
+            Promise.all(names.map((name) => caches.delete(name))).then(() => {
+              window.location.href = cleanUrl;
+            });
+          }).catch(() => {
+            window.location.href = cleanUrl;
+          });
+        } else {
           window.location.href = cleanUrl;
-        });
-      }).catch(() => {
-        window.location.href = cleanUrl;
+        }
       });
-    } else {
-      window.location.href = cleanUrl;
-    }
   };
 
   if (!updateAvailable) return null;

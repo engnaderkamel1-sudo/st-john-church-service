@@ -251,7 +251,7 @@ export default function App() {
               e.stopPropagation();
               setShowSplash(false);
             }}
-            className="absolute top-4 left-4 sm:top-6 sm:left-6 z-20 px-3.5 py-1.5 rounded-full bg-white/10 hover:bg-white/20 active:scale-95 border border-white/20 text-white text-xs font-bold backdrop-blur-md transition-all flex items-center gap-1.5 cursor-pointer shadow-lg group"
+            className="absolute top-[max(1rem,env(safe-area-inset-top,1rem))] left-4 sm:top-6 sm:left-6 z-30 px-4 py-2 rounded-full bg-white/20 hover:bg-white/30 active:scale-95 border border-white/30 text-white text-xs font-bold backdrop-blur-md transition-all flex items-center gap-1.5 cursor-pointer shadow-lg group"
             title="تخطي شاشة البداية"
           >
             <span>تخطي</span>
