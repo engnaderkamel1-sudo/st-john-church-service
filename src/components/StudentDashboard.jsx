@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Award, QrCode, Sun, BookOpen, FileText, CheckSquare, Bell, Check, Menu, X, LogOut 
+  Award, QrCode, Sun, BookOpen, FileText, CheckSquare, Bell, Check, Menu, X, LogOut, Home 
 } from 'lucide-react';
 import { db } from '../firebase';
 import { collection, addDoc, query, where, getDocs, doc, getDoc, onSnapshot, serverTimestamp, updateDoc, setDoc } from 'firebase/firestore';
+import StudentHomeOverview from './student/StudentHomeOverview';
 import StudentAttendance from './student/StudentAttendance';
 import StudentSpiritualDiary from './student/StudentSpiritualDiary';
 import StudentCurriculum from './student/StudentCurriculum';
@@ -14,8 +15,8 @@ import AppSupportToolsDrawerSection from './common/AppSupportToolsDrawerSection'
 import { calculateAttendancePoints, DEFAULT_STAGE_REGULATIONS, getDiaryPointsConfig } from '../utils/regulationsService';
 
 export default function StudentDashboard({ user, onLogout, onUpdateUser, externalMenuTrigger }) {
-  // 6 Specified Tabs: 'attendance', 'spiritual_diary', 'curriculum', 'exams', 'tasks', 'announcements'
-  const [activeTab, setActiveTab] = useState('attendance');
+  // Tabs: 'home', 'attendance', 'spiritual_diary', 'curriculum', 'exams', 'tasks', 'announcements'
+  const [activeTab, setActiveTab] = useState('home');
   const [isNavDrawerOpen, setIsNavDrawerOpen] = useState(false);
 
   // Sync external menu trigger from top header
@@ -708,7 +709,87 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser, externa
         </div>
       </div>
 
+      {/* Quick Navigation Pills for Mobile & Tablet */}
+      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none font-cairo">
+        <button
+          type="button"
+          onClick={() => setActiveTab('home')}
+          className={`shrink-0 py-2 px-3.5 rounded-2xl text-xs font-black transition-all border flex items-center gap-1.5 cursor-pointer active:scale-95 ${
+            activeTab === 'home'
+              ? 'bg-maroon-800 text-white border-maroon-900 shadow-2xs'
+              : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+          }`}
+        >
+          <Home className="w-3.5 h-3.5 text-gold-300" />
+          <span>الرئيسية</span>
+        </button>
 
+        <button
+          type="button"
+          onClick={() => setActiveTab('attendance')}
+          className={`shrink-0 py-2 px-3 rounded-2xl text-xs font-black transition-all border flex items-center gap-1.5 cursor-pointer active:scale-95 ${
+            activeTab === 'attendance'
+              ? 'bg-maroon-800 text-white border-maroon-900 shadow-2xs'
+              : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+          }`}
+        >
+          <QrCode className="w-3.5 h-3.5" />
+          <span>الحضور</span>
+          {(isWithinTime || bypassTime) && <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('spiritual_diary')}
+          className={`shrink-0 py-2 px-3 rounded-2xl text-xs font-black transition-all border flex items-center gap-1.5 cursor-pointer active:scale-95 ${
+            activeTab === 'spiritual_diary'
+              ? 'bg-maroon-800 text-white border-maroon-900 shadow-2xs'
+              : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+          }`}
+        >
+          <Sun className="w-3.5 h-3.5 text-amber-500" />
+          <span>النوتة</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('curriculum')}
+          className={`shrink-0 py-2 px-3 rounded-2xl text-xs font-black transition-all border flex items-center gap-1.5 cursor-pointer active:scale-95 ${
+            activeTab === 'curriculum'
+              ? 'bg-maroon-800 text-white border-maroon-900 shadow-2xs'
+              : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+          }`}
+        >
+          <BookOpen className="w-3.5 h-3.5 text-blue-600" />
+          <span>المناهج</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('exams')}
+          className={`shrink-0 py-2 px-3 rounded-2xl text-xs font-black transition-all border flex items-center gap-1.5 cursor-pointer active:scale-95 ${
+            activeTab === 'exams'
+              ? 'bg-maroon-800 text-white border-maroon-900 shadow-2xs'
+              : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+          }`}
+        >
+          <FileText className="w-3.5 h-3.5 text-purple-600" />
+          <span>الامتحانات</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('tasks')}
+          className={`shrink-0 py-2 px-3 rounded-2xl text-xs font-black transition-all border flex items-center gap-1.5 cursor-pointer active:scale-95 ${
+            activeTab === 'tasks'
+              ? 'bg-maroon-800 text-white border-maroon-900 shadow-2xs'
+              : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+          }`}
+        >
+          <CheckSquare className="w-3.5 h-3.5" />
+          <span>التاسكات</span>
+        </button>
+      </div>
 
       {/* Slide-Over Navigation Drawer for Students */}
       {isNavDrawerOpen && (
@@ -761,6 +842,23 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser, externa
                   <span className="text-[10px] bg-amber-200/70 text-amber-900 font-bold px-2 py-0.5 rounded-full">
                     معتمدة
                   </span>
+                </button>
+
+                {/* Home Overview Tab */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab('home');
+                    setIsNavDrawerOpen(false);
+                  }}
+                  className={`w-full text-right py-3 px-3.5 rounded-2xl flex items-center gap-3 text-xs font-bold transition-all cursor-pointer ${
+                    activeTab === 'home'
+                      ? 'bg-maroon-800 text-white shadow-sm'
+                      : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                  }`}
+                >
+                  <Home className={`w-4 h-4 ${activeTab === 'home' ? 'text-gold-300' : 'text-slate-500'}`} />
+                  <span>الرئيسية ولوحة إنجازي</span>
                 </button>
 
                 <button
@@ -873,6 +971,23 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser, externa
             </div>
           </div>
         </div>
+      )}
+
+      {/* 0. Tab: Student Home Overview */}
+      {activeTab === 'home' && (
+        <StudentHomeOverview
+          user={user}
+          points={points}
+          getGradeTitle={getGradeTitle}
+          attendanceRecords={attendanceRecords}
+          diaryRecords={diaryRecords}
+          availableExams={availableExams}
+          completedExams={completedExams}
+          isWithinTime={isWithinTime}
+          bypassTime={bypassTime}
+          onNavigateTab={(tab) => setActiveTab(tab)}
+          onOpenRegulations={() => setShowRegulationsModal(true)}
+        />
       )}
 
       {/* 1. Tab: Student Attendance (Modular) */}
