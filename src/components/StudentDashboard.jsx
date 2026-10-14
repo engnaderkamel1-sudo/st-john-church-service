@@ -10,6 +10,7 @@ import StudentCurriculum from './student/StudentCurriculum';
 import StudentExams from './student/StudentExams';
 import StageRegulationsModal from './common/StageRegulationsModal';
 import UserProfileModal from './common/UserProfileModal';
+import AppSupportToolsDrawerSection from './common/AppSupportToolsDrawerSection';
 import { calculateAttendancePoints, DEFAULT_STAGE_REGULATIONS, getDiaryPointsConfig } from '../utils/regulationsService';
 
 export default function StudentDashboard({ user, onLogout, onUpdateUser, externalMenuTrigger }) {
@@ -857,6 +858,12 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser, externa
                   <Bell className={`w-4 h-4 ${activeTab === 'announcements' ? 'text-gold-300' : 'text-slate-500'}`} />
                   <span>التنبيهات</span>
                 </button>
+
+                {/* System & Support Tools */}
+                <AppSupportToolsDrawerSection 
+                  user={user} 
+                  onCloseDrawer={() => setIsNavDrawerOpen(false)} 
+                />
               </nav>
             </div>
 

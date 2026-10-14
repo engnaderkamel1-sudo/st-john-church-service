@@ -106,10 +106,11 @@
 9. `ServantSuggestionsHub.jsx`: لوحة إدارة ومتابعة اقتراحات الميزات المرسلة من الخدام والطلبة (خاص بالمشرف).
 
 ### ج. المكونات المشتركة وسهولة الاستخدام (`src/components/common/`):
-1. `InstallPromptModal.jsx`: نافذة تثبيت التطبيق الذكية (Smart PWA Guide: خطوات iOS Safari المخصصة وتثبيت Android/Desktop المباشر).
-2. `FeatureRequestModal.jsx`: نافذة اقترح ميزة أو وظيفة جديدة مع تصنيف الأقسام والرفع لـ Firestore (`feature_suggestions`).
-3. `ErrorReportModal.jsx`: نافذة إبلاغ سريع عن عطل مع التقاط تلقائي للجهاز والمتصفح والرفع لـ Firestore (`app_errors`).
-4. `UpdatesChangelogModal.jsx`: سجل تحديثات المنظومة مع الوقت النسبي، فحص السيرفر، ومسح الذاكرة المؤقتة (خاص بالمشرف).
+1. `AppSupportToolsDrawerSection.jsx`: قسم أدوات المنظومة والدعم الموحد داخل القوائم الجانبية (Navigation Drawers) للمخدوم والخادم (تفعيل الإشعارات، تثبيت التطبيق، اقتراح ميزة، إبلاغ عن عطل، وسجل التحديثات الحصري للمشرف).
+2. `InstallPromptModal.jsx`: نافذة تثبيت التطبيق الذكية (Smart PWA Guide: خطوات iOS Safari المخصصة وتثبيت Android/Desktop المباشر).
+3. `FeatureRequestModal.jsx`: نافذة اقترح ميزة أو وظيفة جديدة مع تصنيف الأقسام وتسجيل الصوت والرفع لـ Firestore (`feature_suggestions`).
+4. `ErrorReportModal.jsx`: نافذة إبلاغ سريع عن عطل مع التقاط تلقائي للجهاز والمتصفح وتسجيل الصوت والرفع لـ Firestore (`app_errors`).
+5. `UpdatesChangelogModal.jsx`: سجل تحديثات المنظومة مع الوقت النسبي، فحص السيرفر، ومسح الذاكرة المؤقتة (خاص بالمشرف).
 
 ### د. الخدمات المركزية (`src/services/`):
 - `geminiService.js`: خدمة الاتصال بـ Google Gemini Multimodal API والمدمج بها التعليمات الكنسية الأرثوذكسية وتوليد الـ JSON المنظم.

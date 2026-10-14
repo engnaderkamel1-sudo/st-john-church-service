@@ -29,7 +29,7 @@ import ServantErrorsHub from './servant/ServantErrorsHub';
 import ServantSuggestionsHub from './servant/ServantSuggestionsHub';
 import StageRegulationsModal from './common/StageRegulationsModal';
 import UserProfileModal from './common/UserProfileModal';
-import UpdatesChangelogModal from './common/UpdatesChangelogModal';
+import AppSupportToolsDrawerSection from './common/AppSupportToolsDrawerSection';
 import { calculateAttendancePoints, DEFAULT_STAGE_REGULATIONS } from '../utils/regulationsService';
 import { collection, getDocs, doc, updateDoc, setDoc, addDoc, deleteDoc, query, where, orderBy, serverTimestamp, limit, onSnapshot } from 'firebase/firestore';
 
@@ -51,7 +51,6 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
   const [selectedGrade, setSelectedGrade] = useState('first');
   const [showRegulationsModal, setShowRegulationsModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
-  const [showAdminUpdatesModal, setShowAdminUpdatesModal] = useState(false);
   const [previewPhotoModal, setPreviewPhotoModal] = useState(null);
 
   // Registered Users Management & Approval State
@@ -1672,22 +1671,11 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
                   </button>
                 )}
 
-                {/* 16. App Admin only: Platform Updates Modal */}
-                {isAppAdmin && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowAdminUpdatesModal(true);
-                      setMobileSidebarOpen(false);
-                    }}
-                    className="w-full text-right py-2 px-3 rounded-xl flex items-center justify-between text-xs font-bold transition-all text-indigo-700 hover:bg-indigo-50 cursor-pointer"
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <Rocket className="w-4 h-4 text-indigo-600" />
-                      <span>سجل تحديثات المنظومة 🚀</span>
-                    </div>
-                  </button>
-                )}
+                {/* 16. System & Support Tools */}
+                <AppSupportToolsDrawerSection 
+                  user={user} 
+                  onCloseDrawer={() => setMobileSidebarOpen(false)} 
+                />
               </nav>
             </div>
           </div>
@@ -1916,14 +1904,6 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
         onLogout={onLogout}
         onUpdateUser={onUpdateUser}
       />
-
-      {/* 8.1 Admin Updates Changelog Modal */}
-      {isAppAdmin && (
-        <UpdatesChangelogModal
-          isOpen={showAdminUpdatesModal}
-          onClose={() => setShowAdminUpdatesModal(false)}
-        />
-      )}
 
       {/* 9. Full-Screen Photo Lightbox Modal */}
       {previewPhotoModal && (
