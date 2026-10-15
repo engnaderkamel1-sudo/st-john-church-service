@@ -55,7 +55,7 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
       setMobileSidebarOpen(true);
     }
   }, [externalMenuTrigger]);
-  const [selectedGrade, setSelectedGrade] = useState('first');
+  const [selectedGrade, setSelectedGrade] = useState('cycle_1');
   const [showRegulationsModal, setShowRegulationsModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [previewPhotoModal, setPreviewPhotoModal] = useState(null);
@@ -1787,6 +1787,7 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
       {mainTab === 'subjects_hub' && (
         <ServantCurriculum
           user={user}
+          isAppAdmin={isAppAdmin}
           selectedGrade={selectedGrade}
           setSelectedGrade={setSelectedGrade}
           getGradeTitle={getGradeTitle}

@@ -65,6 +65,7 @@ export const LECTURE_NUMBERS = [
 
 export default function ServantCurriculum({
   user,
+  isAppAdmin = false,
   selectedGrade,
   setSelectedGrade,
   getGradeTitle,
@@ -78,6 +79,7 @@ export default function ServantCurriculum({
   academicYear = '2026-2027',
   handleUpdateAcademicCycle
 }) {
+  const canManageCycle = isAppAdmin || user?.role === 'admin' || user?.role === 'servant_leader' || user?.phone === '01275571569';
   const [showAddSubjectModal, setShowAddSubjectModal] = useState(false);
   const [newSubjectName, setNewSubjectName] = useState('');
   const [newSubjectTeacher, setNewSubjectTeacher] = useState('');
@@ -952,124 +954,161 @@ export default function ServantCurriculum({
 
   return (
     <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-6">
-      {/* Academic Cycle Banner & Editable Yearly Selector */}
-      <div className="bg-gradient-to-r from-slate-900 to-maroon-950 text-white p-3.5 sm:p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm border border-gold-400/30">
-        <div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-[10px] bg-gold-400 text-maroon-950 font-black px-2 py-0.5 rounded-full">
-              نظام السنتين التبادلية
-            </span>
-            <div className="flex items-center gap-1.5 text-xs text-slate-300 font-bold">
-              <span>العام الدراسي:</span>
-              {isEditingYear ? (
-                <div className="flex items-center gap-1">
-                  <input
-                    type="text"
-                    value={inputYear}
-                    onChange={(e) => setInputYear(e.target.value)}
-                    placeholder="مثال: 2026-2027"
-                    className="bg-white/10 border border-gold-400/50 rounded-lg px-2 py-0.5 text-xs text-white font-mono focus:outline-none w-28 text-center"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (inputYear.trim() && handleUpdateAcademicCycle) {
-                        handleUpdateAcademicCycle(activeAcademicCycle, inputYear.trim());
-                      }
-                      setIsEditingYear(false);
-                    }}
-                    className="bg-gold-500 hover:bg-gold-400 text-maroon-950 text-[10px] px-2 py-0.5 rounded-md font-extrabold cursor-pointer"
-                  >
-                    حفظ ✓
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setIsEditingYear(false)}
-                    className="text-slate-400 hover:text-white text-[10px] px-1 cursor-pointer"
-                  >
-                    إلغاء
-                  </button>
-                </div>
-              ) : (
+      {/* Curriculum Stage / Year Tabs & Academic Cycle Adoption */}
+      <div className="space-y-3 pb-2 border-b border-slate-100">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+          {/* Stage Tabs (فصل أليشع النبي تمهيدي | منهج سنة أولى بولس الرسول | منهج سنة ثانية بولس الرسول) */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+            <span className="text-xs font-black text-slate-800 shrink-0 ml-1">المرحلة:</span>
+            {[
+              { 
+                key: 'elisha', 
+                label: 'فصل أليشع النبي (تمهيدي)', 
+                badge: 'تحضيري',
+                isLive: false 
+              },
+              { 
+                key: 'cycle_1', 
+                label: 'منهج سنة أولى (بولس الرسول)', 
+                badge: activeAcademicCycle === 'cycle_1' ? 'المعتمد للطلبة ⭐' : 'مقرر',
+                isLive: activeAcademicCycle === 'cycle_1'
+              },
+              { 
+                key: 'cycle_2', 
+                label: 'منهج سنة ثانية (بولس الرسول)', 
+                badge: activeAcademicCycle === 'cycle_2' ? 'المعتمد للطلبة ⭐' : 'مقرر',
+                isLive: activeAcademicCycle === 'cycle_2'
+              }
+            ].map(item => {
+              const isSelected = selectedGrade === item.key || 
+                (item.key === 'cycle_1' && selectedGrade === 'first') || 
+                (item.key === 'cycle_2' && selectedGrade === 'second');
+
+              return (
+                <button
+                  key={item.key}
+                  type="button"
+                  onClick={() => {
+                    if (setSelectedGrade) setSelectedGrade(item.key);
+                    setActiveSubject(null);
+                  }}
+                  className={`px-3 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer flex items-center gap-1.5 ${
+                    isSelected
+                      ? 'bg-maroon-800 text-white shadow-sm ring-1 ring-gold-400/40'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  <span>{item.label}</span>
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
+                    isSelected
+                      ? (item.isLive ? 'bg-gold-400 text-maroon-950 font-black' : 'bg-white/20 text-white')
+                      : (item.isLive ? 'bg-amber-100 text-amber-900 border border-amber-300 font-bold' : 'bg-slate-200 text-slate-700')
+                  }`}>
+                    {item.badge}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Academic Year indicator & admin quick edit */}
+          <div className="flex items-center gap-1.5 text-xs text-slate-500 font-bold shrink-0 self-end sm:self-auto">
+            <span>العام الدراسي:</span>
+            {canManageCycle && isEditingYear ? (
+              <div className="flex items-center gap-1">
+                <input
+                  type="text"
+                  value={inputYear}
+                  onChange={(e) => setInputYear(e.target.value)}
+                  placeholder="2026-2027"
+                  className="bg-slate-50 border border-gold-400 rounded-lg px-2 py-0.5 text-xs text-slate-800 font-mono focus:outline-none w-24 text-center"
+                />
                 <button
                   type="button"
                   onClick={() => {
+                    if (inputYear.trim() && handleUpdateAcademicCycle) {
+                      handleUpdateAcademicCycle(activeAcademicCycle, inputYear.trim());
+                    }
+                    setIsEditingYear(false);
+                  }}
+                  className="bg-maroon-800 hover:bg-maroon-900 text-gold-300 text-[10px] px-2 py-1 rounded-md font-bold cursor-pointer"
+                >
+                  حفظ ✓
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsEditingYear(false)}
+                  className="text-slate-400 hover:text-slate-600 text-[10px] px-1 cursor-pointer"
+                >
+                  إلغاء
+                </button>
+              </div>
+            ) : (
+              <span 
+                onClick={() => {
+                  if (canManageCycle) {
                     setInputYear(academicYear);
                     setIsEditingYear(true);
+                  }
+                }}
+                className={`font-mono text-slate-700 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200 text-xs flex items-center gap-1.5 ${canManageCycle ? 'cursor-pointer hover:bg-slate-200' : ''}`}
+                title={canManageCycle ? "اضغط لتعديل العام الدراسي" : ""}
+              >
+                <span>{academicYear}</span>
+                {canManageCycle && <Pencil className="w-2.5 h-2.5 text-slate-400" />}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Admin Adoption Safety Banner & Switch Confirmation */}
+        {canManageCycle && (selectedGrade === 'cycle_1' || selectedGrade === 'cycle_2' || selectedGrade === 'first' || selectedGrade === 'second') && (() => {
+          const normalizedGrade = (selectedGrade === 'first' || selectedGrade === 'cycle_1') ? 'cycle_1' : 'cycle_2';
+          const isCurrentActive = activeAcademicCycle === normalizedGrade;
+          const currentYearLabel = normalizedGrade === 'cycle_1' ? 'سنة أولى' : 'سنة ثانية';
+          const otherYearLabel = normalizedGrade === 'cycle_1' ? 'سنة ثانية' : 'سنة أولى';
+
+          return (
+            <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-2xl border text-xs ${
+              isCurrentActive 
+                ? 'bg-emerald-50/70 border-emerald-200 text-emerald-950'
+                : 'bg-amber-50/70 border-amber-200 text-amber-950'
+            }`}>
+              <div className="flex items-center gap-2">
+                <span className="text-sm shrink-0">{isCurrentActive ? '⭐' : '📌'}</span>
+                <p className="font-bold">
+                  {isCurrentActive ? (
+                    <span>
+                      منهج ({currentYearLabel} - بولس الرسول) هو <span className="text-emerald-800 underline underline-offset-2">المنهج المعتمد والمبثوث للطلبة حالياً</span> لهذا العام الدراسي ({academicYear}).
+                    </span>
+                  ) : (
+                    <span>
+                      أنت تتصفح حالياً منهج ({currentYearLabel})، بينما المعتمد للطلبة هو ({otherYearLabel}).
+                    </span>
+                  )}
+                </p>
+              </div>
+
+              {!isCurrentActive && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const targetTitle = normalizedGrade === 'cycle_1' ? 'منهج سنة أولى (بولس الرسول)' : 'منهج سنة ثانية (بولس الرسول)';
+                    const confirmed = window.confirm(
+                      `هل أنت متأكد من اعتماد وبث (${targetTitle}) لجميع طلاب قاعة إعداد خدام للعام الدراسي (${academicYear})؟\n\nتأكيد هذا الإجراء سيجعل جميع الطلاب يشاهدون هذا المنهج في حساباتهم.`
+                    );
+                    if (confirmed && handleUpdateAcademicCycle) {
+                      handleUpdateAcademicCycle(normalizedGrade, academicYear);
+                    }
                   }}
-                  className="bg-white/10 hover:bg-white/20 border border-white/20 text-gold-300 px-2 py-0.5 rounded-lg text-xs font-mono font-bold flex items-center gap-1 cursor-pointer"
-                  title="اضغط لتعديل العام الدراسي لأي سنة قادمة"
+                  className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-extrabold bg-maroon-800 hover:bg-maroon-900 text-gold-300 shadow-xs transition-all cursor-pointer shrink-0 self-start sm:self-auto"
                 >
-                  <span>{academicYear}</span>
-                  <span className="text-[10px]">✏️</span>
+                  <span>اعتماد وبث هذا المنهج للطلبة ⭐</span>
                 </button>
               )}
             </div>
-          </div>
-          <h4 className="text-sm font-extrabold text-gold-300 mt-1">
-            المنهج الفعّال حالياً لقاعة إعداد خدام: {activeAcademicCycle === 'cycle_1' ? 'منهج المرحلة الأولى' : 'منهج المرحلة الثانية'}
-          </h4>
-          <p className="text-[11px] text-slate-300 mt-0.5">
-            يتم بث هذا المنهج تلقائياً لطلاب سنة أولى وسنة ثانية معاً خلال العام الدراسي الحالي.
-          </p>
-        </div>
-
-        {/* Quick Cycle Switcher for Servants */}
-        <div className="flex items-center gap-1.5 bg-black/30 p-1.5 rounded-xl border border-white/10 shrink-0">
-          <button
-            type="button"
-            onClick={() => handleUpdateAcademicCycle && handleUpdateAcademicCycle('cycle_1', academicYear)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-              activeAcademicCycle === 'cycle_1'
-                ? 'bg-gold-400 text-maroon-950 shadow'
-                : 'text-slate-300 hover:text-white'
-            }`}
-          >
-            المرحلة الأولى ⭐
-          </button>
-          <button
-            type="button"
-            onClick={() => handleUpdateAcademicCycle && handleUpdateAcademicCycle('cycle_2', academicYear)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-              activeAcademicCycle === 'cycle_2'
-                ? 'bg-gold-400 text-maroon-950 shadow'
-                : 'text-slate-300 hover:text-white'
-            }`}
-          >
-            المرحلة الثانية ⭐
-          </button>
-        </div>
-      </div>
-
-      {/* Curriculum Grade / Stage Tabs (فصل أليشع | منهج المرحلة الأولى | منهج المرحلة الثانية) */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
-        <span className="text-xs font-extrabold text-slate-700 shrink-0">اختر محتوى المنهج:</span>
-        {[
-          { key: 'elisha', label: 'فصل أليشع (تمهيدي)', badge: 'تحضيري' },
-          { key: 'cycle_1', label: 'منهج المرحلة الأولى', badge: activeAcademicCycle === 'cycle_1' ? 'نشط حالياً' : 'مقرر' },
-          { key: 'cycle_2', label: 'منهج المرحلة الثانية', badge: activeAcademicCycle === 'cycle_2' ? 'نشط حالياً' : 'مقرر' }
-        ].map(item => (
-          <button
-            key={item.key}
-            type="button"
-            onClick={() => {
-              if (setSelectedGrade) setSelectedGrade(item.key);
-              setActiveSubject(null);
-            }}
-            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer flex items-center gap-1.5 ${
-              selectedGrade === item.key
-                ? 'bg-maroon-800 text-white shadow-sm ring-1 ring-gold-400/40'
-                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-            }`}
-          >
-            <span>{item.label}</span>
-            <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
-              selectedGrade === item.key ? 'bg-gold-400 text-maroon-950' : 'bg-slate-200 text-slate-700'
-            }`}>
-              {item.badge}
-            </span>
-          </button>
-        ))}
+          );
+        })()}
       </div>
 
       {/* Audience Switcher Tabs: Students vs Servants */}

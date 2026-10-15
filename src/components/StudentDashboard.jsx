@@ -66,8 +66,12 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser, externa
         if (studentGrade === 'elisha') {
           if (data.grade === 'elisha') list.push(data);
         } else {
-          // First and second year prep students get the active academic cycle curriculum (or legacy first/second match)
-          if (data.grade === activeCycle || data.grade === studentGrade) {
+          // First and second year prep students get the active academic cycle curriculum
+          const isTargetMatch = 
+            data.grade === activeCycle || 
+            (activeCycle === 'cycle_1' && data.grade === 'first') ||
+            (activeCycle === 'cycle_2' && data.grade === 'second');
+          if (isTargetMatch) {
             list.push(data);
           }
         }
