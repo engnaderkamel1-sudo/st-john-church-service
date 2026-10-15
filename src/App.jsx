@@ -390,7 +390,7 @@ export default function App() {
           <div className="shrink-0 flex items-center">
             <button
               type="button"
-              onClick={() => setPreviewModalImage({ url: '/church_logo.jpg', title: 'شعار كنيسة القديس يوحنا المعمدان' })}
+              onClick={() => setPreviewModalImage({ url: '/church_logo.jpg' })}
               className="rounded-full focus:outline-none focus:ring-2 focus:ring-gold-400 group cursor-pointer"
               title="اضغط لتكبير صورة القديس يوحنا المعمدان"
             >
