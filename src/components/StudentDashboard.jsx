@@ -9,6 +9,7 @@ import StudentAttendance from './student/StudentAttendance';
 import StudentSpiritualDiary from './student/StudentSpiritualDiary';
 import StudentCurriculum from './student/StudentCurriculum';
 import StudentExams from './student/StudentExams';
+import StudentTasks from './student/StudentTasks';
 import StageRegulationsModal from './common/StageRegulationsModal';
 import UserProfileModal from './common/UserProfileModal';
 import AppSupportToolsDrawerSection from './common/AppSupportToolsDrawerSection';
@@ -227,25 +228,8 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser, externa
   const [examAnswers, setExamAnswers] = useState({});
   const [examResult, setExamResult] = useState(null);
 
-  // Tasks State
-  const [tasks, setTasks] = useState([
-    {
-      id: 't-1',
-      title: 'حفظ آية الأسبوع وقراءتها في الخدمة',
-      points: 10,
-      description: '«كُلُّ شَيْءٍ بِهِ كَانَ، وَبِغَيْرِهِ لَمْ يَكُنْ شَيْءٌ مِمَّا كَانَ» (يوحنا 1: 3)',
-      deadline: 'يوم الجمعة القادم',
-      completed: false
-    },
-    {
-      id: 't-2',
-      title: 'قراءة أصحاح من إنجيل معلمنا يوحنا',
-      points: 5,
-      description: 'قراءة وتأمل في الأصحاح الأول مع كتابة آية لمستك في مذكراتك.',
-      deadline: 'اليوم',
-      completed: false
-    }
-  ]);
+  // Tasks State (Only real servant-assigned tasks/competitions appear)
+  const [tasks, setTasks] = useState([]);
 
   // Announcements State
   const [announcements, setAnnouncements] = useState([
@@ -651,6 +635,43 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser, externa
       });
     } catch (err) {
       console.log('Error saving exam submission to Firestore:', err);
+    }
+  };
+
+  const handleSubmitTask = async (task, answers, autoScore, totalScore, isPracticeMode = false) => {
+    if (isPracticeMode) {
+      // Practice mode: self-study only, does NOT add competition points!
+      return;
+    }
+
+    const result = {
+      examId: task.id,
+      examTitle: task.title || 'تاسك بدون عنوان',
+      subject: task.subject || 'عام',
+      grade: user.grade || 'first',
+      userId: user.id,
+      userName: user.fullName || 'مخدوم',
+      userPhone: user.phone || '',
+      answers: answers,
+      autoScore,
+      totalScore: totalScore || task.totalScore || 20,
+      submittedAt: new Date().toLocaleTimeString('ar-EG'),
+      date: new Date().toISOString().split('T')[0]
+    };
+
+    setCompletedExams(prev => ({ ...prev, [task.id]: result }));
+    setPoints(p => p + autoScore);
+
+    try {
+      await addDoc(collection(db, 'exam_submissions'), {
+        ...result,
+        createdAt: serverTimestamp()
+      });
+      await updateDoc(doc(db, 'users', user.id), {
+        points: (points || 0) + autoScore
+      });
+    } catch (err) {
+      console.log('Error saving task submission:', err);
     }
   };
 
@@ -1082,12 +1103,12 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser, externa
         />
       )}
 
-      {/* 4. Tab: Exams (Modular) */}
+      {/* 4. Tab: Formal Exams (Term & Midterm only) */}
       {activeTab === 'exams' && (
         <StudentExams
           user={user}
           getGradeTitle={getGradeTitle}
-          availableExams={availableExams}
+          availableExams={availableExams.filter(ex => ex.type === 'term_exam' || ex.type === 'formal_exam')}
           completedExams={completedExams}
           activeExam={activeExam}
           setActiveExam={setActiveExam}
@@ -1099,61 +1120,15 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser, externa
         />
       )}
 
-      {/* 5. Tab: Tasks (Daily / Weekly Assignments) */}
+      {/* 5. Tab: Tasks & Competitions */}
       {activeTab === 'tasks' && (
-        <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-4 text-right">
-          <div>
-            <h3 className="font-extrabold text-slate-900 text-base flex items-center gap-2">
-              <CheckSquare className="w-5 h-5 text-maroon-800" />
-              التاسكات والتكليفات اليومية والأسبوعية
-            </h3>
-            <p className="text-xs text-slate-500 mt-0.5">أسئلة وتكليفات الخدمة اليومية والأسبوعية لكسب نقاط إضافية.</p>
-          </div>
-
-          {tasks.length === 0 ? (
-            <div className="text-center py-12 bg-slate-50 border border-dashed border-slate-200 rounded-2xl p-6">
-              <CheckSquare className="w-10 h-10 text-slate-300 mx-auto mb-2" />
-              <p className="text-xs font-bold text-slate-700">لا توجد تاسكات أو تكليفات مطلوبة حالياً.</p>
-              <p className="text-[11px] text-slate-400 mt-1">ستصلك التكليفات والأسئلة الأسبوعية من الخدام هنا.</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {tasks.map((task) => (
-                <div
-                  key={task.id}
-                  className="bg-slate-50 border border-slate-200 p-4.5 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs"
-                >
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="font-extrabold text-slate-900 text-sm">{task.title}</span>
-                      <span className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full font-bold">
-                        +{task.points} نقطة
-                      </span>
-                    </div>
-                    <p className="text-slate-600 leading-relaxed">{task.description}</p>
-                    <span className="text-[10px] text-slate-400 mt-1 block">الموعد النهائي: {task.deadline}</span>
-                  </div>
-
-                  <div>
-                    {task.completed ? (
-                      <span className="bg-emerald-100 text-emerald-800 px-3 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1">
-                        <Check className="w-3.5 h-3.5" />
-                        مكتمل
-                      </span>
-                    ) : (
-                      <button
-                        onClick={() => handleCompleteTask(task.id, task.points)}
-                        className="bg-maroon-800 hover:bg-maroon-700 text-white font-bold px-4 py-2 rounded-xl text-xs transition-colors shadow-xs"
-                      >
-                        تأكيد إنجاز التاسك
-                      </button>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        <StudentTasks
+          user={user}
+          getGradeTitle={getGradeTitle}
+          allQuizzes={availableExams.filter(ex => ex.type === 'online_quiz' || !ex.type || (ex.questions && ex.questions.length > 0))}
+          completedTasks={completedExams}
+          onSubmitTask={handleSubmitTask}
+        />
       )}
 
       {/* 6. Tab: Announcements */}

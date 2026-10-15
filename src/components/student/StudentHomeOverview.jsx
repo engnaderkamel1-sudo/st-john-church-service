@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { 
   Sparkles, Award, CheckCircle2, QrCode, Sun, BookOpen, 
-  FileText, ArrowLeft, Calendar, Flame, TrendingUp, AlertCircle 
+  FileText, ArrowLeft, Calendar, Flame, TrendingUp, AlertCircle, CheckSquare 
 } from 'lucide-react';
 
 export default function StudentHomeOverview({
@@ -180,23 +180,23 @@ export default function StudentHomeOverview({
             </span>
           </button>
 
-          {/* C. Exams Card */}
+          {/* C. Tasks & Quizzes Card */}
           <button
             type="button"
-            onClick={() => onNavigateTab('exams')}
+            onClick={() => onNavigateTab('tasks')}
             className="p-3.5 rounded-2xl bg-white border border-slate-200/90 shadow-2xs text-right hover:border-maroon-700/40 hover:shadow-xs transition-all cursor-pointer group"
           >
             <div className="flex items-center justify-between mb-2">
               <div className="w-8 h-8 rounded-xl bg-purple-50 text-purple-700 flex items-center justify-center">
-                <FileText className="w-4 h-4" />
+                <CheckSquare className="w-4 h-4" />
               </div>
-              <span className="text-[10px] font-bold text-slate-400 font-mono">الامتحانات</span>
+              <span className="text-[10px] font-bold text-slate-400 font-mono">تاسكات ومسابقات</span>
             </div>
             <div className="text-lg sm:text-xl font-black text-slate-900 group-hover:text-purple-700 transition-colors">
               {completedCount} <span className="text-xs font-bold text-slate-500">من {availableExams.length}</span>
             </div>
             <span className={`text-[10px] font-extrabold block mt-0.5 ${pendingExamsCount === 0 ? 'text-emerald-700' : 'text-purple-800'}`}>
-              {pendingExamsCount === 0 ? 'أتممت كافة الاختبارات ✓' : `${pendingExamsCount} اختبار متاح`}
+              {pendingExamsCount === 0 ? 'أتممت كافة التكليفات ✓' : `${pendingExamsCount} مسابقة متاحة`}
             </span>
           </button>
 
@@ -286,21 +286,21 @@ export default function StudentHomeOverview({
             <ArrowLeft className="w-4 h-4 text-slate-400 group-hover:text-maroon-800 transition-colors shrink-0" />
           </button>
 
-          {/* 4. Exams & Tasks */}
+          {/* 4. Tasks & Competitions */}
           <button
             type="button"
-            onClick={() => onNavigateTab('exams')}
+            onClick={() => onNavigateTab('tasks')}
             className="p-3 rounded-2xl bg-slate-50 hover:bg-slate-100/90 border border-slate-200 flex items-center justify-between transition-all cursor-pointer group text-right"
           >
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-xl bg-purple-900 text-purple-200 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                <FileText className="w-5 h-5" />
+                <CheckSquare className="w-5 h-5" />
               </div>
               <div>
                 <span className="text-xs font-black text-slate-900 block group-hover:text-maroon-800 transition-colors">
-                  الامتحانات والتقييمات
+                  التاسكات والمسابقات الأسبوعية
                 </span>
-                <span className="text-[10px] text-slate-500">حل الأسئلة والاطلاع الفوري على النتائج</span>
+                <span className="text-[10px] text-slate-500">حل الأسئلة والمسابقات والاطلاع الفوري على النتائج</span>
               </div>
             </div>
             <ArrowLeft className="w-4 h-4 text-slate-400 group-hover:text-maroon-800 transition-colors shrink-0" />
