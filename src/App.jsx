@@ -128,32 +128,6 @@ export default function App() {
     };
   }, [showNotifications]);
 
-  // Automatic Seamless Update Detection
-  useEffect(() => {
-    const checkForUpdates = async () => {
-      try {
-        const res = await fetch(`/version.json?t=${Date.now()}`, { cache: 'no-store' });
-        if (res.ok) {
-          const data = await res.json();
-          const currentLocalVer = localStorage.getItem('app_version');
-          
-          if (!currentLocalVer) {
-            localStorage.setItem('app_version', data.version);
-          } else if (data.version && data.version !== currentLocalVer) {
-            // Update silently and automatically without requiring user click
-            localStorage.setItem('app_version', data.version);
-            window.location.reload();
-          }
-        }
-      } catch (err) {
-        // quiet fail
-      }
-    };
-
-    checkForUpdates();
-    const interval = setInterval(checkForUpdates, 30000); // Check every 30 seconds
-    return () => clearInterval(interval);
-  }, []);
 
   useEffect(() => {
     const saved = localStorage.getItem('church_user');
