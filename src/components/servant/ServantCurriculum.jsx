@@ -63,6 +63,8 @@ export const LECTURE_NUMBERS = [
   'المحاضرة الثلاثون'
 ];
 
+export const DRIVE_WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbzhFwJ7JEk2L9-OwFI4GF07tCVHOvWtG7yFLR4h9YyI47Lg2WNJtZ1dR5AhAtvDfkaF/exec';
+
 export default function ServantCurriculum({
   user,
   isAppAdmin = false,
@@ -190,14 +192,31 @@ export default function ServantCurriculum({
     if (!newSubjectName.trim()) return;
 
     try {
+      const subName = newSubjectName.trim();
       await addDoc(collection(db, 'service_curriculum'), {
         grade: selectedGrade,
-        name: newSubjectName.trim(),
+        name: subName,
         teacher: newSubjectTeacher.trim() || user.fullName || 'خادم المادة',
         targetAudience: curriculumTarget,
         references: [],
         createdAt: serverTimestamp()
       });
+
+      // Background automation: Create subject folder on Google Drive in "2. المحاضرات"
+      try {
+        fetch(DRIVE_WEBHOOK_URL, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({
+            action: 'create_subject_folder',
+            grade: selectedGrade,
+            subjectName: subName
+          })
+        }).catch(err => console.warn('Drive folder auto-create warning:', err));
+      } catch (driveErr) {
+        console.warn('Drive webhook trigger error:', driveErr);
+      }
 
       setNewSubjectName('');
       setNewSubjectTeacher('');
@@ -646,6 +665,23 @@ export default function ServantCurriculum({
         const updatedList = currentList.map(s => s.id === activeSubject.id ? updatedSubject : s);
         return { ...prev, [selectedGrade]: updatedList };
       });
+
+      // Background automation: Create lecture folder on Google Drive in "2. المحاضرات"
+      try {
+        fetch(DRIVE_WEBHOOK_URL, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({
+            action: 'create_lecture_folder',
+            grade: activeSubject.grade || selectedGrade,
+            subjectName: activeSubject.name,
+            lectureName: newLec.title || newLec.number
+          })
+        }).catch(err => console.warn('Drive lecture folder auto-create warning:', err));
+      } catch (driveErr) {
+        console.warn('Drive lecture webhook trigger error:', driveErr);
+      }
     } catch (err) {
       console.error('Error adding lecture:', err);
       alert('حدث خطأ أثناء حفظ المحاضرة: ' + err.message);
