@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { 
   X, Sparkles, Camera, Plus, Trash2, CheckCircle, HelpCircle, 
-  Clock, Calendar, BookOpen, AlertCircle, Loader2, ArrowRight
+  Clock, Calendar, BookOpen, AlertCircle, Loader2, ArrowRight, Save
 } from 'lucide-react';
 import { transcribeHandwrittenQuizFromImage } from '../../services/geminiService';
 import { compressImage } from '../../utils/imageCompressor';
@@ -112,19 +112,18 @@ export default function ServantQuickQuizBuilderModal({
     setQuestions(prev => prev.map(q => q.id === id ? { ...q, ...fields } : q));
   };
 
-  const handlePublishQuiz = async (e) => {
-    e.preventDefault();
+  const handlePublishQuiz = async (targetStatus = 'active') => {
     if (!quizTitle.trim()) {
       alert('يرجى كتابة عنوان المسابقة أولاً.');
       return;
     }
     const emptyQuestions = questions.filter(q => !q.questionText.trim());
     if (emptyQuestions.length > 0) {
-      alert('يرجى تعبئة نصوص جميع الأسئلة قبل النشر.');
+      alert('يرجى تعبئة نصوص جميع الأسئلة قبل الحفظ.');
       return;
     }
 
-    setIsPublishing(true);
+    setIsPublishing(targetStatus);
     const totalScore = questions.reduce((sum, q) => sum + (Number(q.points) || 0), 0);
 
     const quizData = {
@@ -137,7 +136,7 @@ export default function ServantQuickQuizBuilderModal({
       questionsCount: questions.length,
       questions: questions,
       type: 'online_quiz',
-      status: 'active',
+      status: targetStatus, // 'active' (متاحة للطلبة) | 'draft' (مسودة مغلقة)
       createdBy: user?.fullName || 'الخادم المسؤول',
       createdAt: serverTimestamp()
     };
@@ -149,8 +148,8 @@ export default function ServantQuickQuizBuilderModal({
       }
       onClose();
     } catch (err) {
-      console.error('Error publishing quiz:', err);
-      alert('حدث خطأ أثناء حفظ ونشر المسابقة، يرجى المحاولة ثانية.');
+      console.error('Error saving quiz:', err);
+      alert('حدث خطأ أثناء حفظ المسابقة، يرجى المحاولة ثانية.');
     } finally {
       setIsPublishing(false);
     }
@@ -491,33 +490,56 @@ export default function ServantQuickQuizBuilderModal({
         </div>
 
         {/* Footer */}
-        <div className="p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between gap-3 shrink-0">
+        <div className="p-4 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-2.5 shrink-0">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2.5 rounded-xl border border-slate-300 text-slate-700 font-bold text-xs hover:bg-slate-100 transition-colors"
+            className="w-full sm:w-auto px-4 py-2.5 rounded-xl border border-slate-300 text-slate-700 font-bold text-xs hover:bg-slate-100 transition-colors"
           >
             إلغاء
           </button>
 
-          <button
-            type="button"
-            disabled={isPublishing}
-            onClick={handlePublishQuiz}
-            className="flex-1 sm:flex-none px-6 py-2.5 rounded-xl bg-maroon-800 hover:bg-maroon-700 text-white font-black text-xs shadow-md transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
-          >
-            {isPublishing ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin text-white" />
-                <span>جاري النشر...</span>
-              </>
-            ) : (
-              <>
-                <CheckCircle className="w-4 h-4 text-gold-300" />
-                <span>🚀 نشر المسابقة للمخدومين</span>
-              </>
-            )}
-          </button>
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <button
+              type="button"
+              disabled={Boolean(isPublishing)}
+              onClick={() => handlePublishQuiz('draft')}
+              className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-950 border border-amber-300 font-black text-xs shadow-2xs transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-1.5 cursor-pointer"
+              title="حفظ المسابقة كمسودة في لوحة الخادم دون إتاحتها للطلبة الآن"
+            >
+              {isPublishing === 'draft' ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin text-amber-800" />
+                  <span>جاري الحفظ...</span>
+                </>
+              ) : (
+                <>
+                  <Save className="w-4 h-4 text-amber-700" />
+                  <span>💾 حفظ كمسودة (مغلقة)</span>
+                </>
+              )}
+            </button>
+
+            <button
+              type="button"
+              disabled={Boolean(isPublishing)}
+              onClick={() => handlePublishQuiz('active')}
+              className="flex-1 sm:flex-none px-5 py-2.5 rounded-xl bg-maroon-800 hover:bg-maroon-700 text-white font-black text-xs shadow-md transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-1.5 cursor-pointer"
+              title="حفظ المسابقة وإتاحتها للطلبة فوراً"
+            >
+              {isPublishing === 'active' ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin text-white" />
+                  <span>جاري النشر...</span>
+                </>
+              ) : (
+                <>
+                  <CheckCircle className="w-4 h-4 text-gold-300" />
+                  <span>🚀 حفظ ونشر فوري للطلبة</span>
+                </>
+              )}
+            </button>
+          </div>
         </div>
 
       </div>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, FileText, Sparkles, Presentation, PenTool, CheckCircle, Award, UserCheck, Trash2, Users, Eye, Calendar } from 'lucide-react';
+import { Plus, FileText, Sparkles, Presentation, PenTool, CheckCircle, Award, UserCheck, Trash2, Users, Eye, Calendar, Lock, Unlock } from 'lucide-react';
 import { db } from '../../firebase';
 import { collection, addDoc, doc, updateDoc, deleteDoc, getDocs, query, where, serverTimestamp } from 'firebase/firestore';
 import ServantAiStudioModal from './ServantAiStudioModal';
@@ -158,6 +158,22 @@ export default function ServantExamsBank({
     } catch (err) {
       console.error('Error deleting exam:', err);
       alert('حدث خطأ أثناء حذف المسابقة.');
+    }
+  };
+
+  const handleToggleExamStatus = async (exam) => {
+    const isCurrentlyActive = (exam.status === 'active');
+    const newStatus = isCurrentlyActive ? 'closed' : 'active';
+    const actionLabel = isCurrentlyActive ? 'إيقاف وإغلاق المسابقة عن الطلبة' : 'فتح وإتاحة المسابقة للطلبة الآن';
+
+    if (!window.confirm(`هل تريد بالتأكيد ${actionLabel}؟`)) return;
+
+    try {
+      await updateDoc(doc(db, 'service_exams', exam.id), { status: newStatus });
+      setCreatedExams(prev => prev.map(e => e.id === exam.id ? { ...e, status: newStatus } : e));
+    } catch (err) {
+      console.error('Error toggling exam status:', err);
+      alert('حدث خطأ أثناء تعديل حالة المسابقة.');
     }
   };
 
@@ -413,23 +429,47 @@ export default function ServantExamsBank({
                     </span>
                   </div>
 
-                  <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex items-center gap-2 shrink-0 flex-wrap sm:flex-nowrap">
+                    {/* Active / Closed Toggle Button */}
+                    <button
+                      type="button"
+                      onClick={() => handleToggleExamStatus(ex)}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer active:scale-95 border ${
+                        ex.status === 'active'
+                          ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-emerald-300'
+                          : 'bg-amber-50 hover:bg-amber-100 text-amber-900 border-amber-300'
+                      }`}
+                      title={ex.status === 'active' ? 'المسابقة متاحة للطلبة حالياً - اضغط لإيقافها' : 'المسابقة موقوفة أو مسودة - اضغط لفتحها للطلبة'}
+                    >
+                      {ex.status === 'active' ? (
+                        <>
+                          <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse"></span>
+                          <span>مفتوحة للطلبة 🟢</span>
+                        </>
+                      ) : (
+                        <>
+                          <Lock className="w-3.5 h-3.5 text-amber-700" />
+                          <span>موقوفة / مسودة 🔒</span>
+                        </>
+                      )}
+                    </button>
+
                     <button
                       type="button"
                       onClick={() => {
                         setSelectedExamForResponses(ex);
                         setShowResponsesModal(true);
                       }}
-                      className="px-3.5 py-2 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-900 border border-indigo-200 text-xs font-bold flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer active:scale-95"
+                      className="px-3.5 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-900 border border-indigo-200 text-xs font-bold flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer active:scale-95"
                     >
                       <Users className="w-3.5 h-3.5 text-indigo-700" />
-                      <span>الردود والتسليمات (Responses)</span>
+                      <span>الردود (Responses)</span>
                     </button>
 
                     <button
                       type="button"
                       onClick={() => handleDeleteExam(ex.id)}
-                      className="p-2 rounded-xl text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-200 transition-colors cursor-pointer"
+                      className="p-1.5 rounded-xl text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-200 transition-colors cursor-pointer"
                       title="حذف المسابقة"
                     >
                       <Trash2 className="w-4 h-4" />

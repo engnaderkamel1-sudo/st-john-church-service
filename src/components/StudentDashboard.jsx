@@ -287,12 +287,15 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser, externa
       setAttendanceRecords(list);
     }, (err) => console.log('Attendance listen err:', err));
 
-    // Sync Exams for student grade
+    // Sync Exams for student grade (Active only)
     const qEx = query(collection(db, 'service_exams'), where('grade', '==', user.grade || 'first'));
     const unsubEx = onSnapshot(qEx, (snap) => {
       if (!snap.empty) {
         const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        setAvailableExams(list);
+        const activeOnly = list.filter(ex => ex.status === 'active');
+        setAvailableExams(activeOnly);
+      } else {
+        setAvailableExams([]);
       }
     }, (err) => console.log('Student exams fetch info:', err));
 
@@ -595,6 +598,12 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser, externa
   };
 
   const handleSubmitExam = async (exam) => {
+    if (exam.status && exam.status !== 'active') {
+      alert('عفواً، هذه المسابقة موقوفة أو مغلقة حالياً من قبل الخدام.');
+      setActiveExam(null);
+      return;
+    }
+
     let autoScore = 0;
     const questionsList = exam.questions || [];
     questionsList.forEach(q => {
