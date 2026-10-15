@@ -130,6 +130,14 @@ export default function ServantCurriculum({
   const [isEditingYear, setIsEditingYear] = useState(false);
   const [inputYear, setInputYear] = useState(academicYear);
 
+  // Edit Reference states
+  const [showEditRefModal, setShowEditRefModal] = useState(false);
+  const [editingRef, setEditingRef] = useState(null);
+  const [editRefTitle, setEditRefTitle] = useState('');
+  const [editRefUrl, setEditRefUrl] = useState('');
+  const [editRefType, setEditRefType] = useState('pdf');
+  const [editRefSaving, setEditRefSaving] = useState(false);
+
   // Sync activeLecture whenever activeSubject changes
   useEffect(() => {
     if (!activeSubject) {
@@ -882,6 +890,63 @@ export default function ServantCurriculum({
       });
     } catch (err) {
       console.error('Error deleting reference:', err);
+    }
+  };
+
+  const handleOpenEditReference = (rf) => {
+    setEditingRef(rf);
+    setEditRefTitle(rf.title || '');
+    setEditRefUrl(rf.url || '');
+    setEditRefType(rf.type || 'pdf');
+    setShowEditRefModal(true);
+  };
+
+  const handleSaveEditedReference = async (e) => {
+    e.preventDefault();
+    if (!editingRef || !activeSubject || !editRefTitle.trim()) return;
+
+    setEditRefSaving(true);
+    const parsed = parseResourceLink(editRefUrl.trim(), editRefType);
+    const updatedRef = {
+      ...editingRef,
+      title: editRefTitle.trim(),
+      url: editRefUrl.trim(),
+      type: editRefType,
+      fileType: editRefType,
+      fileId: parsed.fileId || editingRef.fileId || null,
+      videoId: parsed.videoId || editingRef.videoId || null
+    };
+
+    const currentLecs = normalizeLectures(activeSubject);
+    const updatedLectures = currentLecs.map(lec => ({
+      ...lec,
+      files: (lec.files || []).map(r => r.id === editingRef.id ? updatedRef : r)
+    }));
+    const allFlattenedRefs = updatedLectures.flatMap(l => l.files || []);
+
+    try {
+      await updateDoc(doc(db, 'service_curriculum', activeSubject.id), {
+        lectures: updatedLectures,
+        references: allFlattenedRefs
+      });
+
+      const updatedSubject = { ...activeSubject, lectures: updatedLectures, references: allFlattenedRefs };
+      setActiveSubject(updatedSubject);
+      if (activeLecture) {
+        setActiveLecture(updatedLectures.find(l => l.id === activeLecture.id) || null);
+      }
+      setSubjectsByGrade(prev => {
+        const currentList = prev[selectedGrade] || [];
+        const updatedList = currentList.map(s => s.id === activeSubject.id ? updatedSubject : s);
+        return { ...prev, [selectedGrade]: updatedList };
+      });
+      setShowEditRefModal(false);
+      setEditingRef(null);
+    } catch (err) {
+      console.error('Error updating reference:', err);
+      alert('حدث خطأ أثناء حفظ تعديل المرجع: ' + err.message);
+    } finally {
+      setEditRefSaving(false);
     }
   };
 
@@ -2021,6 +2086,15 @@ export default function ServantCurriculum({
 
                           <button
                             type="button"
+                            onClick={() => handleOpenEditReference(rf)}
+                            className="text-slate-400 hover:text-maroon-800 p-1.5 rounded-lg hover:bg-slate-200/60 transition-colors cursor-pointer"
+                            title="تعديل هذا المرجع أو الملف"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+
+                          <button
+                            type="button"
                             onClick={() => handleDeleteReference(rf.id)}
                             className="text-slate-400 hover:text-red-600 p-1.5 rounded-lg hover:bg-red-50 transition-colors cursor-pointer"
                             title="حذف هذا الملف"
@@ -2332,6 +2406,110 @@ export default function ServantCurriculum({
                 >
                   <Check className="w-3.5 h-3.5" />
                   <span>حفظ التعديلات</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* 5. Modal: Edit Reference / File */}
+      {showEditRefModal && editingRef && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3.5 animate-in fade-in">
+          <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl border border-slate-100 text-right">
+            <div className="bg-gradient-to-r from-maroon-900 to-maroon-800 p-4 text-white flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Pencil className="w-5 h-5 text-gold-300" />
+                <h4 className="font-extrabold text-sm sm:text-base">تعديل بيانات المرجع / الملف</h4>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowEditRefModal(false);
+                  setEditingRef(null);
+                }}
+                className="text-white/70 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEditedReference} className="p-5 space-y-4">
+              <div>
+                <label className="block text-xs font-extrabold text-slate-700 mb-1.5">عنوان الكتاب / المرجع *</label>
+                <input
+                  type="text"
+                  required
+                  value={editRefTitle}
+                  onChange={(e) => setEditRefTitle(e.target.value)}
+                  placeholder="مثال: مذكرة شرح المحاضرة"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-800 focus:outline-none focus:border-maroon-800 focus:bg-white transition-all"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-extrabold text-slate-700 mb-1.5">رابط الملف أو Google Drive</label>
+                <input
+                  type="text"
+                  value={editRefUrl}
+                  onChange={(e) => setEditRefUrl(e.target.value)}
+                  placeholder="https://drive.google.com/file/d/.../view"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-mono font-bold text-slate-700 focus:outline-none focus:border-maroon-800 focus:bg-white transition-all"
+                />
+                <span className="text-[10px] text-slate-400 mt-1 block">يمكنك تعديل أو تحديث رابط الملف المباشر من Google Drive في أي وقت.</span>
+              </div>
+
+              <div>
+                <label className="block text-xs font-extrabold text-slate-700 mb-1.5">نوع الملف</label>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                  {[
+                    { key: 'pdf', label: 'PDF', icon: FileText, color: 'text-red-700' },
+                    { key: 'ppt', label: 'PowerPoint', icon: FileText, color: 'text-amber-700' },
+                    { key: 'doc', label: 'Word', icon: FileText, color: 'text-blue-700' },
+                    { key: 'excel', label: 'Excel', icon: FileSpreadsheet, color: 'text-emerald-700' },
+                    { key: 'image', label: 'صورة', icon: ImageIcon, color: 'text-cyan-700' },
+                    { key: 'audio', label: 'تسجيل صوتي', icon: Music, color: 'text-purple-700' },
+                    { key: 'video', label: 'فيديو يوتيوب', icon: Video, color: 'text-red-600' },
+                    { key: 'file', label: 'ملف عام', icon: File, color: 'text-slate-600' }
+                  ].map(t => {
+                    const IconComp = t.icon;
+                    return (
+                      <button
+                        key={t.key}
+                        type="button"
+                        onClick={() => setEditRefType(t.key)}
+                        className={`p-2 rounded-xl border text-[11px] font-bold flex items-center justify-center gap-1 transition-all cursor-pointer ${
+                          editRefType === t.key
+                            ? 'bg-maroon-800 text-white border-maroon-800 shadow-xs'
+                            : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
+                        }`}
+                      >
+                        <IconComp className={`w-3.5 h-3.5 ${editRefType === t.key ? 'text-gold-300' : t.color}`} />
+                        <span>{t.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowEditRefModal(false);
+                    setEditingRef(null);
+                  }}
+                  className="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs px-4 py-2 rounded-xl font-bold transition-colors cursor-pointer"
+                >
+                  إلغاء
+                </button>
+                <button
+                  type="submit"
+                  disabled={editRefSaving || !editRefTitle.trim()}
+                  className="bg-maroon-800 hover:bg-maroon-700 text-white font-bold text-xs px-5 py-2 rounded-xl transition-all shadow-xs flex items-center gap-1.5 cursor-pointer active:scale-95 disabled:opacity-50"
+                >
+                  <Check className="w-3.5 h-3.5" />
+                  <span>{editRefSaving ? 'جاري الحفظ...' : 'حفظ التعديلات'}</span>
                 </button>
               </div>
             </form>

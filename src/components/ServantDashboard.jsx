@@ -851,13 +851,17 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
   // Sync service_curriculum collection from Firestore
   useEffect(() => {
     const unsub = onSnapshot(collection(db, 'service_curriculum'), (snapshot) => {
-      const grouped = { first: [], second: [], third: [], elisha: [] };
+      const grouped = { first: [], second: [], third: [], elisha: [], cycle_1: [], cycle_2: [] };
       snapshot.forEach(docSnap => {
         const data = { id: docSnap.id, ...docSnap.data() };
         const g = data.grade || 'first';
         if (grouped[g]) {
           grouped[g].push(data);
         }
+        if (g === 'cycle_1' && grouped.first && !grouped.first.some(x => x.id === data.id)) grouped.first.push(data);
+        if (g === 'first' && grouped.cycle_1 && !grouped.cycle_1.some(x => x.id === data.id)) grouped.cycle_1.push(data);
+        if (g === 'cycle_2' && grouped.second && !grouped.second.some(x => x.id === data.id)) grouped.second.push(data);
+        if (g === 'second' && grouped.cycle_2 && !grouped.cycle_2.some(x => x.id === data.id)) grouped.cycle_2.push(data);
       });
       setSubjectsByGrade(grouped);
 
