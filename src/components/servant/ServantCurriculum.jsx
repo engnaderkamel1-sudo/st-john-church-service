@@ -30,6 +30,39 @@ export const normalizeLectures = (subject) => {
   return [];
 };
 
+export const LECTURE_NUMBERS = [
+  'المحاضرة الأولى',
+  'المحاضرة الثانية',
+  'المحاضرة الثالثة',
+  'المحاضرة الرابعة',
+  'المحاضرة الخامسة',
+  'المحاضرة السادسة',
+  'المحاضرة السابعة',
+  'المحاضرة الثامنة',
+  'المحاضرة التاسعة',
+  'المحاضرة العاشرة',
+  'المحاضرة الحادية عشرة',
+  'المحاضرة الثانية عشرة',
+  'المحاضرة الثالثة عشرة',
+  'المحاضرة الرابعة عشرة',
+  'المحاضرة الخامسة عشرة',
+  'المحاضرة السادسة عشرة',
+  'المحاضرة السابعة عشرة',
+  'المحاضرة الثامنة عشرة',
+  'المحاضرة التاسعة عشرة',
+  'المحاضرة العشرون',
+  'المحاضرة الحادية والعشرون',
+  'المحاضرة الثانية والعشرون',
+  'المحاضرة الثالثة والعشرون',
+  'المحاضرة الرابعة والعشرون',
+  'المحاضرة الخامسة والعشرون',
+  'المحاضرة السادسة والعشرون',
+  'المحاضرة السابعة والعشرون',
+  'المحاضرة الثامنة والعشرون',
+  'المحاضرة التاسعة والعشرون',
+  'المحاضرة الثلاثون'
+];
+
 export default function ServantCurriculum({
   user,
   selectedGrade,
@@ -52,9 +85,19 @@ export default function ServantCurriculum({
   // Lecture-level states
   const [activeLecture, setActiveLecture] = useState(null);
   const [showAddLectureModal, setShowAddLectureModal] = useState(false);
-  const [newLectureTitle, setNewLectureTitle] = useState('');
-  const [newLectureDate, setNewLectureDate] = useState(() => new Date().toISOString().split('T')[0]);
-  const [newLectureLecturer, setNewLectureLecturer] = useState('');
+  const [lectureEntryMode, setLectureEntryMode] = useState('single'); // 'single' | 'combined'
+  
+  // Single Lecture fields
+  const [singleLectureNumber, setSingleLectureNumber] = useState('المحاضرة الأولى');
+  const [singleLectureTopic, setSingleLectureTopic] = useState('');
+  const [singleLectureDate, setSingleLectureDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [singleLectureLecturer, setSingleLectureLecturer] = useState('');
+
+  // Combined Lectures list fields
+  const [subLecturesList, setSubLecturesList] = useState([
+    { id: 'sub-1', number: 'المحاضرة الأولى', topic: '', lecturer: '', date: new Date().toISOString().split('T')[0] },
+    { id: 'sub-2', number: 'المحاضرة الثانية', topic: '', lecturer: '', date: new Date().toISOString().split('T')[0] }
+  ]);
 
   const [showAddRefModal, setShowAddRefModal] = useState(false);
   const [newRefTitle, setNewRefTitle] = useState('');
@@ -442,21 +485,81 @@ export default function ServantCurriculum({
     }
   };
 
+  const handleAddSubLecture = () => {
+    const nextIdx = subLecturesList.length;
+    const nextNumber = LECTURE_NUMBERS[nextIdx] || `المحاضرة ${nextIdx + 1}`;
+    setSubLecturesList(prev => [
+      ...prev,
+      {
+        id: `sub-${Date.now()}`,
+        number: nextNumber,
+        topic: '',
+        lecturer: singleLectureLecturer || activeSubject?.teacher || user.fullName || '',
+        date: new Date().toISOString().split('T')[0]
+      }
+    ]);
+  };
+
+  const handleRemoveSubLecture = (id) => {
+    if (subLecturesList.length <= 2) {
+      alert('يجب أن تحتوي المجموعة المجمعة على محاضرتين على الأقل.');
+      return;
+    }
+    setSubLecturesList(prev => prev.filter(s => s.id !== id));
+  };
+
+  const handleUpdateSubLecture = (id, field, value) => {
+    setSubLecturesList(prev => prev.map(s => s.id === id ? { ...s, [field]: value } : s));
+  };
+
   const handleAddLecture = async (e) => {
     e.preventDefault();
-    if (!newLectureTitle.trim() || !activeSubject) return;
+    if (!activeSubject) return;
+
+    let newLec = null;
+    if (lectureEntryMode === 'single') {
+      const title = singleLectureTopic.trim()
+        ? `${singleLectureNumber}: ${singleLectureTopic.trim()}`
+        : singleLectureNumber;
+
+      newLec = {
+        id: `lec-${Date.now()}`,
+        type: 'single',
+        number: singleLectureNumber,
+        topic: singleLectureTopic.trim(),
+        title: title,
+        date: singleLectureDate || new Date().toISOString().split('T')[0],
+        lecturer: singleLectureLecturer.trim() || activeSubject.teacher || user.fullName || 'خادم المادة',
+        isPublishedForStudents: true,
+        createdAt: new Date().toISOString(),
+        files: []
+      };
+    } else {
+      // Combined lectures
+      const numbersList = subLecturesList.map(s => s.number);
+      const combinedNumbers = numbersList.join(' • ');
+      const combinedTopics = subLecturesList.map(s => s.topic).filter(Boolean).join(' • ');
+      const combinedTitle = combinedTopics ? `${combinedNumbers} (${combinedTopics})` : combinedNumbers;
+      const firstDate = subLecturesList[0]?.date || '';
+      const lastDate = subLecturesList[subLecturesList.length - 1]?.date || '';
+      const dateRange = (firstDate && lastDate && firstDate !== lastDate) ? `${firstDate} إلى ${lastDate}` : (firstDate || lastDate);
+      const lecturers = Array.from(new Set(subLecturesList.map(s => s.lecturer).filter(Boolean))).join('، ') || activeSubject.teacher || user.fullName || 'خدام المادة';
+
+      newLec = {
+        id: `lec-${Date.now()}`,
+        type: 'combined',
+        number: combinedNumbers,
+        title: combinedTitle,
+        date: dateRange,
+        lecturer: lecturers,
+        subLectures: subLecturesList,
+        isPublishedForStudents: true,
+        createdAt: new Date().toISOString(),
+        files: []
+      };
+    }
 
     const currentLecs = normalizeLectures(activeSubject);
-    const newLec = {
-      id: `lec-${Date.now()}`,
-      title: newLectureTitle.trim(),
-      date: newLectureDate || new Date().toISOString().split('T')[0],
-      lecturer: newLectureLecturer.trim() || activeSubject.teacher || user.fullName || 'خادم المادة',
-      isPublishedForStudents: true,
-      createdAt: new Date().toISOString(),
-      files: []
-    };
-
     const updatedLectures = [...currentLecs, newLec];
     const allFlattenedRefs = updatedLectures.flatMap(l => l.files || []);
 
@@ -469,9 +572,8 @@ export default function ServantCurriculum({
       setActiveSubject(updatedSubject);
       setActiveLecture(newLec);
       setShowAddLectureModal(false);
-      setNewLectureTitle('');
-      setNewLectureLecturer('');
-      setNewLectureDate(new Date().toISOString().split('T')[0]);
+      setSingleLectureTopic('');
+      setSingleLectureLecturer('');
       setSubjectsByGrade(prev => {
         const currentList = prev[selectedGrade] || [];
         const updatedList = currentList.map(s => s.id === activeSubject.id ? updatedSubject : s);
@@ -919,8 +1021,18 @@ export default function ServantCurriculum({
                   <button
                     type="button"
                     onClick={() => {
-                      setNewLectureLecturer(activeSubject.teacher || user.fullName || '');
-                      setNewLectureDate(new Date().toISOString().split('T')[0]);
+                      const lecturesList = normalizeLectures(activeSubject);
+                      const nextNum = LECTURE_NUMBERS[lecturesList.length] || 'المحاضرة الأولى';
+                      const afterNextNum = LECTURE_NUMBERS[lecturesList.length + 1] || 'المحاضرة الثانية';
+                      setLectureEntryMode('single');
+                      setSingleLectureNumber(nextNum);
+                      setSingleLectureTopic('');
+                      setSingleLectureDate(new Date().toISOString().split('T')[0]);
+                      setSingleLectureLecturer(activeSubject.teacher || user.fullName || '');
+                      setSubLecturesList([
+                        { id: 'sub-1', number: nextNum, topic: '', lecturer: activeSubject.teacher || user.fullName || '', date: new Date().toISOString().split('T')[0] },
+                        { id: 'sub-2', number: afterNextNum, topic: '', lecturer: activeSubject.teacher || user.fullName || '', date: new Date().toISOString().split('T')[0] }
+                      ]);
                       setShowAddLectureModal(true);
                     }}
                     className="bg-maroon-800 hover:bg-maroon-700 text-white font-bold text-xs py-2 px-3.5 rounded-xl transition-all shadow-xs flex items-center gap-1.5 cursor-pointer active:scale-95"
@@ -940,49 +1052,175 @@ export default function ServantCurriculum({
 
               {/* Add Lecture Modal */}
               {showAddLectureModal && (
-                <form onSubmit={handleAddLecture} className="bg-slate-50 border border-maroon-200 p-4.5 rounded-2xl space-y-3.5 shadow-sm">
-                  <div className="flex items-center justify-between">
+                <form onSubmit={handleAddLecture} className="bg-slate-50 border border-maroon-200 p-4.5 rounded-2xl space-y-4 shadow-sm">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200/80 pb-3">
                     <h5 className="font-extrabold text-xs text-maroon-900 flex items-center gap-1.5">
                       <FolderPlus className="w-4 h-4 text-maroon-800" />
-                      <span>إضافة محاضرة جديدة لمادة ({activeSubject.name})</span>
+                      <span>إضافة محاضرة لمادة ({activeSubject.name})</span>
                     </h5>
-                    <span className="text-[10px] text-slate-400 font-medium">خطوة 1: تحديد بيانات المحاضرة</span>
+
+                    {/* Mode Toggle Pills */}
+                    <div className="flex items-center gap-1.5 bg-slate-200/90 p-1 rounded-xl">
+                      <button
+                        type="button"
+                        onClick={() => setLectureEntryMode('single')}
+                        className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                          lectureEntryMode === 'single'
+                            ? 'bg-maroon-800 text-white shadow-xs'
+                            : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                      >
+                        محاضرة مفردة
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setLectureEntryMode('combined')}
+                        className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                          lectureEntryMode === 'combined'
+                            ? 'bg-amber-600 text-white shadow-xs'
+                            : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                      >
+                        <span>محاضرات مجمّعة (محتوى مشترك)</span>
+                        <Sparkles className="w-3 h-3 text-gold-300" />
+                      </button>
+                    </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <div className="sm:col-span-1">
-                      <label className="block text-[11px] font-bold text-slate-700 mb-1">اسم / عنوان المحاضرة *</label>
-                      <input
-                        type="text"
-                        required
-                        placeholder="مثال: المحاضرة الأولى: مقدمة في علم الطقس"
-                        value={newLectureTitle}
-                        onChange={(e) => setNewLectureTitle(e.target.value)}
-                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-maroon-800 font-bold"
-                      />
+                  {lectureEntryMode === 'single' ? (
+                    /* 1. Single Lecture Mode */
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+                        <div>
+                          <label className="block text-[11px] font-bold text-slate-700 mb-1">رقم المحاضرة (اختر) *</label>
+                          <select
+                            value={singleLectureNumber}
+                            onChange={(e) => setSingleLectureNumber(e.target.value)}
+                            className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-maroon-800 font-extrabold text-maroon-900"
+                          >
+                            {LECTURE_NUMBERS.map((num) => (
+                              <option key={num} value={num}>{num}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-[11px] font-bold text-slate-700 mb-1">موضوع الدرس (اختياري)</label>
+                          <input
+                            type="text"
+                            placeholder="مثال: مقدمة في علم الطقس"
+                            value={singleLectureTopic}
+                            onChange={(e) => setSingleLectureTopic(e.target.value)}
+                            className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-maroon-800 font-bold"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[11px] font-bold text-slate-700 mb-1">تاريخ المحاضرة *</label>
+                          <input
+                            type="date"
+                            required
+                            value={singleLectureDate}
+                            onChange={(e) => setSingleLectureDate(e.target.value)}
+                            className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-maroon-800 font-bold text-slate-800"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[11px] font-bold text-slate-700 mb-1">المحاضر (مُلقي الدرس) *</label>
+                          <input
+                            type="text"
+                            required
+                            placeholder="مثال: ت. عفاف كمال عبد النور"
+                            value={singleLectureLecturer}
+                            onChange={(e) => setSingleLectureLecturer(e.target.value)}
+                            className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-maroon-800 font-bold"
+                          />
+                        </div>
+                      </div>
                     </div>
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-700 mb-1">تاريخ المحاضرة *</label>
-                      <input
-                        type="date"
-                        required
-                        value={newLectureDate}
-                        onChange={(e) => setNewLectureDate(e.target.value)}
-                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-maroon-800 font-bold text-slate-800"
-                      />
+                  ) : (
+                    /* 2. Combined Lectures Mode */
+                    <div className="space-y-3">
+                      <div className="bg-amber-50/80 border border-amber-200/90 p-3 rounded-xl text-xs text-amber-950 font-medium leading-relaxed">
+                        💡 <strong>الكارت المجمّع:</strong> يمكنك تحديد المحاضرات المشتركة في العرض التقديمي والمذكرات، وستظهر كل واحدة ببياناتها المستقلة (المحاضر والتاريخ والموضوع) جنباً إلى جنب داخل كارت واحد متصل، وبضغطة واحدة يُفتح المحتوى المشترك للجميع.
+                      </div>
+
+                      <div className="space-y-2.5">
+                        {subLecturesList.map((sub, idx) => (
+                          <div key={sub.id} className="bg-white border border-slate-200 p-3.5 rounded-xl shadow-2xs space-y-2">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-black text-maroon-900 bg-maroon-50 px-2.5 py-0.5 rounded-md border border-maroon-200/60">
+                                المحاضرة رقم {idx + 1} في المجموعة
+                              </span>
+                              {subLecturesList.length > 2 && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveSubLecture(sub.id)}
+                                  className="text-red-500 hover:text-red-700 text-xs font-bold p-1 rounded-lg hover:bg-red-50 transition-colors"
+                                  title="حذف هذه المحاضرة من المجموعة"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2.5">
+                              <div>
+                                <label className="block text-[10px] font-bold text-slate-600 mb-1">الرقم المعتمد *</label>
+                                <select
+                                  value={sub.number}
+                                  onChange={(e) => handleUpdateSubLecture(sub.id, 'number', e.target.value)}
+                                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-extrabold text-maroon-900 focus:outline-none focus:border-maroon-800"
+                                >
+                                  {LECTURE_NUMBERS.map((num) => (
+                                    <option key={num} value={num}>{num}</option>
+                                  ))}
+                                </select>
+                              </div>
+                              <div>
+                                <label className="block text-[10px] font-bold text-slate-600 mb-1">موضوع المحاضرة</label>
+                                <input
+                                  type="text"
+                                  placeholder="موضوع الدرس"
+                                  value={sub.topic}
+                                  onChange={(e) => handleUpdateSubLecture(sub.id, 'topic', e.target.value)}
+                                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-bold focus:outline-none focus:border-maroon-800"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-[10px] font-bold text-slate-600 mb-1">المحاضر *</label>
+                                <input
+                                  type="text"
+                                  required
+                                  placeholder="اسم المحاضر"
+                                  value={sub.lecturer}
+                                  onChange={(e) => handleUpdateSubLecture(sub.id, 'lecturer', e.target.value)}
+                                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-bold focus:outline-none focus:border-maroon-800"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-[10px] font-bold text-slate-600 mb-1">تاريخ الإلقاء *</label>
+                                <input
+                                  type="date"
+                                  required
+                                  value={sub.date}
+                                  onChange={(e) => handleUpdateSubLecture(sub.id, 'date', e.target.value)}
+                                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-800 focus:outline-none focus:border-maroon-800"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+
+                        <button
+                          type="button"
+                          onClick={handleAddSubLecture}
+                          className="w-full bg-white hover:bg-slate-100 border border-dashed border-amber-400 text-amber-900 font-bold text-xs py-2 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                        >
+                          <Plus className="w-4 h-4 text-amber-700" />
+                          <span>إضافة محاضرة أخرى تالية للمجموعة</span>
+                        </button>
+                      </div>
                     </div>
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-700 mb-1">المحاضر (مُلقي الدرس) *</label>
-                      <input
-                        type="text"
-                        required
-                        placeholder="مثال: ت. عفاف كمال عبد النور"
-                        value={newLectureLecturer}
-                        onChange={(e) => setNewLectureLecturer(e.target.value)}
-                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-maroon-800 font-bold"
-                      />
-                    </div>
-                  </div>
+                  )}
 
                   <div className="flex justify-end gap-2 pt-2 border-t border-slate-200/80">
                     <button
@@ -997,7 +1235,7 @@ export default function ServantCurriculum({
                       className="bg-maroon-800 hover:bg-maroon-700 text-white font-bold text-xs px-5 py-1.5 rounded-xl transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
                     >
                       <Check className="w-3.5 h-3.5" />
-                      <span>حفظ المحاضرة والدخول إليها</span>
+                      <span>{lectureEntryMode === 'single' ? 'حفظ المحاضرة والدخول إليها' : 'حفظ الكارت المجمّع والدخول للمحتوى'}</span>
                     </button>
                   </div>
                 </form>
@@ -1020,6 +1258,98 @@ export default function ServantCurriculum({
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {lecturesList.map((lec) => {
                       const filesCount = (lec.files || []).length;
+                      const isCombined = lec.type === 'combined' || (Array.isArray(lec.subLectures) && lec.subLectures.length > 1);
+
+                      if (isCombined) {
+                        /* ========================================================= */
+                        /* COMBINED LECTURES CARD (SIDE-BY-SIDE SUB-LECTURES)        */
+                        /* ========================================================= */
+                        return (
+                          <div
+                            key={lec.id}
+                            onClick={() => setActiveLecture(lec)}
+                            className="col-span-1 sm:col-span-2 bg-gradient-to-br from-amber-50/40 via-white to-slate-50 border-2 border-amber-300/80 hover:border-maroon-700 p-5 rounded-3xl cursor-pointer transition-all hover:shadow-lg group flex flex-col justify-between"
+                          >
+                            <div>
+                              <div className="flex items-start justify-between gap-2 mb-2">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="bg-amber-100 text-amber-950 border border-amber-300 font-black text-xs px-2.5 py-1 rounded-xl flex items-center gap-1.5">
+                                    <Sparkles className="w-3.5 h-3.5 text-amber-700" />
+                                    <span>كارت مجمّع: محاضرات متصلة بمحتوى دراسي مشترك</span>
+                                  </span>
+                                  <span className="text-[11px] text-slate-400 font-bold">
+                                    ({lec.subLectures.length} محاضرات متصلة)
+                                  </span>
+                                </div>
+
+                                <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                                  {curriculumTarget === 'students' && (
+                                    <button
+                                      type="button"
+                                      onClick={(e) => handleToggleLectureVisibility(lec.id, e)}
+                                      className={`px-2 py-0.5 rounded-lg text-[10px] font-bold border transition-all ${
+                                        lec.isPublishedForStudents !== false
+                                          ? 'bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100'
+                                          : 'bg-amber-50 text-amber-800 border-amber-300 hover:bg-amber-100'
+                                      }`}
+                                      title="إتاحة أو إخفاء المحاضرات المجمعة عن المخدومين"
+                                    >
+                                      {lec.isPublishedForStudents !== false ? 'متاحة 👁️' : 'مخفية 🔒'}
+                                    </button>
+                                  )}
+                                  <button
+                                    type="button"
+                                    onClick={(e) => handleDeleteLecture(lec.id, e)}
+                                    className="text-slate-400 hover:text-red-600 p-1 rounded-lg hover:bg-red-50 transition-colors"
+                                    title="حذف هذا الكارت المجمّع بكافة ملفاته"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              </div>
+
+                              {/* SIDE-BY-SIDE SUB-LECTURES (Requested by user) */}
+                              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 my-3.5">
+                                {lec.subLectures.map((sub, sIdx) => (
+                                  <div
+                                    key={sub.id || sIdx}
+                                    className="bg-white border border-slate-200 hover:border-maroon-400 p-3.5 rounded-2xl transition-all shadow-2xs text-right flex flex-col justify-between"
+                                  >
+                                    <div>
+                                      <span className="font-black text-maroon-900 text-xs bg-maroon-50 border border-maroon-200/80 px-2.5 py-0.5 rounded-lg inline-block mb-1.5">
+                                        {sub.number}
+                                      </span>
+                                      <h6 className="font-extrabold text-slate-900 text-xs line-clamp-1 mb-1">
+                                        {sub.topic || 'بدون موضوع فرعي'}
+                                      </h6>
+                                      <div className="flex items-center gap-1 text-[11px] text-slate-600 mb-1">
+                                        <User className="w-3 h-3 text-maroon-700 shrink-0" />
+                                        <span className="truncate">المحاضر: <strong>{sub.lecturer || 'خادم المادة'}</strong></span>
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center gap-1 text-[10px] text-slate-400 pt-1 border-t border-slate-100 mt-1">
+                                      <Calendar className="w-3 h-3 text-slate-400 shrink-0" />
+                                      <span>{sub.date}</span>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+
+                            <div className="flex items-center justify-between text-xs font-bold text-amber-950 pt-3 border-t border-amber-200/60 mt-1">
+                              <span className="text-slate-500 text-[11px]">{filesCount} ملفات ومحتويات مشتركة للجميع</span>
+                              <div className="flex items-center gap-1 group-hover:-translate-x-1 transition-transform font-extrabold text-maroon-800">
+                                <span>فتح المحتوى الموحد للمحاضرات</span>
+                                <ChevronLeft className="w-4 h-4" />
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      /* ========================================================= */
+                      /* SINGLE LECTURE CARD                                       */
+                      /* ========================================================= */
                       return (
                         <div
                           key={lec.id}
@@ -1028,9 +1358,16 @@ export default function ServantCurriculum({
                         >
                           <div>
                             <div className="flex items-start justify-between gap-2 mb-2.5">
-                              <h4 className="font-extrabold text-slate-900 text-base group-hover:text-maroon-800 transition-colors leading-snug">
-                                {lec.title}
-                              </h4>
+                              <div>
+                                <span className="font-black text-maroon-900 text-xs bg-maroon-50 border border-maroon-200/80 px-2.5 py-0.5 rounded-lg inline-block mb-1">
+                                  {lec.number || lec.title}
+                                </span>
+                                {lec.topic && (
+                                  <h4 className="font-extrabold text-slate-900 text-base group-hover:text-maroon-800 transition-colors leading-snug">
+                                    {lec.topic}
+                                  </h4>
+                                )}
+                              </div>
                               <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
                                 {curriculumTarget === 'students' && (
                                   <button
@@ -1115,6 +1452,18 @@ export default function ServantCurriculum({
                     <span>•</span>
                     <span>({(activeLecture.files || []).length} ملفات ومرفقات)</span>
                   </div>
+
+                  {/* Sub-lectures chips if combined */}
+                  {Array.isArray(activeLecture.subLectures) && activeLecture.subLectures.length > 1 && (
+                    <div className="flex items-center gap-2 flex-wrap mt-2 pt-2 border-t border-slate-100">
+                      <span className="text-[11px] font-bold text-amber-900">المحاضرات المتصلة بالمحتوى:</span>
+                      {activeLecture.subLectures.map((sub, sIdx) => (
+                        <span key={sub.id || sIdx} className="bg-amber-100/70 border border-amber-300 text-amber-950 text-[10px] font-bold px-2 py-0.5 rounded-lg">
+                          {sub.number} ({sub.topic || sub.lecturer || sub.date})
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">

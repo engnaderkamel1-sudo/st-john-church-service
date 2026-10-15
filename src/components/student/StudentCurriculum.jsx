@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   BookOpen, ChevronLeft, ExternalLink, Download, FileText, Video, X, 
-  FileSpreadsheet, Music, Image as ImageIcon, File, Calendar, User, FolderPlus 
+  FileSpreadsheet, Music, Image as ImageIcon, File, Calendar, User, FolderPlus, Sparkles 
 } from 'lucide-react';
 
 const normalizeLectures = (subject) => {
@@ -153,7 +153,71 @@ export default function StudentCurriculum({
                       const visibleFilesCount = (lec.files || []).filter(
                         f => f.isPublishedForStudents !== false && f.targetAudience !== 'servants'
                       ).length;
+                      const isCombined = lec.type === 'combined' || (Array.isArray(lec.subLectures) && lec.subLectures.length > 1);
 
+                      if (isCombined) {
+                        /* ========================================================= */
+                        /* COMBINED LECTURES CARD FOR STUDENTS                       */
+                        /* ========================================================= */
+                        return (
+                          <div
+                            key={lec.id}
+                            onClick={() => setSelectedLecture(lec)}
+                            className="col-span-1 sm:col-span-2 bg-gradient-to-br from-amber-50/40 via-white to-slate-50 border-2 border-amber-300/80 hover:border-maroon-700 p-5 rounded-3xl cursor-pointer transition-all hover:shadow-lg group flex flex-col justify-between"
+                          >
+                            <div>
+                              <div className="flex items-center gap-2 mb-2 flex-wrap">
+                                <span className="bg-amber-100 text-amber-950 border border-amber-300 font-black text-xs px-2.5 py-1 rounded-xl flex items-center gap-1.5">
+                                  <Sparkles className="w-3.5 h-3.5 text-amber-700" />
+                                  <span>كارت مجمّع: محاضرات متصلة بمحتوى دراسي مشترك</span>
+                                </span>
+                                <span className="text-[11px] text-slate-400 font-bold">
+                                  ({lec.subLectures.length} محاضرات متصلة)
+                                </span>
+                              </div>
+
+                              {/* SIDE-BY-SIDE SUB-LECTURES (Requested by user) */}
+                              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 my-3.5">
+                                {lec.subLectures.map((sub, sIdx) => (
+                                  <div
+                                    key={sub.id || sIdx}
+                                    className="bg-white border border-slate-200 hover:border-maroon-400 p-3.5 rounded-2xl transition-all shadow-2xs text-right flex flex-col justify-between"
+                                  >
+                                    <div>
+                                      <span className="font-black text-maroon-900 text-xs bg-maroon-50 border border-maroon-200/80 px-2.5 py-0.5 rounded-lg inline-block mb-1.5">
+                                        {sub.number}
+                                      </span>
+                                      <h6 className="font-extrabold text-slate-900 text-xs line-clamp-1 mb-1">
+                                        {sub.topic || 'بدون موضوع فرعي'}
+                                      </h6>
+                                      <div className="flex items-center gap-1 text-[11px] text-slate-600 mb-1">
+                                        <User className="w-3 h-3 text-maroon-700 shrink-0" />
+                                        <span className="truncate">المحاضر: <strong>{sub.lecturer || 'خادم المادة'}</strong></span>
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center gap-1 text-[10px] text-slate-400 pt-1 border-t border-slate-100 mt-1">
+                                      <Calendar className="w-3 h-3 text-slate-400 shrink-0" />
+                                      <span>{sub.date}</span>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+
+                            <div className="flex items-center justify-between text-xs font-bold text-amber-950 pt-3 border-t border-amber-200/60 mt-1">
+                              <span className="text-slate-500 text-[11px]">{visibleFilesCount} ملفات ومذكرات مشتركة للجميع</span>
+                              <div className="flex items-center gap-1 group-hover:-translate-x-1 transition-transform font-extrabold text-maroon-800">
+                                <span>فتح المحتوى الموحد للمحاضرات</span>
+                                <ChevronLeft className="w-4 h-4" />
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      /* ========================================================= */
+                      /* SINGLE LECTURE CARD FOR STUDENTS                          */
+                      /* ========================================================= */
                       return (
                         <div
                           key={lec.id}
@@ -162,9 +226,16 @@ export default function StudentCurriculum({
                         >
                           <div>
                             <div className="flex items-start justify-between gap-2 mb-2">
-                              <h5 className="font-extrabold text-slate-900 text-base group-hover:text-maroon-800 transition-colors leading-snug">
-                                {lec.title}
-                              </h5>
+                              <div>
+                                <span className="font-black text-maroon-900 text-xs bg-maroon-50 border border-maroon-200/80 px-2.5 py-0.5 rounded-lg inline-block mb-1">
+                                  {lec.number || lec.title}
+                                </span>
+                                {lec.topic && (
+                                  <h5 className="font-extrabold text-slate-900 text-base group-hover:text-maroon-800 transition-colors leading-snug">
+                                    {lec.topic}
+                                  </h5>
+                                )}
+                              </div>
                               <span className="text-[10px] bg-maroon-100 text-maroon-900 font-extrabold px-2.5 py-0.5 rounded-full shrink-0">
                                 {visibleFilesCount} ملفات
                               </span>
@@ -223,6 +294,18 @@ export default function StudentCurriculum({
                       <span>{selectedLecture.date}</span>
                     </span>
                   </div>
+
+                  {/* Sub-lectures chips if combined */}
+                  {Array.isArray(selectedLecture.subLectures) && selectedLecture.subLectures.length > 1 && (
+                    <div className="flex items-center gap-2 flex-wrap mt-2 pt-2 border-t border-slate-100">
+                      <span className="text-[11px] font-bold text-amber-900">المحاضرات المتصلة بالمحتوى:</span>
+                      {selectedLecture.subLectures.map((sub, sIdx) => (
+                        <span key={sub.id || sIdx} className="bg-amber-100/70 border border-amber-300 text-amber-950 text-[10px] font-bold px-2 py-0.5 rounded-lg">
+                          {sub.number} ({sub.topic || sub.lecturer || sub.date})
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 <button
