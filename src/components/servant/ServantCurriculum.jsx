@@ -1143,45 +1143,48 @@ export default function ServantCurriculum({
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {currentGradeSubjects.map((sub) => (
-                <div
-                  key={sub.id}
-                  onClick={() => setActiveSubject(sub)}
-                  className="bg-slate-50 border border-slate-200 hover:border-maroon-700 p-5 rounded-2xl cursor-pointer transition-all hover:shadow-md group flex flex-col justify-between"
-                >
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-[10px] bg-maroon-100 text-maroon-900 font-extrabold px-2.5 py-0.5 rounded-full">
-                        {sub.teacher}
-                      </span>
-                      <div className="flex items-center gap-1.5">
-                        <button
-                          type="button"
-                          onClick={(e) => handleOpenEditSubject(sub, e)}
-                          className="text-slate-400 hover:text-maroon-700 p-1 rounded-lg hover:bg-maroon-50 transition-colors"
-                          title="تعديل بيانات المادة واسم المسؤول"
-                        >
-                          <Pencil className="w-3.5 h-3.5" />
-                        </button>
-                        <span className="text-xs text-slate-400 font-bold">{(sub.references || []).length} مراجع</span>
-                        <button
-                          onClick={(e) => handleDeleteSubject(sub.id, e)}
-                          className="text-slate-400 hover:text-red-600 p-1 rounded-lg hover:bg-red-50 transition-colors"
-                          title="حذف المادة"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+              {currentGradeSubjects.map((sub) => {
+                const lecsCount = normalizeLectures(sub).length;
+                return (
+                  <div
+                    key={sub.id}
+                    onClick={() => setActiveSubject(sub)}
+                    className="bg-slate-50 border border-slate-200 hover:border-maroon-700 p-5 rounded-2xl cursor-pointer transition-all hover:shadow-md group flex flex-col justify-between"
+                  >
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-[10px] bg-maroon-100 text-maroon-900 font-extrabold px-2.5 py-0.5 rounded-full">
+                          {sub.teacher}
+                        </span>
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={(e) => handleOpenEditSubject(sub, e)}
+                            className="text-slate-400 hover:text-maroon-700 p-1 rounded-lg hover:bg-maroon-50 transition-colors"
+                            title="تعديل بيانات المادة واسم المسؤول"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                          <span className="text-xs text-slate-400 font-bold">{lecsCount} {lecsCount === 1 ? 'محاضرة' : (lecsCount >= 3 && lecsCount <= 10) ? 'محاضرات' : 'محاضرة'}</span>
+                          <button
+                            onClick={(e) => handleDeleteSubject(sub.id, e)}
+                            className="text-slate-400 hover:text-red-600 p-1 rounded-lg hover:bg-red-50 transition-colors"
+                            title="حذف المادة"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </div>
+                      <h4 className="font-extrabold text-slate-900 text-base group-hover:text-maroon-800 transition-colors mb-1">{sub.name}</h4>
+                      <p className="text-xs text-slate-500 leading-relaxed mb-4">اضغط للدخول وإدارة المذكرات والملفات والتسجيلات وفتح المحاضرات للمخدومين.</p>
                     </div>
-                    <h4 className="font-extrabold text-slate-900 text-base group-hover:text-maroon-800 transition-colors mb-1">{sub.name}</h4>
-                    <p className="text-xs text-slate-500 leading-relaxed mb-4">اضغط للدخول وإدارة المذكرات والملفات والتسجيلات وفتح المحاضرات للمخدومين.</p>
+                    <div className="flex items-center justify-between text-xs font-bold text-maroon-800 pt-3 border-t border-slate-200/60">
+                      <span>إدارة محاضرات المادة ({lecsCount})</span>
+                      <ChevronLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+                    </div>
                   </div>
-                  <div className="flex items-center justify-between text-xs font-bold text-maroon-800 pt-3 border-t border-slate-200/60">
-                    <span>إدارة مراجع ومحاضرات المادة ({(sub.references || []).length})</span>
-                    <ChevronLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

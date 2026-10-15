@@ -81,32 +81,36 @@ export default function StudentCurriculum({
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {subjectsData.map((sub) => (
-              <div
-                key={sub.id}
-                onClick={() => setSelectedSubject(sub)}
-                className="bg-slate-50 border border-slate-200 hover:border-maroon-700 p-5 rounded-2xl cursor-pointer transition-all hover:shadow-md group flex flex-col justify-between"
-              >
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-[10px] bg-maroon-100 text-maroon-900 font-extrabold px-2.5 py-0.5 rounded-full">
-                      {sub.teacher || 'خادم المادة'}
-                    </span>
-                    <span className="text-xs text-slate-400 font-bold">{(sub.references || []).length} مراجع</span>
+            {subjectsData.map((sub) => {
+              const publishedLecs = normalizeLectures(sub).filter(l => l.isPublishedForStudents !== false);
+              const lecsCount = publishedLecs.length;
+              return (
+                <div
+                  key={sub.id}
+                  onClick={() => setSelectedSubject(sub)}
+                  className="bg-slate-50 border border-slate-200 hover:border-maroon-700 p-5 rounded-2xl cursor-pointer transition-all hover:shadow-md group flex flex-col justify-between"
+                >
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-[10px] bg-maroon-100 text-maroon-900 font-extrabold px-2.5 py-0.5 rounded-full">
+                        {sub.teacher || 'خادم المادة'}
+                      </span>
+                      <span className="text-xs text-slate-400 font-bold">{lecsCount} {lecsCount === 1 ? 'محاضرة' : (lecsCount >= 3 && lecsCount <= 10) ? 'محاضرات' : 'محاضرة'}</span>
+                    </div>
+                    <h4 className="font-extrabold text-slate-900 text-base group-hover:text-maroon-800 transition-colors mb-1">
+                      {sub.name}
+                    </h4>
+                    <p className="text-xs text-slate-500 leading-relaxed mb-4">
+                      اضغط لفتح المذكرات وملفات الشرح والمحاضرات المسجلة.
+                    </p>
                   </div>
-                  <h4 className="font-extrabold text-slate-900 text-base group-hover:text-maroon-800 transition-colors mb-1">
-                    {sub.name}
-                  </h4>
-                  <p className="text-xs text-slate-500 leading-relaxed mb-4">
-                    اضغط لفتح المذكرات وملفات الشرح والمحاضرات المسجلة.
-                  </p>
+                  <div className="flex items-center justify-between text-xs font-bold text-maroon-800 pt-3 border-t border-slate-200/60">
+                    <span>تصفح محاضرات المادة ({lecsCount})</span>
+                    <ChevronLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+                  </div>
                 </div>
-                <div className="flex items-center justify-between text-xs font-bold text-maroon-800 pt-3 border-t border-slate-200/60">
-                  <span>فتح محتوى المادة</span>
-                  <ChevronLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )
       ) : (
