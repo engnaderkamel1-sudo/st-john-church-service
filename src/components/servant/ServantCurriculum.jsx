@@ -3,7 +3,7 @@ import {
   BookOpen, ShieldCheck, Plus, Trash2, ChevronLeft, UploadCloud, 
   FileText, Music, Video, Check, ExternalLink, Eye, EyeOff,
   FileSpreadsheet, File, Image as ImageIcon, Sparkles, Presentation,
-  Calendar, User, FolderPlus
+  Calendar, User, FolderPlus, Pencil, X
 } from 'lucide-react';
 import { db } from '../../firebase';
 import { collection, doc, addDoc, updateDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
@@ -82,9 +82,23 @@ export default function ServantCurriculum({
   const [newSubjectName, setNewSubjectName] = useState('');
   const [newSubjectTeacher, setNewSubjectTeacher] = useState('');
   
+  // Edit Subject states
+  const [showEditSubjectModal, setShowEditSubjectModal] = useState(false);
+  const [editingSubject, setEditingSubject] = useState(null);
+  const [editSubjectName, setEditSubjectName] = useState('');
+  const [editSubjectTeacher, setEditSubjectTeacher] = useState('');
+
   // Lecture-level states
   const [activeLecture, setActiveLecture] = useState(null);
   const [showAddLectureModal, setShowAddLectureModal] = useState(false);
+  const [showEditLectureModal, setShowEditLectureModal] = useState(false);
+  const [editingLecture, setEditingLecture] = useState(null);
+  const [editLectureType, setEditLectureType] = useState('single');
+  const [editLectureNumber, setEditLectureNumber] = useState('');
+  const [editLectureTopic, setEditLectureTopic] = useState('');
+  const [editLectureDate, setEditLectureDate] = useState('');
+  const [editLectureLecturer, setEditLectureLecturer] = useState('');
+  const [editSubLecturesList, setEditSubLecturesList] = useState([]);
   const [lectureEntryMode, setLectureEntryMode] = useState('single'); // 'single' | 'combined'
   
   // Single Lecture fields
@@ -205,6 +219,43 @@ export default function ServantCurriculum({
         [selectedGrade]: (prev[selectedGrade] || []).filter(s => s.id !== subId)
       }));
       if (activeSubject?.id === subId) setActiveSubject(null);
+    }
+  };
+
+  const handleOpenEditSubject = (subject, e) => {
+    if (e) e.stopPropagation();
+    setEditingSubject(subject);
+    setEditSubjectName(subject.name || '');
+    setEditSubjectTeacher(subject.teacher || '');
+    setShowEditSubjectModal(true);
+  };
+
+  const handleSaveEditSubject = async (e) => {
+    e.preventDefault();
+    if (!editingSubject || !editSubjectName.trim()) return;
+
+    const updatedName = editSubjectName.trim();
+    const updatedTeacher = editSubjectTeacher.trim() || user?.fullName || 'خادم المادة';
+
+    try {
+      await updateDoc(doc(db, 'service_curriculum', editingSubject.id), {
+        name: updatedName,
+        teacher: updatedTeacher
+      });
+
+      const updatedObj = { ...editingSubject, name: updatedName, teacher: updatedTeacher };
+      if (activeSubject?.id === editingSubject.id) {
+        setActiveSubject(prev => ({ ...prev, name: updatedName, teacher: updatedTeacher }));
+      }
+      setSubjectsByGrade(prev => {
+        const currentList = prev[selectedGrade] || [];
+        const updatedList = currentList.map(s => s.id === editingSubject.id ? { ...s, name: updatedName, teacher: updatedTeacher } : s);
+        return { ...prev, [selectedGrade]: updatedList };
+      });
+      setShowEditSubjectModal(false);
+    } catch (err) {
+      console.error('Error updating subject:', err);
+      alert('حدث خطأ أثناء تعديل بيانات المادة: ' + err.message);
     }
   };
 
@@ -643,6 +694,135 @@ export default function ServantCurriculum({
     }
   };
 
+  const handleOpenEditLecture = (lec, e) => {
+    if (e) e.stopPropagation();
+    setEditingLecture(lec);
+    const isCombined = (lec.type === 'combined') || (Array.isArray(lec.subLectures) && lec.subLectures.length > 1);
+    setEditLectureType(isCombined ? 'combined' : 'single');
+
+    let num = lec.number || '';
+    let top = lec.topic || '';
+    if (!num && lec.title) {
+      if (lec.title.includes(':')) {
+        const parts = lec.title.split(':');
+        num = parts[0].trim();
+        top = parts.slice(1).join(':').trim();
+      } else {
+        num = lec.title;
+      }
+    }
+
+    setEditLectureNumber(num || LECTURE_NUMBERS[0]);
+    setEditLectureTopic(top);
+    setEditLectureDate(lec.date || new Date().toISOString().split('T')[0]);
+    setEditLectureLecturer(lec.lecturer || activeSubject?.teacher || '');
+
+    if (isCombined && Array.isArray(lec.subLectures) && lec.subLectures.length > 0) {
+      setEditSubLecturesList(lec.subLectures.map(s => ({ ...s })));
+    } else {
+      setEditSubLecturesList([
+        { id: `sub-1`, number: num || 'المحاضرة الأولى', topic: top || '', lecturer: lec.lecturer || activeSubject?.teacher || '', date: lec.date || new Date().toISOString().split('T')[0] },
+        { id: `sub-2`, number: 'المحاضرة الثانية', topic: '', lecturer: lec.lecturer || activeSubject?.teacher || '', date: lec.date || new Date().toISOString().split('T')[0] }
+      ]);
+    }
+
+    setShowEditLectureModal(true);
+  };
+
+  const handleAddEditSubLecture = () => {
+    const nextIdx = editSubLecturesList.length;
+    const nextNumber = LECTURE_NUMBERS[nextIdx] || `المحاضرة ${nextIdx + 1}`;
+    setEditSubLecturesList(prev => [
+      ...prev,
+      {
+        id: `sub-${Date.now()}`,
+        number: nextNumber,
+        topic: '',
+        lecturer: editLectureLecturer || activeSubject?.teacher || user?.fullName || '',
+        date: new Date().toISOString().split('T')[0]
+      }
+    ]);
+  };
+
+  const handleRemoveEditSubLecture = (id) => {
+    if (editSubLecturesList.length <= 2) {
+      alert('يجب أن تحتوي المجموعة المجمعة على محاضرتين على الأقل.');
+      return;
+    }
+    setEditSubLecturesList(prev => prev.filter(s => s.id !== id));
+  };
+
+  const handleUpdateEditSubLecture = (id, field, value) => {
+    setEditSubLecturesList(prev => prev.map(s => s.id === id ? { ...s, [field]: value } : s));
+  };
+
+  const handleSaveEditLecture = async (e) => {
+    e.preventDefault();
+    if (!activeSubject || !editingLecture) return;
+
+    let updatedLec = null;
+    if (editLectureType === 'single') {
+      const title = editLectureTopic.trim()
+        ? `${editLectureNumber}: ${editLectureTopic.trim()}`
+        : editLectureNumber;
+
+      updatedLec = {
+        ...editingLecture,
+        type: 'single',
+        number: editLectureNumber,
+        topic: editLectureTopic.trim(),
+        title: title,
+        date: editLectureDate || new Date().toISOString().split('T')[0],
+        lecturer: editLectureLecturer.trim() || activeSubject.teacher || user?.fullName || 'خادم المادة'
+      };
+    } else {
+      const numbersList = editSubLecturesList.map(s => s.number);
+      const combinedNumbers = numbersList.join(' • ');
+      const combinedTopics = editSubLecturesList.map(s => s.topic).filter(Boolean).join(' • ');
+      const combinedTitle = combinedTopics ? `${combinedNumbers} (${combinedTopics})` : combinedNumbers;
+      const firstDate = editSubLecturesList[0]?.date || '';
+      const lastDate = editSubLecturesList[editSubLecturesList.length - 1]?.date || '';
+      const dateRange = (firstDate && lastDate && firstDate !== lastDate) ? `${firstDate} إلى ${lastDate}` : (firstDate || lastDate);
+      const lecturers = Array.from(new Set(editSubLecturesList.map(s => s.lecturer).filter(Boolean))).join('، ') || activeSubject.teacher || user?.fullName || 'خدام المادة';
+
+      updatedLec = {
+        ...editingLecture,
+        type: 'combined',
+        number: combinedNumbers,
+        title: combinedTitle,
+        date: dateRange,
+        lecturer: lecturers,
+        subLectures: editSubLecturesList
+      };
+    }
+
+    const currentLecs = normalizeLectures(activeSubject);
+    const updatedLectures = currentLecs.map(l => l.id === editingLecture.id ? updatedLec : l);
+    const allFlattenedRefs = updatedLectures.flatMap(l => l.files || []);
+
+    try {
+      await updateDoc(doc(db, 'service_curriculum', activeSubject.id), {
+        lectures: updatedLectures,
+        references: allFlattenedRefs
+      });
+
+      const updatedSubject = { ...activeSubject, lectures: updatedLectures, references: allFlattenedRefs };
+      setActiveSubject(updatedSubject);
+      if (activeLecture?.id === editingLecture.id) {
+        setActiveLecture(updatedLec);
+      }
+      setShowEditLectureModal(false);
+      setSubjectsByGrade(prev => {
+        const currentList = prev[selectedGrade] || [];
+        const updatedList = currentList.map(s => s.id === activeSubject.id ? updatedSubject : s);
+        return { ...prev, [selectedGrade]: updatedList };
+      });
+    } catch (err) {
+      console.error('Error updating lecture:', err);
+      alert('حدث خطأ أثناء حفظ تعديل المحاضرة: ' + err.message);
+    }
+  };
+
   const handleToggleRefVisibility = async (refId) => {
     if (!activeSubject) return;
     const currentLecs = normalizeLectures(activeSubject);
@@ -975,6 +1155,14 @@ export default function ServantCurriculum({
                         {sub.teacher}
                       </span>
                       <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={(e) => handleOpenEditSubject(sub, e)}
+                          className="text-slate-400 hover:text-maroon-700 p-1 rounded-lg hover:bg-maroon-50 transition-colors"
+                          title="تعديل بيانات المادة واسم المسؤول"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
                         <span className="text-xs text-slate-400 font-bold">{(sub.references || []).length} مراجع</span>
                         <button
                           onClick={(e) => handleDeleteSubject(sub.id, e)}
@@ -1011,10 +1199,21 @@ export default function ServantCurriculum({
                     <span>•</span>
                     <span className="text-maroon-800">{getGradeTitle(selectedGrade)}</span>
                   </div>
-                  <h4 className="font-extrabold text-slate-900 text-lg flex items-center gap-2">
-                    <BookOpen className="w-5 h-5 text-maroon-800" />
-                    <span>مادة: {activeSubject.name}</span>
-                  </h4>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h4 className="font-extrabold text-slate-900 text-lg flex items-center gap-2">
+                      <BookOpen className="w-5 h-5 text-maroon-800" />
+                      <span>مادة: {activeSubject.name}</span>
+                    </h4>
+                    <button
+                      type="button"
+                      onClick={(e) => handleOpenEditSubject(activeSubject, e)}
+                      className="bg-slate-100 hover:bg-maroon-50 text-slate-600 hover:text-maroon-800 border border-slate-200 hover:border-maroon-200 text-xs font-bold px-2 py-0.5 rounded-lg transition-all flex items-center gap-1 cursor-pointer"
+                      title="تعديل اسم المادة والمسؤول"
+                    >
+                      <Pencil className="w-3 h-3" />
+                      <span>تعديل المادة</span>
+                    </button>
+                  </div>
                   <span className="text-xs text-slate-500 font-medium">مسئول المادة: <strong className="text-slate-700">{activeSubject.teacher || 'خادم المادة'}</strong></span>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
@@ -1299,6 +1498,14 @@ export default function ServantCurriculum({
                                   )}
                                   <button
                                     type="button"
+                                    onClick={(e) => handleOpenEditLecture(lec, e)}
+                                    className="text-slate-400 hover:text-maroon-700 p-1 rounded-lg hover:bg-maroon-50 transition-colors"
+                                    title="تعديل بيانات المحاضرات المجمعة"
+                                  >
+                                    <Pencil className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button
+                                    type="button"
                                     onClick={(e) => handleDeleteLecture(lec.id, e)}
                                     className="text-slate-400 hover:text-red-600 p-1 rounded-lg hover:bg-red-50 transition-colors"
                                     title="حذف هذا الكارت المجمّع بكافة ملفاته"
@@ -1385,6 +1592,14 @@ export default function ServantCurriculum({
                                 )}
                                 <button
                                   type="button"
+                                  onClick={(e) => handleOpenEditLecture(lec, e)}
+                                  className="text-slate-400 hover:text-maroon-700 p-1 rounded-lg hover:bg-maroon-50 transition-colors"
+                                  title="تعديل بيانات المحاضرة"
+                                >
+                                  <Pencil className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  type="button"
                                   onClick={(e) => handleDeleteLecture(lec.id, e)}
                                   className="text-slate-400 hover:text-red-600 p-1 rounded-lg hover:bg-red-50 transition-colors"
                                   title="حذف المحاضرة بكافة ملفاتها"
@@ -1438,10 +1653,21 @@ export default function ServantCurriculum({
                     <span>/</span>
                     <span className="text-maroon-900 font-extrabold">{activeLecture.title}</span>
                   </div>
-                  <h4 className="font-extrabold text-slate-900 text-lg flex items-center gap-2">
-                    <FolderPlus className="w-5 h-5 text-maroon-800" />
-                    <span>{activeLecture.title}</span>
-                  </h4>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h4 className="font-extrabold text-slate-900 text-lg flex items-center gap-2">
+                      <FolderPlus className="w-5 h-5 text-maroon-800" />
+                      <span>{activeLecture.title}</span>
+                    </h4>
+                    <button
+                      type="button"
+                      onClick={(e) => handleOpenEditLecture(activeLecture, e)}
+                      className="bg-slate-100 hover:bg-maroon-50 text-slate-600 hover:text-maroon-800 border border-slate-200 hover:border-maroon-200 text-xs font-bold px-2.5 py-1 rounded-xl transition-all flex items-center gap-1 cursor-pointer active:scale-95"
+                      title="تعديل بيانات المحاضرة والمحاضر"
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                      <span>تعديل المحاضرة</span>
+                    </button>
+                  </div>
                   <div className="flex items-center gap-3 text-xs text-slate-500 mt-0.5 flex-wrap">
                     <span>المحاضر: <strong className="text-slate-700">{activeLecture.lecturer}</strong></span>
                     <span>•</span>
@@ -1845,6 +2071,270 @@ export default function ServantCurriculum({
           setLoadedAiFile(null);
         }}
       />
+
+      {/* Edit Subject Modal */}
+      {showEditSubjectModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 text-right animate-in fade-in">
+          <div className="bg-white rounded-3xl max-w-md w-full p-5 sm:p-6 shadow-2xl border border-slate-200 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h4 className="font-extrabold text-sm text-slate-900 flex items-center gap-2">
+                <Pencil className="w-4 h-4 text-maroon-800" />
+                <span>تعديل بيانات المادة</span>
+              </h4>
+              <button
+                type="button"
+                onClick={() => setShowEditSubjectModal(false)}
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEditSubject} className="space-y-3.5">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">اسم المادة *</label>
+                <input
+                  type="text"
+                  required
+                  value={editSubjectName}
+                  onChange={(e) => setEditSubjectName(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-800 focus:outline-none focus:border-maroon-800 focus:bg-white transition-all"
+                  placeholder="اسم المادة"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">خادم المادة المسئول *</label>
+                <input
+                  type="text"
+                  required
+                  value={editSubjectTeacher}
+                  onChange={(e) => setEditSubjectTeacher(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-800 focus:outline-none focus:border-maroon-800 focus:bg-white transition-all"
+                  placeholder="اسم الخادم المسئول"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setShowEditSubjectModal(false)}
+                  className="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs px-4 py-2 rounded-xl font-bold transition-colors cursor-pointer"
+                >
+                  إلغاء
+                </button>
+                <button
+                  type="submit"
+                  className="bg-maroon-800 hover:bg-maroon-700 text-white font-bold text-xs px-5 py-2 rounded-xl transition-all shadow-xs flex items-center gap-1.5 cursor-pointer active:scale-95"
+                >
+                  <Check className="w-3.5 h-3.5" />
+                  <span>حفظ التعديلات</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Lecture Modal */}
+      {showEditLectureModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 text-right animate-in fade-in">
+          <div className="bg-white rounded-3xl max-w-2xl w-full p-5 sm:p-6 shadow-2xl border border-slate-200 space-y-4 max-h-[92vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h4 className="font-extrabold text-sm text-slate-900 flex items-center gap-2">
+                <Pencil className="w-4 h-4 text-maroon-800" />
+                <span>تعديل بيانات المحاضرة</span>
+              </h4>
+              <button
+                type="button"
+                onClick={() => setShowEditLectureModal(false)}
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEditLecture} className="space-y-4">
+              {/* Mode Selector */}
+              <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl w-fit">
+                <button
+                  type="button"
+                  onClick={() => setEditLectureType('single')}
+                  className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    editLectureType === 'single'
+                      ? 'bg-maroon-800 text-white shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  محاضرة مفردة
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditLectureType('combined')}
+                  className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                    editLectureType === 'combined'
+                      ? 'bg-amber-600 text-white shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <span>محاضرات مجمّعة</span>
+                  <Sparkles className="w-3 h-3 text-gold-300" />
+                </button>
+              </div>
+
+              {editLectureType === 'single' ? (
+                <div className="space-y-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">رقم المحاضرة *</label>
+                      <select
+                        value={editLectureNumber}
+                        onChange={(e) => setEditLectureNumber(e.target.value)}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-maroon-800 font-extrabold text-maroon-900"
+                      >
+                        {LECTURE_NUMBERS.map((num) => (
+                          <option key={num} value={num}>{num}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">موضوع الدرس</label>
+                      <input
+                        type="text"
+                        placeholder="مثال: بانوراما احداث و اسفار العهد القديم"
+                        value={editLectureTopic}
+                        onChange={(e) => setEditLectureTopic(e.target.value)}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-maroon-800 font-bold"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">المحاضر (مُلقي الدرس) *</label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="اسم المحاضر"
+                        value={editLectureLecturer}
+                        onChange={(e) => setEditLectureLecturer(e.target.value)}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-maroon-800 font-bold"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">تاريخ المحاضرة *</label>
+                      <input
+                        type="date"
+                        required
+                        value={editLectureDate}
+                        onChange={(e) => setEditLectureDate(e.target.value)}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-maroon-800 font-bold text-slate-800"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div className="space-y-2.5">
+                    {editSubLecturesList.map((sub, idx) => (
+                      <div key={sub.id} className="bg-slate-50 border border-slate-200 p-3.5 rounded-2xl shadow-2xs space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-black text-maroon-900 bg-maroon-50 px-2.5 py-0.5 rounded-md border border-maroon-200/60">
+                            محاضرة فرعية {idx + 1}
+                          </span>
+                          {editSubLecturesList.length > 2 && (
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveEditSubLecture(sub.id)}
+                              className="text-red-500 hover:text-red-700 text-[11px] font-bold flex items-center gap-1 cursor-pointer"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                              <span>حذف</span>
+                            </button>
+                          )}
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2.5">
+                          <div>
+                            <label className="block text-[10px] font-bold text-slate-600 mb-1">رقم المحاضرة</label>
+                            <select
+                              value={sub.number}
+                              onChange={(e) => handleUpdateEditSubLecture(sub.id, 'number', e.target.value)}
+                              className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-bold focus:outline-none focus:border-maroon-800"
+                            >
+                              {LECTURE_NUMBERS.map((num) => (
+                                <option key={num} value={num}>{num}</option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <div>
+                            <label className="block text-[10px] font-bold text-slate-600 mb-1">الموضوع (اختياري)</label>
+                            <input
+                              type="text"
+                              placeholder="موضوع المحاضرة"
+                              value={sub.topic}
+                              onChange={(e) => handleUpdateEditSubLecture(sub.id, 'topic', e.target.value)}
+                              className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-maroon-800"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-[10px] font-bold text-slate-600 mb-1">المحاضر</label>
+                            <input
+                              type="text"
+                              placeholder="اسم المحاضر"
+                              value={sub.lecturer}
+                              onChange={(e) => handleUpdateEditSubLecture(sub.id, 'lecturer', e.target.value)}
+                              className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-maroon-800"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-[10px] font-bold text-slate-600 mb-1">التاريخ</label>
+                            <input
+                              type="date"
+                              value={sub.date}
+                              onChange={(e) => handleUpdateEditSubLecture(sub.id, 'date', e.target.value)}
+                              className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-maroon-800"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+
+                    <button
+                      type="button"
+                      onClick={handleAddEditSubLecture}
+                      className="w-full bg-slate-50 hover:bg-slate-100 border border-dashed border-amber-400 text-amber-900 font-bold text-xs py-2 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      <Plus className="w-4 h-4 text-amber-700" />
+                      <span>إضافة محاضرة أخرى للمجموعة</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setShowEditLectureModal(false)}
+                  className="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs px-4 py-2 rounded-xl font-bold transition-colors cursor-pointer"
+                >
+                  إلغاء
+                </button>
+                <button
+                  type="submit"
+                  className="bg-maroon-800 hover:bg-maroon-700 text-white font-bold text-xs px-5 py-2 rounded-xl transition-all shadow-xs flex items-center gap-1.5 cursor-pointer active:scale-95"
+                >
+                  <Check className="w-3.5 h-3.5" />
+                  <span>حفظ التعديلات</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
