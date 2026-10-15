@@ -132,6 +132,12 @@ export default function ServantCurriculum({
   const [isEditingYear, setIsEditingYear] = useState(false);
   const [inputYear, setInputYear] = useState(academicYear);
 
+  useEffect(() => {
+    if (academicYear) {
+      setInputYear(academicYear);
+    }
+  }, [academicYear]);
+
   // Edit Reference states
   const [showEditRefModal, setShowEditRefModal] = useState(false);
   const [editingRef, setEditingRef] = useState(null);
@@ -1079,7 +1085,7 @@ export default function ServantCurriculum({
                 <p className="font-bold">
                   {isCurrentActive ? (
                     <span>
-                      منهج ({currentYearLabel} - بولس الرسول) هو <span className="text-emerald-800 underline underline-offset-2">المنهج المعتمد والمبثوث للطلبة حالياً</span> لهذا العام الدراسي ({academicYear}).
+                      منهج ({currentYearLabel} - بولس الرسول) هو <span className="text-emerald-800 underline underline-offset-2">المنهج المعتمد للطلبة حالياً</span> لهذا العام الدراسي ({academicYear}).
                     </span>
                   ) : (
                     <span>
@@ -1090,21 +1096,34 @@ export default function ServantCurriculum({
               </div>
 
               {!isCurrentActive && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    const targetTitle = normalizedGrade === 'cycle_1' ? 'منهج سنة أولى (بولس الرسول)' : 'منهج سنة ثانية (بولس الرسول)';
-                    const confirmed = window.confirm(
-                      `هل أنت متأكد من اعتماد وبث (${targetTitle}) لجميع طلاب قاعة إعداد خدام للعام الدراسي (${academicYear})؟\n\nتأكيد هذا الإجراء سيجعل جميع الطلاب يشاهدون هذا المنهج في حساباتهم.`
-                    );
-                    if (confirmed && handleUpdateAcademicCycle) {
-                      handleUpdateAcademicCycle(normalizedGrade, academicYear);
-                    }
-                  }}
-                  className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-extrabold bg-maroon-800 hover:bg-maroon-900 text-gold-300 shadow-xs transition-all cursor-pointer shrink-0 self-start sm:self-auto"
-                >
-                  <span>اعتماد وبث هذا المنهج للطلبة ⭐</span>
-                </button>
+                <div className="flex items-center gap-2 flex-wrap shrink-0 self-start sm:self-auto">
+                  <div className="flex items-center gap-1.5 bg-white border border-amber-300 rounded-xl px-2.5 py-1 text-xs">
+                    <span className="text-slate-600 font-bold">العام الدراسي:</span>
+                    <input
+                      type="text"
+                      value={inputYear}
+                      onChange={(e) => setInputYear(e.target.value)}
+                      placeholder="2026-2027"
+                      className="w-24 text-center font-mono font-bold text-maroon-900 focus:outline-none bg-transparent"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const targetTitle = normalizedGrade === 'cycle_1' ? 'منهج سنة أولى (بولس الرسول)' : 'منهج سنة ثانية (بولس الرسول)';
+                      const targetYear = inputYear.trim() || academicYear;
+                      const confirmed = window.confirm(
+                        `هل أنت متأكد من اعتماد (${targetTitle}) للعام الدراسي (${targetYear}) لجميع طلاب قاعة إعداد خدام؟`
+                      );
+                      if (confirmed && handleUpdateAcademicCycle) {
+                        handleUpdateAcademicCycle(normalizedGrade, targetYear);
+                      }
+                    }}
+                    className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-extrabold bg-maroon-800 hover:bg-maroon-900 text-gold-300 shadow-xs transition-all cursor-pointer"
+                  >
+                    <span>اعتماد المنهج للعام الحالي ⭐</span>
+                  </button>
+                </div>
               )}
             </div>
           );
