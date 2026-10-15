@@ -1209,7 +1209,11 @@ export default function ServantCurriculum({
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {currentGradeSubjects.map((sub) => {
-                const lecsCount = normalizeLectures(sub).length;
+                const lecs = normalizeLectures(sub);
+                const lecsCount = lecs.length;
+                const totalRefsCount = (sub.references || []).length || lecs.flatMap(l => l.files || []).length || lecsCount;
+                const isServantMode = curriculumTarget === 'servants';
+
                 return (
                   <div
                     key={sub.id}
@@ -1230,7 +1234,12 @@ export default function ServantCurriculum({
                           >
                             <Pencil className="w-3.5 h-3.5" />
                           </button>
-                          <span className="text-xs text-slate-400 font-bold">{lecsCount} {lecsCount === 1 ? 'محاضرة' : (lecsCount >= 3 && lecsCount <= 10) ? 'محاضرات' : 'محاضرة'}</span>
+                          <span className="text-xs text-slate-400 font-bold">
+                            {isServantMode
+                              ? `${totalRefsCount} ${totalRefsCount === 1 ? 'مرجع' : (totalRefsCount >= 3 && totalRefsCount <= 10) ? 'مراجع' : 'مرجع'}`
+                              : `${lecsCount} ${lecsCount === 1 ? 'محاضرة' : (lecsCount >= 3 && lecsCount <= 10) ? 'محاضرات' : 'محاضرة'}`
+                            }
+                          </span>
                           <button
                             onClick={(e) => handleDeleteSubject(sub.id, e)}
                             className="text-slate-400 hover:text-red-600 p-1 rounded-lg hover:bg-red-50 transition-colors"
@@ -1241,10 +1250,15 @@ export default function ServantCurriculum({
                         </div>
                       </div>
                       <h4 className="font-extrabold text-slate-900 text-base group-hover:text-maroon-800 transition-colors mb-1">{sub.name}</h4>
-                      <p className="text-xs text-slate-500 leading-relaxed mb-4">اضغط للدخول وإدارة المذكرات والملفات والتسجيلات وفتح المحاضرات للمخدومين.</p>
+                      <p className="text-xs text-slate-500 leading-relaxed mb-4">
+                        {isServantMode 
+                          ? 'اضغط للدخول واستعراض مراجع وكتب المادة وتوليد الملخصات والعروض التقديمية.'
+                          : 'اضغط للدخول وإدارة المذكرات والملفات والتسجيلات وفتح المحاضرات للمخدومين.'
+                        }
+                      </p>
                     </div>
                     <div className="flex items-center justify-between text-xs font-bold text-maroon-800 pt-3 border-t border-slate-200/60">
-                      <span>إدارة محاضرات المادة ({lecsCount})</span>
+                      <span>{isServantMode ? `إدارة مراجع المادة (${totalRefsCount})` : `إدارة محاضرات المادة (${lecsCount})`}</span>
                       <ChevronLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
                     </div>
                   </div>
