@@ -296,10 +296,24 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser, externa
       }
     }, (err) => console.log('Student exams fetch info:', err));
 
+    // Sync Student's Completed Exams / Submissions
+    const qSubmissions = query(collection(db, 'exam_submissions'), where('userId', '==', user.id));
+    const unsubSubmissions = onSnapshot(qSubmissions, (snap) => {
+      const map = {};
+      snap.forEach(d => {
+        const data = d.data();
+        if (data.examId) {
+          map[data.examId] = { id: d.id, ...data };
+        }
+      });
+      setCompletedExams(map);
+    }, (err) => console.log('Submissions fetch info:', err));
+
     return () => {
       unsubUser();
       unsubAttend();
       unsubEx();
+      unsubSubmissions();
     };
   }, [user?.id, user?.grade]);
 
@@ -582,23 +596,29 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser, externa
 
   const handleSubmitExam = async (exam) => {
     let autoScore = 0;
-    exam.questions.forEach(q => {
+    const questionsList = exam.questions || [];
+    questionsList.forEach(q => {
       if ((q.type === 'mcq' || q.type === 'true_false') && examAnswers[q.id] === q.correctAnswer) {
-        autoScore += q.points;
+        autoScore += (Number(q.points) || 1);
       }
     });
 
+    const calculatedTotalScore = exam.totalScore || (questionsList.length > 0 
+      ? questionsList.reduce((sum, q) => sum + (Number(q.points) || 1), 0)
+      : 20);
+
     const result = { 
       examId: exam.id, 
-      examTitle: exam.title || 'امتحان بدون عنوان',
+      examTitle: exam.title || 'مسابقة بدون عنوان',
       subject: exam.subject || 'عام',
       grade: user.grade || 'first',
       userId: user.id,
       userName: user.fullName || 'مخدوم',
       userPhone: user.phone || '',
+      answers: examAnswers,
       autoScore, 
-      totalScore: exam.totalScore || 30,
-      essayPending: true, 
+      totalScore: calculatedTotalScore,
+      essayPending: questionsList.some(q => q.type === 'essay'), 
       submittedAt: new Date().toLocaleTimeString('ar-EG'),
       date: new Date().toISOString().split('T')[0]
     };

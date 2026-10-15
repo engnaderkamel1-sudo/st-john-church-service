@@ -1806,6 +1806,7 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
       {/* 2. Question Bank & Exams Hub */}
       {mainTab === 'exams_bank_hub' && (
         <ServantExamsBank
+          user={user}
           selectedGrade={selectedGrade}
           getGradeTitle={getGradeTitle}
           currentGradeSubjects={currentGradeSubjects}

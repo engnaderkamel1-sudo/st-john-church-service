@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, FileText, Sparkles, Presentation, PenTool, CheckCircle, Award, UserCheck } from 'lucide-react';
+import { Plus, FileText, Sparkles, Presentation, PenTool, CheckCircle, Award, UserCheck, Trash2, Users, Eye, Calendar } from 'lucide-react';
 import { db } from '../../firebase';
-import { collection, addDoc, doc, updateDoc, getDocs, query, where, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, doc, updateDoc, deleteDoc, getDocs, query, where, serverTimestamp } from 'firebase/firestore';
 import ServantAiStudioModal from './ServantAiStudioModal';
 import AiPresentationViewer from './AiPresentationViewer';
+import ServantQuickQuizBuilderModal from './ServantQuickQuizBuilderModal';
+import ServantQuizResponsesModal from './ServantQuizResponsesModal';
 
 export default function ServantExamsBank({
+  user,
   selectedGrade,
   getGradeTitle,
   currentGradeSubjects,
@@ -16,7 +19,10 @@ export default function ServantExamsBank({
   allUsers = [],
   fetchAllUsers
 }) {
-  const [examSubSection, setExamSubSection] = useState('bank'); // 'bank' | 'assign' | 'paper'
+  const [examSubSection, setExamSubSection] = useState('assign'); // 'assign' | 'bank' | 'paper'
+  const [showQuickQuizModal, setShowQuickQuizModal] = useState(false);
+  const [showResponsesModal, setShowResponsesModal] = useState(false);
+  const [selectedExamForResponses, setSelectedExamForResponses] = useState(null);
   const [showAddQuestionModal, setShowAddQuestionModal] = useState(false);
   const [showAiStudioModal, setShowAiStudioModal] = useState(false);
   const [activePresentation, setActivePresentation] = useState(null);
@@ -144,33 +150,55 @@ export default function ServantExamsBank({
     }
   };
 
+  const handleDeleteExam = async (examId) => {
+    if (!window.confirm('هل أنت متأكد من حذف هذه المسابقة/الامتحان؟ سيتم حذفه من حسابات المخدومين.')) return;
+    try {
+      await deleteDoc(doc(db, 'service_exams', examId));
+      setCreatedExams(prev => prev.filter(e => e.id !== examId));
+    } catch (err) {
+      console.error('Error deleting exam:', err);
+      alert('حدث خطأ أثناء حذف المسابقة.');
+    }
+  };
+
   return (
     <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-6">
-      <div className="flex items-center gap-2 border-b border-slate-100 pb-3 overflow-x-auto">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0">
+          <button
+            onClick={() => setExamSubSection('assign')}
+            className={`text-xs px-3.5 py-2 rounded-xl font-bold transition-all shrink-0 ${
+              examSubSection === 'assign' ? 'bg-maroon-800 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            المسابقات والامتحانات المنشورة ({currentGradeExams.length})
+          </button>
+          <button
+            onClick={() => setExamSubSection('bank')}
+            className={`text-xs px-3.5 py-2 rounded-xl font-bold transition-all shrink-0 ${
+              examSubSection === 'bank' ? 'bg-maroon-800 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            بنك الأسئلة ({currentGradeQuestions.length})
+          </button>
+          <button
+            onClick={() => setExamSubSection('paper')}
+            className={`text-xs px-3.5 py-2 rounded-xl font-bold transition-all shrink-0 flex items-center gap-1.5 ${
+              examSubSection === 'paper' ? 'bg-maroon-800 text-white shadow-sm' : 'bg-amber-50 text-amber-900 border border-amber-200 hover:bg-amber-100'
+            }`}
+          >
+            <PenTool className="w-3.5 h-3.5 text-amber-600" />
+            <span>رصد درجات امتحان ورقي 📝</span>
+          </button>
+        </div>
+
         <button
-          onClick={() => setExamSubSection('bank')}
-          className={`text-xs px-4 py-2 rounded-xl font-bold transition-all shrink-0 ${
-            examSubSection === 'bank' ? 'bg-maroon-800 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:text-slate-900'
-          }`}
+          type="button"
+          onClick={() => setShowQuickQuizModal(true)}
+          className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-600 via-amber-500 to-gold-500 hover:from-amber-700 hover:to-amber-600 text-maroon-950 font-black text-xs shadow-xs flex items-center justify-center gap-1.5 transition-all active:scale-95 cursor-pointer shrink-0"
         >
-          بنك الأسئلة ({currentGradeQuestions.length})
-        </button>
-        <button
-          onClick={() => setExamSubSection('assign')}
-          className={`text-xs px-4 py-2 rounded-xl font-bold transition-all shrink-0 ${
-            examSubSection === 'assign' ? 'bg-maroon-800 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:text-slate-900'
-          }`}
-        >
-          تكليف ونشر امتحان أونلاين
-        </button>
-        <button
-          onClick={() => setExamSubSection('paper')}
-          className={`text-xs px-4 py-2 rounded-xl font-bold transition-all shrink-0 flex items-center gap-1.5 ${
-            examSubSection === 'paper' ? 'bg-maroon-800 text-white shadow-sm' : 'bg-amber-50 text-amber-900 border border-amber-200 hover:bg-amber-100'
-          }`}
-        >
-          <PenTool className="w-3.5 h-3.5 text-amber-600" />
-          <span>رصد درجات امتحان ورقي / تحريري 📝</span>
+          <Sparkles className="w-4 h-4 text-maroon-950" />
+          <span>+ إنشاء مسابقة سريعة (Google Forms) 📝✨</span>
         </button>
       </div>
 
@@ -362,21 +390,51 @@ export default function ServantExamsBank({
           {currentGradeExams.length === 0 ? (
             <div className="text-center py-12 bg-slate-50 border border-dashed border-slate-200 rounded-2xl p-6">
               <FileText className="w-10 h-10 text-slate-300 mx-auto mb-2" />
-              <p className="text-xs font-bold text-slate-700">لا توجد امتحانات منشورة لهذه المرحلة حتى الآن.</p>
-              <p className="text-[11px] text-slate-400 mt-1">اضغط على زر "تجهيز وتكليف امتحان" لاختيار مادة وتكليف امتحان للطلاب.</p>
+              <p className="text-xs font-bold text-slate-700">لا توجد مسابقات أو امتحانات منشورة لهذه المرحلة حتى الآن.</p>
+              <p className="text-[11px] text-slate-400 mt-1">اضغط على زر "إنشاء مسابقة سريعة (Google Forms)" أو التقط صورة كشكول بالذكاء الاصطناعي.</p>
             </div>
           ) : (
             <div className="space-y-3">
               {currentGradeExams.map((ex) => (
-                <div key={ex.id} className="bg-slate-50 border border-slate-200 p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="font-extrabold text-slate-900 text-sm">{ex.title}</span>
-                      <span className="bg-maroon-100 text-maroon-900 font-bold px-2 py-0.5 rounded text-[10px]">{ex.subject}</span>
+                <div key={ex.id} className="bg-slate-50 border border-slate-200 p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs hover:border-slate-300 transition-all">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                      <span className="font-extrabold text-slate-900 text-sm truncate">{ex.title}</span>
+                      <span className="bg-maroon-100 text-maroon-900 font-bold px-2 py-0.5 rounded text-[10px]">{ex.subject || 'عام'}</span>
+                      {ex.deadline && (
+                        <span className="bg-amber-50 text-amber-900 border border-amber-200 px-2 py-0.5 rounded text-[10px] font-bold flex items-center gap-1">
+                          <Calendar className="w-3 h-3 text-amber-700" />
+                          <span>ينتهي: {new Date(ex.deadline).toLocaleDateString('ar-EG', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                        </span>
+                      )}
                     </div>
-                    <span className="text-[11px] text-slate-500">المدة: {ex.durationMinutes} دقيقة • الدرجة العظمى: {ex.totalScore} درجة</span>
+                    <span className="text-[11px] text-slate-500 block">
+                      {ex.questions?.length ? `${ex.questions.length} أسئلة` : `${ex.questionsCount || 0} أسئلة`} • {ex.durationMinutes ? `${ex.durationMinutes} دقيقة` : 'وقت مفتوح'} • الدرجة الكلية: {ex.totalScore || 20} نقطة
+                    </span>
                   </div>
-                  <span className="bg-emerald-100 text-emerald-800 font-bold px-3 py-1 rounded-xl text-[11px]">متاح ونشط للطلاب ✓</span>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedExamForResponses(ex);
+                        setShowResponsesModal(true);
+                      }}
+                      className="px-3.5 py-2 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-900 border border-indigo-200 text-xs font-bold flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer active:scale-95"
+                    >
+                      <Users className="w-3.5 h-3.5 text-indigo-700" />
+                      <span>الردود والتسليمات (Responses)</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteExam(ex.id)}
+                      className="p-2 rounded-xl text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-200 transition-colors cursor-pointer"
+                      title="حذف المسابقة"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -583,6 +641,30 @@ export default function ServantExamsBank({
           onClose={() => setActivePresentation(null)}
         />
       )}
+
+      {/* Quick Quiz Builder Modal (Google Forms) */}
+      <ServantQuickQuizBuilderModal
+        isOpen={showQuickQuizModal}
+        onClose={() => setShowQuickQuizModal(false)}
+        selectedGrade={selectedGrade}
+        getGradeTitle={getGradeTitle}
+        currentGradeSubjects={currentGradeSubjects}
+        user={user}
+        onQuizPublished={(newQuiz) => {
+          setCreatedExams(prev => [newQuiz, ...prev]);
+        }}
+      />
+
+      {/* Quiz Responses Modal */}
+      <ServantQuizResponsesModal
+        isOpen={showResponsesModal}
+        onClose={() => {
+          setShowResponsesModal(false);
+          setSelectedExamForResponses(null);
+        }}
+        exam={selectedExamForResponses}
+        getGradeTitle={getGradeTitle}
+      />
     </div>
   );
 }
