@@ -279,9 +279,9 @@ export default function ServantQuickQuizBuilderModal({
                 onChange={(e) => setGrade(e.target.value)}
                 className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold"
               >
-                <option value="first">سنة أولى ثانوي</option>
-                <option value="second">سنة ثانية ثانوي</option>
-                <option value="third">سنة ثالثة ثانوي</option>
+                <option value="first">سنة أولى</option>
+                <option value="second">سنة ثانية</option>
+                <option value="third">سنة ثالثة</option>
                 <option value="elisha">فصل أليشع (إعداد خدام)</option>
               </select>
             </div>
