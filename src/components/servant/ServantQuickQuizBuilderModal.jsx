@@ -17,9 +17,11 @@ export default function ServantQuickQuizBuilderModal({
   user,
   onQuizPublished
 }) {
+  const validGrades = ['first', 'second', 'third', 'elisha', 'all'];
+  const initialGrade = validGrades.includes(selectedGrade) ? selectedGrade : 'first';
   const [quizTitle, setQuizTitle] = useState('');
   const [subject, setSubject] = useState(currentGradeSubjects[0]?.name || 'كتاب مقدس');
-  const [grade, setGrade] = useState(selectedGrade);
+  const [grade, setGrade] = useState(initialGrade);
   const [deadline, setDeadline] = useState('');
   const [durationMinutes, setDurationMinutes] = useState(0); // 0 = unlimited
   const [questions, setQuestions] = useState([
@@ -282,6 +284,7 @@ export default function ServantQuickQuizBuilderModal({
                 <option value="second">سنة ثانية</option>
                 <option value="third">سنة ثالثة</option>
                 <option value="elisha">فصل أليشع (إعداد خدام)</option>
+                <option value="all">كافة المراحل (مسابقة عامة) 🌟</option>
               </select>
             </div>
 

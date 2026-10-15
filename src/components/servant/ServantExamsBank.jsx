@@ -67,7 +67,13 @@ export default function ServantExamsBank({
   }, []);
 
   const currentGradeQuestions = (questionBank || []).filter(q => q.grade === selectedGrade);
-  const currentGradeExams = (createdExams || []).filter(ex => ex.grade === selectedGrade || !ex.grade);
+  const currentGradeExams = (createdExams || []).filter(ex => 
+    ex.grade === selectedGrade || 
+    ex.grade === 'all' || 
+    !ex.grade || 
+    (selectedGrade === 'cycle_1' && ex.grade !== 'elisha') ||
+    (selectedGrade === 'first' && ex.grade === 'cycle_1')
+  );
 
   const handleAddQuestionSubmit = async (e) => {
     e.preventDefault();

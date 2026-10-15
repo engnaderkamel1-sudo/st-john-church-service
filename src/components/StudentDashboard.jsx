@@ -287,16 +287,21 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser, externa
       setAttendanceRecords(list);
     }, (err) => console.log('Attendance listen err:', err));
 
-    // Sync Exams for student grade (Active only)
-    const qEx = query(collection(db, 'service_exams'), where('grade', '==', user.grade || 'first'));
+    // Sync Exams for student grade (Active only + supports 'all' grades & cycle fallbacks)
+    const qEx = collection(db, 'service_exams');
     const unsubEx = onSnapshot(qEx, (snap) => {
-      if (!snap.empty) {
-        const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        const activeOnly = list.filter(ex => ex.status === 'active');
-        setAvailableExams(activeOnly);
-      } else {
-        setAvailableExams([]);
-      }
+      const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      const studentGrade = user.grade || 'first';
+      const relevantExams = list.filter(ex => {
+        if (ex.status !== 'active') return false;
+        if (!ex.grade || ex.grade === 'all' || ex.grade === 'all_grades') return true;
+        if (ex.grade === studentGrade) return true;
+        if ((ex.grade === 'cycle_1' || ex.grade === 'cycle_2') && studentGrade !== 'elisha') return true;
+        return false;
+      });
+      // Sort newest first
+      relevantExams.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+      setAvailableExams(relevantExams);
     }, (err) => console.log('Student exams fetch info:', err));
 
     // Sync Student's Completed Exams / Submissions
