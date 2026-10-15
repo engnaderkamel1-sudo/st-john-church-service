@@ -1,13 +1,34 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   BookOpen, ShieldCheck, Plus, Trash2, ChevronLeft, UploadCloud, 
   FileText, Music, Video, Check, ExternalLink, Eye, EyeOff,
-  FileSpreadsheet, File, Image as ImageIcon, Sparkles, Presentation
+  FileSpreadsheet, File, Image as ImageIcon, Sparkles, Presentation,
+  Calendar, User, FolderPlus
 } from 'lucide-react';
 import { db } from '../../firebase';
 import { collection, doc, addDoc, updateDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import ServantAiStudioModal from './ServantAiStudioModal';
 import AiPresentationViewer from './AiPresentationViewer';
+
+export const normalizeLectures = (subject) => {
+  if (!subject) return [];
+  if (Array.isArray(subject.lectures) && subject.lectures.length > 0) {
+    return subject.lectures;
+  }
+  if (Array.isArray(subject.references) && subject.references.length > 0) {
+    return [
+      {
+        id: 'legacy-lecture-1',
+        title: 'المحاضرة الأولى',
+        date: subject.references[0]?.date || new Date().toISOString().split('T')[0],
+        lecturer: subject.references[0]?.uploadedBy || subject.teacher || 'خادم المادة',
+        isPublishedForStudents: subject.references.some(r => r.isPublishedForStudents !== false),
+        files: subject.references
+      }
+    ];
+  }
+  return [];
+};
 
 export default function ServantCurriculum({
   user,
@@ -27,6 +48,14 @@ export default function ServantCurriculum({
   const [showAddSubjectModal, setShowAddSubjectModal] = useState(false);
   const [newSubjectName, setNewSubjectName] = useState('');
   const [newSubjectTeacher, setNewSubjectTeacher] = useState('');
+  
+  // Lecture-level states
+  const [activeLecture, setActiveLecture] = useState(null);
+  const [showAddLectureModal, setShowAddLectureModal] = useState(false);
+  const [newLectureTitle, setNewLectureTitle] = useState('');
+  const [newLectureDate, setNewLectureDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [newLectureLecturer, setNewLectureLecturer] = useState('');
+
   const [showAddRefModal, setShowAddRefModal] = useState(false);
   const [newRefTitle, setNewRefTitle] = useState('');
   const [newRefType, setNewRefType] = useState('pdf');
@@ -43,6 +72,19 @@ export default function ServantCurriculum({
   const [autoGenerateAiAfterUpload, setAutoGenerateAiAfterUpload] = useState(false);
   const [isEditingYear, setIsEditingYear] = useState(false);
   const [inputYear, setInputYear] = useState(academicYear);
+
+  // Sync activeLecture whenever activeSubject changes
+  useEffect(() => {
+    if (!activeSubject) {
+      setActiveLecture(null);
+    } else if (activeLecture) {
+      const currentLecs = normalizeLectures(activeSubject);
+      const updated = currentLecs.find(l => l.id === activeLecture.id);
+      if (updated) {
+        setActiveLecture(updated);
+      }
+    }
+  }, [activeSubject]);
 
   const allCurrentGradeSubjects = subjectsByGrade[selectedGrade] || [];
   const currentGradeSubjects = allCurrentGradeSubjects.filter(
@@ -240,13 +282,53 @@ export default function ServantCurriculum({
       isPublishedForStudents: true
     };
 
-    const updatedRefs = [newRef, ...(activeSubject.references || [])];
+    const currentLecs = normalizeLectures(activeSubject);
+    let targetLecId = activeLecture?.id;
+    if (!targetLecId && currentLecs.length > 0) {
+      targetLecId = currentLecs[0].id;
+    }
+
+    let updatedLectures = [];
+    if (currentLecs.length === 0) {
+      const defaultLec = {
+        id: `lec-${Date.now()}`,
+        title: 'المحاضرة الأولى',
+        date: new Date().toISOString().split('T')[0],
+        lecturer: activeSubject.teacher || user.fullName || 'خادم المادة',
+        isPublishedForStudents: true,
+        createdAt: new Date().toISOString(),
+        files: [newRef]
+      };
+      updatedLectures = [defaultLec];
+      setActiveLecture(defaultLec);
+    } else {
+      updatedLectures = currentLecs.map(lec => {
+        if (lec.id === targetLecId) {
+          return {
+            ...lec,
+            files: [newRef, ...(lec.files || [])]
+          };
+        }
+        return lec;
+      });
+      const cur = updatedLectures.find(l => l.id === targetLecId);
+      if (cur) setActiveLecture(cur);
+    }
+
+    const allFlattenedRefs = updatedLectures.flatMap(l => l.files || []);
 
     try {
       await updateDoc(doc(db, 'service_curriculum', activeSubject.id), {
-        references: updatedRefs
+        lectures: updatedLectures,
+        references: allFlattenedRefs
       });
-      setActiveSubject({ ...activeSubject, references: updatedRefs });
+      const updatedSubject = { ...activeSubject, lectures: updatedLectures, references: allFlattenedRefs };
+      setActiveSubject(updatedSubject);
+      setSubjectsByGrade(prev => {
+        const currentList = prev[selectedGrade] || [];
+        const updatedList = currentList.map(s => s.id === activeSubject.id ? updatedSubject : s);
+        return { ...prev, [selectedGrade]: updatedList };
+      });
 
       if (autoGenerateAiAfterUpload && uploadedBase64) {
         setTargetRefForAi(newRef);
@@ -261,10 +343,11 @@ export default function ServantCurriculum({
       }
     } catch (err) {
       console.error('Error adding reference:', err);
-      setActiveSubject({ ...activeSubject, references: updatedRefs });
+      const updatedSubject = { ...activeSubject, lectures: updatedLectures, references: allFlattenedRefs };
+      setActiveSubject(updatedSubject);
       setSubjectsByGrade(prev => {
         const currentList = prev[selectedGrade] || [];
-        const updatedList = currentList.map(s => s.id === activeSubject.id ? { ...s, references: updatedRefs } : s);
+        const updatedList = currentList.map(s => s.id === activeSubject.id ? updatedSubject : s);
         return { ...prev, [selectedGrade]: updatedList };
       });
     } finally {
@@ -359,41 +442,164 @@ export default function ServantCurriculum({
     }
   };
 
-  const handleToggleRefVisibility = async (refId) => {
-    if (!activeSubject) return;
-    const currentRefs = activeSubject.references || [];
-    const targetRef = currentRefs.find(r => r.id === refId);
-    if (!targetRef) return;
+  const handleAddLecture = async (e) => {
+    e.preventDefault();
+    if (!newLectureTitle.trim() || !activeSubject) return;
 
-    const newStatus = targetRef.isPublishedForStudents === false ? true : false;
-    const updatedRefs = currentRefs.map(r => 
-      r.id === refId ? { ...r, isPublishedForStudents: newStatus } : r
-    );
+    const currentLecs = normalizeLectures(activeSubject);
+    const newLec = {
+      id: `lec-${Date.now()}`,
+      title: newLectureTitle.trim(),
+      date: newLectureDate || new Date().toISOString().split('T')[0],
+      lecturer: newLectureLecturer.trim() || activeSubject.teacher || user.fullName || 'خادم المادة',
+      isPublishedForStudents: true,
+      createdAt: new Date().toISOString(),
+      files: []
+    };
+
+    const updatedLectures = [...currentLecs, newLec];
+    const allFlattenedRefs = updatedLectures.flatMap(l => l.files || []);
 
     try {
       await updateDoc(doc(db, 'service_curriculum', activeSubject.id), {
-        references: updatedRefs
+        lectures: updatedLectures,
+        references: allFlattenedRefs
       });
-      setActiveSubject({ ...activeSubject, references: updatedRefs });
+      const updatedSubject = { ...activeSubject, lectures: updatedLectures, references: allFlattenedRefs };
+      setActiveSubject(updatedSubject);
+      setActiveLecture(newLec);
+      setShowAddLectureModal(false);
+      setNewLectureTitle('');
+      setNewLectureLecturer('');
+      setNewLectureDate(new Date().toISOString().split('T')[0]);
+      setSubjectsByGrade(prev => {
+        const currentList = prev[selectedGrade] || [];
+        const updatedList = currentList.map(s => s.id === activeSubject.id ? updatedSubject : s);
+        return { ...prev, [selectedGrade]: updatedList };
+      });
+    } catch (err) {
+      console.error('Error adding lecture:', err);
+      alert('حدث خطأ أثناء حفظ المحاضرة: ' + err.message);
+    }
+  };
+
+  const handleToggleLectureVisibility = async (lectureId, e) => {
+    if (e) e.stopPropagation();
+    if (!activeSubject) return;
+    const currentLecs = normalizeLectures(activeSubject);
+    const updatedLectures = currentLecs.map(l => 
+      l.id === lectureId ? { ...l, isPublishedForStudents: l.isPublishedForStudents === false } : l
+    );
+    const allFlattenedRefs = updatedLectures.flatMap(l => l.files || []);
+
+    try {
+      await updateDoc(doc(db, 'service_curriculum', activeSubject.id), {
+        lectures: updatedLectures,
+        references: allFlattenedRefs
+      });
+      const updatedSubject = { ...activeSubject, lectures: updatedLectures, references: allFlattenedRefs };
+      setActiveSubject(updatedSubject);
+      if (activeLecture?.id === lectureId) {
+        setActiveLecture(updatedLectures.find(l => l.id === lectureId) || null);
+      }
+      setSubjectsByGrade(prev => {
+        const currentList = prev[selectedGrade] || [];
+        const updatedList = currentList.map(s => s.id === activeSubject.id ? updatedSubject : s);
+        return { ...prev, [selectedGrade]: updatedList };
+      });
+    } catch (err) {
+      console.error('Error toggling lecture visibility:', err);
+    }
+  };
+
+  const handleDeleteLecture = async (lectureId, e) => {
+    if (e) e.stopPropagation();
+    if (!activeSubject) return;
+    if (!window.confirm('هل أنت متأكد من حذف هذه المحاضرة وجميع الملفات التابعة لها؟')) return;
+
+    const currentLecs = normalizeLectures(activeSubject);
+    const updatedLectures = currentLecs.filter(l => l.id !== lectureId);
+    const allFlattenedRefs = updatedLectures.flatMap(l => l.files || []);
+
+    try {
+      await updateDoc(doc(db, 'service_curriculum', activeSubject.id), {
+        lectures: updatedLectures,
+        references: allFlattenedRefs
+      });
+      const updatedSubject = { ...activeSubject, lectures: updatedLectures, references: allFlattenedRefs };
+      setActiveSubject(updatedSubject);
+      if (activeLecture?.id === lectureId) {
+        setActiveLecture(null);
+      }
+      setSubjectsByGrade(prev => {
+        const currentList = prev[selectedGrade] || [];
+        const updatedList = currentList.map(s => s.id === activeSubject.id ? updatedSubject : s);
+        return { ...prev, [selectedGrade]: updatedList };
+      });
+    } catch (err) {
+      console.error('Error deleting lecture:', err);
+    }
+  };
+
+  const handleToggleRefVisibility = async (refId) => {
+    if (!activeSubject) return;
+    const currentLecs = normalizeLectures(activeSubject);
+    const updatedLectures = currentLecs.map(lec => ({
+      ...lec,
+      files: (lec.files || []).map(r => 
+        r.id === refId ? { ...r, isPublishedForStudents: r.isPublishedForStudents === false } : r
+      )
+    }));
+    const allFlattenedRefs = updatedLectures.flatMap(l => l.files || []);
+
+    try {
+      await updateDoc(doc(db, 'service_curriculum', activeSubject.id), {
+        lectures: updatedLectures,
+        references: allFlattenedRefs
+      });
+      const updatedSubject = { ...activeSubject, lectures: updatedLectures, references: allFlattenedRefs };
+      setActiveSubject(updatedSubject);
+      if (activeLecture) {
+        setActiveLecture(updatedLectures.find(l => l.id === activeLecture.id) || null);
+      }
+      setSubjectsByGrade(prev => {
+        const currentList = prev[selectedGrade] || [];
+        const updatedList = currentList.map(s => s.id === activeSubject.id ? updatedSubject : s);
+        return { ...prev, [selectedGrade]: updatedList };
+      });
     } catch (err) {
       console.error('Error toggling reference visibility:', err);
-      setActiveSubject({ ...activeSubject, references: updatedRefs });
     }
   };
 
   const handleDeleteReference = async (refId) => {
     if (!activeSubject) return;
-    if (!window.confirm('هل أنت متأكد من حذف هذا المرجع؟')) return;
+    if (!window.confirm('هل أنت متأكد من حذف هذا الملف من المحاضرة؟')) return;
 
-    const updatedRefs = (activeSubject.references || []).filter(r => r.id !== refId);
+    const currentLecs = normalizeLectures(activeSubject);
+    const updatedLectures = currentLecs.map(lec => ({
+      ...lec,
+      files: (lec.files || []).filter(r => r.id !== refId)
+    }));
+    const allFlattenedRefs = updatedLectures.flatMap(l => l.files || []);
+
     try {
       await updateDoc(doc(db, 'service_curriculum', activeSubject.id), {
-        references: updatedRefs
+        lectures: updatedLectures,
+        references: allFlattenedRefs
       });
-      setActiveSubject({ ...activeSubject, references: updatedRefs });
+      const updatedSubject = { ...activeSubject, lectures: updatedLectures, references: allFlattenedRefs };
+      setActiveSubject(updatedSubject);
+      if (activeLecture) {
+        setActiveLecture(updatedLectures.find(l => l.id === activeLecture.id) || null);
+      }
+      setSubjectsByGrade(prev => {
+        const currentList = prev[selectedGrade] || [];
+        const updatedList = currentList.map(s => s.id === activeSubject.id ? updatedSubject : s);
+        return { ...prev, [selectedGrade]: updatedList };
+      });
     } catch (err) {
       console.error('Error deleting reference:', err);
-      setActiveSubject({ ...activeSubject, references: updatedRefs });
     }
   };
 
@@ -691,342 +897,566 @@ export default function ServantCurriculum({
         </div>
       ) : (
         <div className="space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
-            <div>
-              <span className="text-xs text-slate-400 font-bold">
-                المادة الحالية ({curriculumTarget === 'students' ? 'مناهج المخدومين' : 'مناهج الخدام 🔒'})
-              </span>
-              <h4 className="font-extrabold text-slate-900 text-lg">{activeSubject.name}</h4>
-              <span className="text-xs text-maroon-800 font-semibold">المسئول: {activeSubject.teacher}</span>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setTargetRefForAi({
-                    title: `منهج ومحاضرات مادة: ${activeSubject.name}`,
-                    type: 'مادة تعليمية',
-                    url: (activeSubject.references && activeSubject.references.length > 0) ? activeSubject.references[0].url : ''
-                  });
-                  setAiStudioMode('presentation');
-                  setShowAiStudioModal(true);
-                }}
-                className="bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white font-extrabold text-xs py-2 px-3 rounded-xl transition-all shadow-xs flex items-center justify-center gap-1.5"
-                title="توليد عرض تقديمي للشرائح Data Show لهذه المادة بالذكاء الاصطناعي"
-              >
-                <Presentation className="w-4 h-4 text-gold-300" />
-                <span>Presentation 📽️</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setTargetRefForAi({
-                    title: `منهج ومحاضرات مادة: ${activeSubject.name}`,
-                    type: 'مادة تعليمية',
-                    url: (activeSubject.references && activeSubject.references.length > 0) ? activeSubject.references[0].url : ''
-                  });
-                  setAiStudioMode('study_guide');
-                  setShowAiStudioModal(true);
-                }}
-                className="bg-purple-700 hover:bg-purple-800 text-white font-extrabold text-xs py-2 px-3 rounded-xl transition-all shadow-xs flex items-center justify-center gap-1.5"
-                title="توليد ملخص ودليل دراسي كنسي شامل لهذه المادة"
-              >
-                <Sparkles className="w-4 h-4 text-purple-200" />
-                <span>ملخص المادة 📖</span>
-              </button>
-
-              <button
-                onClick={() => setShowAddRefModal(true)}
-                className="bg-maroon-800 hover:bg-maroon-700 text-white font-bold text-xs py-2 px-3.5 rounded-xl transition-all shadow-xs flex items-center gap-1.5"
-              >
-                <UploadCloud className="w-4 h-4" />
-                <span>إضافة محتوى / ملف</span>
-              </button>
-              <button
-                onClick={() => setActiveSubject(null)}
-                className="text-xs font-bold text-slate-600 hover:bg-slate-100 px-3 py-2 rounded-xl border border-slate-200"
-              >
-                ← العودة لقائمة المواد
-              </button>
-            </div>
-          </div>
-
-          {showAddRefModal && (
-            <form onSubmit={handleAddReference} className="bg-slate-50 border border-slate-200 p-4.5 rounded-2xl space-y-3.5">
-              <h5 className="font-extrabold text-xs text-slate-800">
-                إضافة محتوى تعليمي لمادة ({activeSubject.name}) - {curriculumTarget === 'students' ? 'للمخدومين' : 'للخدام فقط'}
-              </h5>
-              
-              {/* Type Selector */}
-              <div>
-                <label className="block text-[11px] font-bold text-slate-700 mb-1">نوع المحتوى</label>
-                <div className="grid grid-cols-3 gap-2">
+          {!activeLecture ? (
+            /* ========================================================================= */
+            /* 1. LECTURES LIST VIEW FOR ACTIVE SUBJECT                                 */
+            /* ========================================================================= */
+            <div className="space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+                <div>
+                  <div className="flex items-center gap-2 text-xs text-slate-400 font-bold mb-0.5">
+                    <span>{curriculumTarget === 'students' ? 'مناهج المخدومين' : 'مناهج الخدام 🔒'}</span>
+                    <span>•</span>
+                    <span className="text-maroon-800">{getGradeTitle(selectedGrade)}</span>
+                  </div>
+                  <h4 className="font-extrabold text-slate-900 text-lg flex items-center gap-2">
+                    <BookOpen className="w-5 h-5 text-maroon-800" />
+                    <span>مادة: {activeSubject.name}</span>
+                  </h4>
+                  <span className="text-xs text-slate-500 font-medium">مسئول المادة: <strong className="text-slate-700">{activeSubject.teacher || 'خادم المادة'}</strong></span>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
                   <button
                     type="button"
-                    onClick={() => setNewRefType('file')}
-                    className={`py-2 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
-                      newRefType === 'file' || newRefType === 'pdf' ? 'bg-maroon-800 text-white border-maroon-800 shadow-sm' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
-                    }`}
+                    onClick={() => {
+                      setNewLectureLecturer(activeSubject.teacher || user.fullName || '');
+                      setNewLectureDate(new Date().toISOString().split('T')[0]);
+                      setShowAddLectureModal(true);
+                    }}
+                    className="bg-maroon-800 hover:bg-maroon-700 text-white font-bold text-xs py-2 px-3.5 rounded-xl transition-all shadow-xs flex items-center gap-1.5 cursor-pointer active:scale-95"
                   >
-                    <FileText className="w-3.5 h-3.5" />
-                    <span>ملف (PDF، Word، Excel، صور)</span>
+                    <Plus className="w-4 h-4" />
+                    <span>إضافة محاضرة جديدة</span>
                   </button>
                   <button
                     type="button"
-                    onClick={() => setNewRefType('audio')}
-                    className={`py-2 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
-                      newRefType === 'audio' ? 'bg-amber-600 text-white border-amber-600 shadow-sm' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
-                    }`}
+                    onClick={() => setActiveSubject(null)}
+                    className="text-xs font-bold text-slate-600 hover:bg-slate-100 px-3 py-2 rounded-xl border border-slate-200 cursor-pointer transition-colors"
                   >
-                    <Music className="w-3.5 h-3.5" />
-                    <span>تسجيل صوتي</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setNewRefType('video')}
-                    className={`py-2 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
-                      newRefType === 'video' ? 'bg-red-700 text-white border-red-700 shadow-sm' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
-                    }`}
-                  >
-                    <Video className="w-3.5 h-3.5" />
-                    <span>فيديو يوتيوب</span>
+                    ← العودة لقائمة المواد
                   </button>
                 </div>
               </div>
 
-              <div>
-                <label className="block text-[11px] font-bold text-slate-700 mb-1">عنوان المحتوى / المرجع</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="مثال: مذكرة شرح المحاضرة الأولى + أسئلة تطبيقية"
-                  value={newRefTitle}
-                  onChange={(e) => setNewRefTitle(e.target.value)}
-                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-maroon-800"
-                />
-              </div>
-
-              {newRefType !== 'video' ? (
-                <div className="space-y-2">
-                  <label className="block text-[11px] font-bold text-slate-700">
-                    اختر أي ملف من جهازك (PDF، Word، Excel، PowerPoint، صور، صوتيات):
-                  </label>
-                  <div className="border-2 border-dashed border-maroon-200 hover:border-maroon-600 bg-white p-4 rounded-2xl text-center cursor-pointer transition-colors relative">
-                    <input
-                      type="file"
-                      accept="*/*"
-                      onChange={(e) => {
-                        if (e.target.files && e.target.files[0]) {
-                          setSelectedUploadFile(e.target.files[0]);
-                          if (!newRefTitle.trim()) {
-                            setNewRefTitle(e.target.files[0].name.replace(/\.[^/.]+$/, ''));
-                          }
-                        }
-                      }}
-                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                    />
-                    <UploadCloud className="w-7 h-7 text-maroon-700 mx-auto mb-1" />
-                    {selectedUploadFile ? (
-                      <div className="text-xs font-bold text-emerald-700">
-                        تم اختيار: {selectedUploadFile.name} ({(selectedUploadFile.size / 1024 / 1024).toFixed(2)} MB) ✓
-                      </div>
-                    ) : (
-                      <div>
-                        <span className="text-xs font-bold text-slate-800 block">اضغط هنا لاختيار الملف من الموبايل أو الكمبيوتر</span>
-                        <span className="text-[10px] text-slate-400 mt-0.5 block">سيقوم التطبيق برفعه مباشرة إلى Google Drive الخاص بالخدمة تلقائياً</span>
-                      </div>
-                    )}
+              {/* Add Lecture Modal */}
+              {showAddLectureModal && (
+                <form onSubmit={handleAddLecture} className="bg-slate-50 border border-maroon-200 p-4.5 rounded-2xl space-y-3.5 shadow-sm">
+                  <div className="flex items-center justify-between">
+                    <h5 className="font-extrabold text-xs text-maroon-900 flex items-center gap-1.5">
+                      <FolderPlus className="w-4 h-4 text-maroon-800" />
+                      <span>إضافة محاضرة جديدة لمادة ({activeSubject.name})</span>
+                    </h5>
+                    <span className="text-[10px] text-slate-400 font-medium">خطوة 1: تحديد بيانات المحاضرة</span>
                   </div>
 
-                  <details className="text-[11px] text-slate-500 pt-1">
-                    <summary className="cursor-pointer hover:text-maroon-800 font-bold">أو وضع رابط مباشر بدلاً من الرفع (اختياري)</summary>
-                    <input
-                      type="text"
-                      placeholder="https://drive.google.com/file/d/.../view"
-                      value={newRefUrl}
-                      onChange={(e) => setNewRefUrl(e.target.value)}
-                      className="w-full bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs mt-1.5 focus:outline-none focus:border-maroon-800"
-                    />
-                  </details>
-                </div>
-              ) : (
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                    رابط فيديو يوتيوب (YouTube Link or ID)
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="https://www.youtube.com/watch?v=... أو https://youtu.be/..."
-                    value={newRefUrl}
-                    onChange={(e) => setNewRefUrl(e.target.value)}
-                    className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-maroon-800"
-                  />
-                </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="sm:col-span-1">
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">اسم / عنوان المحاضرة *</label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="مثال: المحاضرة الأولى: مقدمة في علم الطقس"
+                        value={newLectureTitle}
+                        onChange={(e) => setNewLectureTitle(e.target.value)}
+                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-maroon-800 font-bold"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">تاريخ المحاضرة *</label>
+                      <input
+                        type="date"
+                        required
+                        value={newLectureDate}
+                        onChange={(e) => setNewLectureDate(e.target.value)}
+                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-maroon-800 font-bold text-slate-800"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">المحاضر (مُلقي الدرس) *</label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="مثال: ت. عفاف كمال عبد النور"
+                        value={newLectureLecturer}
+                        onChange={(e) => setNewLectureLecturer(e.target.value)}
+                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-maroon-800 font-bold"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end gap-2 pt-2 border-t border-slate-200/80">
+                    <button
+                      type="button"
+                      onClick={() => setShowAddLectureModal(false)}
+                      className="bg-white border border-slate-200 text-slate-600 text-xs px-3.5 py-1.5 rounded-xl font-bold hover:bg-slate-100 cursor-pointer"
+                    >
+                      إلغاء
+                    </button>
+                    <button
+                      type="submit"
+                      className="bg-maroon-800 hover:bg-maroon-700 text-white font-bold text-xs px-5 py-1.5 rounded-xl transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Check className="w-3.5 h-3.5" />
+                      <span>حفظ المحاضرة والدخول إليها</span>
+                    </button>
+                  </div>
+                </form>
               )}
 
-              {/* Optional Auto AI Studio Generation checkbox */}
-              {newRefType !== 'video' && (
-                <label className="flex items-center gap-2 cursor-pointer bg-amber-50/70 border border-amber-200/80 p-2.5 rounded-xl text-xs font-bold text-amber-950 hover:bg-amber-100/70 transition-colors">
-                  <input
-                    type="checkbox"
-                    checked={autoGenerateAiAfterUpload}
-                    onChange={(e) => setAutoGenerateAiAfterUpload(e.target.checked)}
-                    className="rounded text-maroon-800 focus:ring-maroon-800"
-                  />
-                  <span>توليد ملخص الدرس فوراً بعد الرفع بالذكاء الاصطناعي 🪄 (اختياري)</span>
-                </label>
-              )}
+              {/* Lectures Cards Grid */}
+              {(() => {
+                const lecturesList = normalizeLectures(activeSubject);
+                if (lecturesList.length === 0) {
+                  return (
+                    <div className="text-center py-12 bg-slate-50 border border-dashed border-slate-200 rounded-2xl p-6">
+                      <BookOpen className="w-10 h-10 text-slate-300 mx-auto mb-2" />
+                      <p className="text-xs font-bold text-slate-700">لم يتم إضافة محاضرات لهذه المادة بعد.</p>
+                      <p className="text-[11px] text-slate-400 mt-1">اضغط على زر "إضافة محاضرة جديدة" للبدء في تنظيم المحاضرات ورفع مذكراتها وملفاتها.</p>
+                    </div>
+                  );
+                }
 
-              <div className="flex justify-end gap-2 pt-2 border-t border-slate-200">
-                <button type="button" onClick={() => setShowAddRefModal(false)} className="bg-white border border-slate-200 text-slate-600 text-xs px-3 py-1.5 rounded-xl font-bold">
-                  إلغاء
-                </button>
-                <button 
-                  type="submit" 
-                  disabled={refSaving || (newRefType !== 'video' && !selectedUploadFile && !newRefUrl.trim())}
-                  className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-5 py-2 rounded-xl flex items-center gap-1.5 disabled:opacity-50 shadow-xs transition-all"
-                >
-                  <Check className="w-3.5 h-3.5" />
-                  <span>{refSaving ? (uploadStatusText || 'جاري الرفع...') : 'تأكيد حفظ ورفع المحتوى'}</span>
-                </button>
-              </div>
-            </form>
-          )}
-
-          <div className="space-y-3">
-            {(!activeSubject.references || activeSubject.references.length === 0) ? (
-              <div className="text-center py-10 text-slate-400 text-xs">لم يتم إضافة مراجع أو محتوى لهذه المادة بعد.</div>
-            ) : (
-              activeSubject.references.map((rf) => {
-                const meta = getRefTypeMeta(rf.type);
-                const IconComp = meta.icon;
                 return (
-                  <div key={rf.id} className="bg-slate-50 border border-slate-200 p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-                    <div className="flex items-center gap-3">
-                      <div className={`p-2.5 rounded-xl shrink-0 border ${meta.color}`}>
-                        <IconComp className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <h5 className="font-extrabold text-slate-900 text-sm">{rf.title}</h5>
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${meta.color}`}>
-                            {meta.label}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2 text-[11px] text-slate-400 mt-1 flex-wrap">
-                          <span>رفع بواسطة: <strong className="text-slate-600">{rf.uploadedBy || 'الخادم المسؤول'}</strong></span>
-                          <span>•</span>
-                          <span>{rf.date || 'اليوم'} {rf.time ? `(${rf.time})` : ''}</span>
-                          {rf.fileName && (
-                            <>
-                              <span>•</span>
-                              <span className="font-mono text-[10px] text-slate-500">{rf.fileName}</span>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-center gap-2 shrink-0">
-                      {rf.url && (
-                        <a
-                          href={rf.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 font-bold px-2.5 py-1 rounded-lg text-[11px] flex items-center gap-1"
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {lecturesList.map((lec) => {
+                      const filesCount = (lec.files || []).length;
+                      return (
+                        <div
+                          key={lec.id}
+                          onClick={() => setActiveLecture(lec)}
+                          className="bg-slate-50 border border-slate-200 hover:border-maroon-700 p-5 rounded-2xl cursor-pointer transition-all hover:shadow-md group flex flex-col justify-between"
                         >
-                          <ExternalLink className="w-3 h-3" />
-                          <span>فتح</span>
-                        </a>
-                      )}
+                          <div>
+                            <div className="flex items-start justify-between gap-2 mb-2.5">
+                              <h4 className="font-extrabold text-slate-900 text-base group-hover:text-maroon-800 transition-colors leading-snug">
+                                {lec.title}
+                              </h4>
+                              <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                                {curriculumTarget === 'students' && (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => handleToggleLectureVisibility(lec.id, e)}
+                                    className={`px-2 py-0.5 rounded-lg text-[10px] font-bold border transition-all ${
+                                      lec.isPublishedForStudents !== false
+                                        ? 'bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100'
+                                        : 'bg-amber-50 text-amber-800 border-amber-300 hover:bg-amber-100'
+                                    }`}
+                                    title="إتاحة أو إخفاء المحاضرة بكامل ملفاتها عن المخدومين"
+                                  >
+                                    {lec.isPublishedForStudents !== false ? 'متاحة 👁️' : 'مخفية 🔒'}
+                                  </button>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={(e) => handleDeleteLecture(lec.id, e)}
+                                  className="text-slate-400 hover:text-red-600 p-1 rounded-lg hover:bg-red-50 transition-colors"
+                                  title="حذف المحاضرة بكافة ملفاتها"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </div>
 
-                      {/* Direct AI Presentation from this file */}
-                      <button
-                        type="button"
-                        disabled={loadingRefAiId === rf.id}
-                        onClick={() => handleOpenAiForRef(rf, 'presentation')}
-                        className="bg-amber-100/70 hover:bg-amber-200 text-amber-900 border border-amber-300 font-bold px-2.5 py-1 rounded-lg text-[10px] flex items-center gap-1 transition-all disabled:opacity-60"
-                        title="إنشاء عرض تقديمي (Presentation Data Show) من هذا الملف مباشرة"
-                      >
-                        {loadingRefAiId === rf.id && aiStudioMode === 'presentation' ? (
-                          <>
-                            <div className="w-3 h-3 border-2 border-amber-800 border-t-transparent rounded-full animate-spin"></div>
-                            <span>جاري القراءة سحابياً...</span>
-                          </>
-                        ) : (
-                          <>
-                            <Presentation className="w-3 h-3 text-amber-700" />
-                            <span>Presentation 📽️</span>
-                          </>
-                        )}
-                      </button>
+                            <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-slate-600 mb-3">
+                              <span className="flex items-center gap-1 bg-white border border-slate-200/80 px-2 py-0.5 rounded-lg text-[11px]">
+                                <User className="w-3 h-3 text-maroon-800" />
+                                <span>المحاضر: <strong>{lec.lecturer || activeSubject.teacher || 'خادم المادة'}</strong></span>
+                              </span>
+                              <span className="flex items-center gap-1 bg-white border border-slate-200/80 px-2 py-0.5 rounded-lg text-[11px] text-slate-500">
+                                <Calendar className="w-3 h-3 text-slate-400" />
+                                <span>{lec.date || 'غير محدد'}</span>
+                              </span>
+                            </div>
+                          </div>
 
-                      {/* Direct AI Summary from this file */}
-                      <button
-                        type="button"
-                        disabled={loadingRefAiId === rf.id}
-                        onClick={() => handleOpenAiForRef(rf, 'study_guide')}
-                        className="bg-purple-100/70 hover:bg-purple-200 text-purple-900 border border-purple-300 font-bold px-2.5 py-1 rounded-lg text-[10px] flex items-center gap-1 transition-all disabled:opacity-60"
-                        title="توليد ملخص ودليل دراسي كنسي من هذا الملف مباشرة"
-                      >
-                        {loadingRefAiId === rf.id && aiStudioMode === 'study_guide' ? (
-                          <>
-                            <div className="w-3 h-3 border-2 border-purple-800 border-t-transparent rounded-full animate-spin"></div>
-                            <span>جاري القراءة سحابياً...</span>
-                          </>
-                        ) : (
-                          <>
-                            <Sparkles className="w-3 h-3 text-purple-700" />
-                            <span>ملخص 📖</span>
-                          </>
-                        )}
-                      </button>
-
-                      {/* Toggle Visibility for Students */}
-                      {curriculumTarget === 'students' ? (
-                        <button
-                          type="button"
-                          onClick={() => handleToggleRefVisibility(rf.id)}
-                          className={`font-bold px-3 py-1 rounded-lg text-[10px] flex items-center gap-1.5 transition-all shadow-2xs ${
-                            rf.isPublishedForStudents !== false
-                              ? 'bg-emerald-50 text-emerald-800 border border-emerald-300 hover:bg-emerald-100'
-                              : 'bg-amber-50 text-amber-800 border border-amber-300 hover:bg-amber-100'
-                          }`}
-                          title="اضغط لتفعيل أو إخفاء المحتوى عن المخدومين"
-                        >
-                          {rf.isPublishedForStudents !== false ? (
-                            <>
-                              <Eye className="w-3 h-3 text-emerald-600" />
-                              <span>متاح للمخدومين 👁️ (انقر للإخفاء)</span>
-                            </>
-                          ) : (
-                            <>
-                              <EyeOff className="w-3 h-3 text-amber-600" />
-                              <span>مخفي عن المخدومين 🔒 (انقر للإتاحة)</span>
-                            </>
-                          )}
-                        </button>
-                      ) : (
-                        <span className="bg-slate-100 text-slate-600 border border-slate-200 font-bold px-2.5 py-1 rounded-lg text-[10px]">
-                          خاص بالخدام 🔒
-                        </span>
-                      )}
-
-                      <button
-                        onClick={() => handleDeleteReference(rf.id)}
-                        className="text-slate-400 hover:text-red-600 p-1.5 rounded-lg hover:bg-red-50 transition-colors"
-                        title="حذف هذا المرجع"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
+                          <div className="flex items-center justify-between text-xs font-bold text-maroon-800 pt-3 border-t border-slate-200/60">
+                            <span className="text-slate-500 text-[11px]">{filesCount} ملفات ومحتويات مرفقة</span>
+                            <div className="flex items-center gap-1 group-hover:-translate-x-1 transition-transform">
+                              <span>فتح المحاضرة وإدارة ملفاتها</span>
+                              <ChevronLeft className="w-4 h-4" />
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 );
-              })
-            )}
-          </div>
+              })()}
+            </div>
+          ) : (
+            /* ========================================================================= */
+            /* 2. LECTURE DETAILS & FILES VIEW                                          */
+            /* ========================================================================= */
+            <div className="space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+                <div>
+                  <div className="flex items-center gap-2 text-xs text-slate-400 font-bold mb-0.5">
+                    <button
+                      type="button"
+                      onClick={() => setActiveLecture(null)}
+                      className="hover:text-maroon-800 underline cursor-pointer"
+                    >
+                      مادة {activeSubject.name}
+                    </button>
+                    <span>/</span>
+                    <span className="text-maroon-900 font-extrabold">{activeLecture.title}</span>
+                  </div>
+                  <h4 className="font-extrabold text-slate-900 text-lg flex items-center gap-2">
+                    <FolderPlus className="w-5 h-5 text-maroon-800" />
+                    <span>{activeLecture.title}</span>
+                  </h4>
+                  <div className="flex items-center gap-3 text-xs text-slate-500 mt-0.5 flex-wrap">
+                    <span>المحاضر: <strong className="text-slate-700">{activeLecture.lecturer}</strong></span>
+                    <span>•</span>
+                    <span className="flex items-center gap-1">
+                      <Calendar className="w-3 h-3 text-slate-400" />
+                      <span>{activeLecture.date}</span>
+                    </span>
+                    <span>•</span>
+                    <span>({(activeLecture.files || []).length} ملفات ومرفقات)</span>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setTargetRefForAi({
+                        title: `${activeLecture.title} (${activeSubject.name})`,
+                        type: 'محاضرة تعليمية',
+                        url: (activeLecture.files && activeLecture.files.length > 0) ? activeLecture.files[0].url : ''
+                      });
+                      setAiStudioMode('presentation');
+                      setShowAiStudioModal(true);
+                    }}
+                    className="bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white font-extrabold text-xs py-2 px-3 rounded-xl transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer"
+                    title="توليد عرض تقديمي للشرائح Data Show لهذه المحاضرة بالذكاء الاصطناعي"
+                  >
+                    <Presentation className="w-4 h-4 text-gold-300" />
+                    <span>Presentation 📽️</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setTargetRefForAi({
+                        title: `${activeLecture.title} (${activeSubject.name})`,
+                        type: 'محاضرة تعليمية',
+                        url: (activeLecture.files && activeLecture.files.length > 0) ? activeLecture.files[0].url : ''
+                      });
+                      setAiStudioMode('study_guide');
+                      setShowAiStudioModal(true);
+                    }}
+                    className="bg-purple-700 hover:bg-purple-800 text-white font-extrabold text-xs py-2 px-3 rounded-xl transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer"
+                    title="توليد ملخص ودليل دراسي كنسي شامل لهذه المحاضرة"
+                  >
+                    <Sparkles className="w-4 h-4 text-purple-200" />
+                    <span>ملخص المحاضرة 📖</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setShowAddRefModal(true)}
+                    className="bg-maroon-800 hover:bg-maroon-700 text-white font-bold text-xs py-2 px-3.5 rounded-xl transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <UploadCloud className="w-4 h-4" />
+                    <span>إضافة محتوى / ملف للمحاضرة</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setActiveLecture(null)}
+                    className="text-xs font-bold text-slate-600 hover:bg-slate-100 px-3 py-2 rounded-xl border border-slate-200 cursor-pointer transition-colors"
+                  >
+                    ← العودة لمحاضرات المادة
+                  </button>
+                </div>
+              </div>
+
+              {/* Upload/Add File Modal inside activeLecture */}
+              {showAddRefModal && (
+                <form onSubmit={handleAddReference} className="bg-slate-50 border border-slate-200 p-4.5 rounded-2xl space-y-3.5 shadow-sm">
+                  <h5 className="font-extrabold text-xs text-slate-800">
+                    إضافة محتوى أو ملف لـ ({activeLecture.title}) - مادة ({activeSubject.name})
+                  </h5>
+                  
+                  {/* Type Selector */}
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">نوع المحتوى</label>
+                    <div className="grid grid-cols-3 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setNewRefType('file')}
+                        className={`py-2 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
+                          newRefType === 'file' || newRefType === 'pdf' ? 'bg-maroon-800 text-white border-maroon-800 shadow-sm' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                        }`}
+                      >
+                        <FileText className="w-3.5 h-3.5" />
+                        <span>ملف (PDF، Word، Excel، صور)</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setNewRefType('audio')}
+                        className={`py-2 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
+                          newRefType === 'audio' ? 'bg-amber-600 text-white border-amber-600 shadow-sm' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                        }`}
+                      >
+                        <Music className="w-3.5 h-3.5" />
+                        <span>تسجيل صوتي</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setNewRefType('video')}
+                        className={`py-2 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
+                          newRefType === 'video' ? 'bg-red-700 text-white border-red-700 shadow-sm' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                        }`}
+                      >
+                        <Video className="w-3.5 h-3.5" />
+                        <span>فيديو يوتيوب</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">عنوان المحتوى / المرجع</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="مثال: مذكرة شرح المحاضرة + أسئلة تطبيقية"
+                      value={newRefTitle}
+                      onChange={(e) => setNewRefTitle(e.target.value)}
+                      className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-maroon-800 font-bold"
+                    />
+                  </div>
+
+                  {newRefType !== 'video' ? (
+                    <div className="space-y-2">
+                      <label className="block text-[11px] font-bold text-slate-700">
+                        اختر أي ملف من جهازك (PDF، Word، Excel، PowerPoint، صور، صوتيات):
+                      </label>
+                      <div className="border-2 border-dashed border-maroon-200 hover:border-maroon-600 bg-white p-4 rounded-2xl text-center cursor-pointer transition-colors relative">
+                        <input
+                          type="file"
+                          accept="*/*"
+                          onChange={(e) => {
+                            if (e.target.files && e.target.files[0]) {
+                              setSelectedUploadFile(e.target.files[0]);
+                              if (!newRefTitle.trim()) {
+                                setNewRefTitle(e.target.files[0].name.replace(/\.[^/.]+$/, ''));
+                              }
+                            }
+                          }}
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                        />
+                        <UploadCloud className="w-7 h-7 text-maroon-700 mx-auto mb-1" />
+                        {selectedUploadFile ? (
+                          <div className="text-xs font-bold text-emerald-700">
+                            تم اختيار: {selectedUploadFile.name} ({(selectedUploadFile.size / 1024 / 1024).toFixed(2)} MB) ✓
+                          </div>
+                        ) : (
+                          <div>
+                            <span className="text-xs font-bold text-slate-800 block">اضغط هنا لاختيار الملف من الموبايل أو الكمبيوتر</span>
+                            <span className="text-[10px] text-slate-400 mt-0.5 block">سيقوم التطبيق برفعه مباشرة إلى Google Drive الخاص بالخدمة تلقائياً</span>
+                          </div>
+                        )}
+                      </div>
+
+                      <details className="text-[11px] text-slate-500 pt-1">
+                        <summary className="cursor-pointer hover:text-maroon-800 font-bold">أو وضع رابط مباشر بدلاً من الرفع (اختياري)</summary>
+                        <input
+                          type="text"
+                          placeholder="https://drive.google.com/file/d/.../view"
+                          value={newRefUrl}
+                          onChange={(e) => setNewRefUrl(e.target.value)}
+                          className="w-full bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs mt-1.5 focus:outline-none focus:border-maroon-800"
+                        />
+                      </details>
+                    </div>
+                  ) : (
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                        رابط فيديو يوتيوب (YouTube Link or ID)
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="https://www.youtube.com/watch?v=... أو https://youtu.be/..."
+                        value={newRefUrl}
+                        onChange={(e) => setNewRefUrl(e.target.value)}
+                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-maroon-800"
+                      />
+                    </div>
+                  )}
+
+                  {/* Optional Auto AI Studio Generation checkbox */}
+                  {newRefType !== 'video' && (
+                    <label className="flex items-center gap-2 cursor-pointer bg-amber-50/70 border border-amber-200/80 p-2.5 rounded-xl text-xs font-bold text-amber-950 hover:bg-amber-100/70 transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={autoGenerateAiAfterUpload}
+                        onChange={(e) => setAutoGenerateAiAfterUpload(e.target.checked)}
+                        className="rounded text-maroon-800 focus:ring-maroon-800"
+                      />
+                      <span>توليد ملخص الدرس فوراً بعد الرفع بالذكاء الاصطناعي 🪄 (اختياري)</span>
+                    </label>
+                  )}
+
+                  <div className="flex justify-end gap-2 pt-2 border-t border-slate-200">
+                    <button type="button" onClick={() => setShowAddRefModal(false)} className="bg-white border border-slate-200 text-slate-600 text-xs px-3 py-1.5 rounded-xl font-bold cursor-pointer">
+                      إلغاء
+                    </button>
+                    <button 
+                      type="submit" 
+                      disabled={refSaving || (newRefType !== 'video' && !selectedUploadFile && !newRefUrl.trim())}
+                      className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-5 py-2 rounded-xl flex items-center gap-1.5 disabled:opacity-50 shadow-xs transition-all cursor-pointer"
+                    >
+                      <Check className="w-3.5 h-3.5" />
+                      <span>{refSaving ? (uploadStatusText || 'جاري الرفع...') : 'تأكيد حفظ ورفع المحتوى للمحاضرة'}</span>
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              {/* Files List inside activeLecture */}
+              <div className="space-y-3">
+                {(!activeLecture.files || activeLecture.files.length === 0) ? (
+                  <div className="text-center py-12 bg-slate-50 border border-dashed border-slate-200 rounded-2xl p-6 text-slate-400 text-xs">
+                    <FileText className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                    <p className="font-bold text-slate-600">لا توجد ملفات أو محتويات مرفوعة لهذه المحاضرة حتى الآن.</p>
+                    <p className="text-[11px] text-slate-400 mt-1">اضغط على زر "إضافة محتوى / ملف للمحاضرة" لرفع مذكرات PDF، عروض PowerPoint، أو تسجيلات صوتية وفيديو.</p>
+                  </div>
+                ) : (
+                  activeLecture.files.map((rf) => {
+                    const meta = getRefTypeMeta(rf.type);
+                    const IconComp = meta.icon;
+                    return (
+                      <div key={rf.id} className="bg-slate-50 border border-slate-200 p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                        <div className="flex items-center gap-3">
+                          <div className={`p-2.5 rounded-xl shrink-0 border ${meta.color}`}>
+                            <IconComp className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h5 className="font-extrabold text-slate-900 text-sm">{rf.title}</h5>
+                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${meta.color}`}>
+                                {meta.label}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2 text-[11px] text-slate-400 mt-1 flex-wrap">
+                              <span>رفع بواسطة: <strong className="text-slate-600">{rf.uploadedBy || 'الخادم المسؤول'}</strong></span>
+                              <span>•</span>
+                              <span>{rf.date || 'اليوم'} {rf.time ? `(${rf.time})` : ''}</span>
+                              {rf.fileName && (
+                                <>
+                                  <span>•</span>
+                                  <span className="font-mono text-[10px] text-slate-500">{rf.fileName}</span>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                          {rf.url && (
+                            <a
+                              href={rf.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 font-bold px-2.5 py-1 rounded-lg text-[11px] flex items-center gap-1"
+                            >
+                              <ExternalLink className="w-3 h-3" />
+                              <span>فتح</span>
+                            </a>
+                          )}
+
+                          {/* Direct AI Presentation from this file */}
+                          <button
+                            type="button"
+                            disabled={loadingRefAiId === rf.id}
+                            onClick={() => handleOpenAiForRef(rf, 'presentation')}
+                            className="bg-amber-100/70 hover:bg-amber-200 text-amber-900 border border-amber-300 font-bold px-2.5 py-1 rounded-lg text-[10px] flex items-center gap-1 transition-all disabled:opacity-60 cursor-pointer"
+                            title="إنشاء عرض تقديمي (Presentation Data Show) من هذا الملف مباشرة"
+                          >
+                            {loadingRefAiId === rf.id && aiStudioMode === 'presentation' ? (
+                              <>
+                                <div className="w-3 h-3 border-2 border-amber-800 border-t-transparent rounded-full animate-spin"></div>
+                                <span>جاري القراءة سحابياً...</span>
+                              </>
+                            ) : (
+                              <>
+                                <Presentation className="w-3 h-3 text-amber-700" />
+                                <span>Presentation 📽️</span>
+                              </>
+                            )}
+                          </button>
+
+                          {/* Direct AI Summary from this file */}
+                          <button
+                            type="button"
+                            disabled={loadingRefAiId === rf.id}
+                            onClick={() => handleOpenAiForRef(rf, 'study_guide')}
+                            className="bg-purple-100/70 hover:bg-purple-200 text-purple-900 border border-purple-300 font-bold px-2.5 py-1 rounded-lg text-[10px] flex items-center gap-1 transition-all disabled:opacity-60 cursor-pointer"
+                            title="توليد ملخص ودليل دراسي كنسي من هذا الملف مباشرة"
+                          >
+                            {loadingRefAiId === rf.id && aiStudioMode === 'study_guide' ? (
+                              <>
+                                <div className="w-3 h-3 border-2 border-purple-800 border-t-transparent rounded-full animate-spin"></div>
+                                <span>جاري القراءة سحابياً...</span>
+                              </>
+                            ) : (
+                              <>
+                                <Sparkles className="w-3 h-3 text-purple-700" />
+                                <span>ملخص 📖</span>
+                              </>
+                            )}
+                          </button>
+
+                          {/* Toggle Visibility for Students */}
+                          {curriculumTarget === 'students' ? (
+                            <button
+                              type="button"
+                              onClick={() => handleToggleRefVisibility(rf.id)}
+                              className={`font-bold px-3 py-1 rounded-lg text-[10px] flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer ${
+                                rf.isPublishedForStudents !== false
+                                  ? 'bg-emerald-50 text-emerald-800 border border-emerald-300 hover:bg-emerald-100'
+                                  : 'bg-amber-50 text-amber-800 border border-amber-300 hover:bg-amber-100'
+                              }`}
+                              title="اضغط لتفعيل أو إخفاء المحتوى عن المخدومين"
+                            >
+                              {rf.isPublishedForStudents !== false ? (
+                                <>
+                                  <Eye className="w-3 h-3 text-emerald-600" />
+                                  <span>متاح للمخدومين 👁️</span>
+                                </>
+                              ) : (
+                                <>
+                                  <EyeOff className="w-3 h-3 text-amber-600" />
+                                  <span>مخفي عن المخدومين 🔒</span>
+                                </>
+                              )}
+                            </button>
+                          ) : (
+                            <span className="bg-slate-100 text-slate-600 border border-slate-200 font-bold px-2.5 py-1 rounded-lg text-[10px]">
+                              خاص بالخدام 🔒
+                            </span>
+                          )}
+
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteReference(rf.id)}
+                            className="text-slate-400 hover:text-red-600 p-1.5 rounded-lg hover:bg-red-50 transition-colors cursor-pointer"
+                            title="حذف هذا الملف"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
