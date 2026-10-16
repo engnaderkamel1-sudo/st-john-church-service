@@ -21,16 +21,18 @@ export default function StudentTasks({
   const now = new Date();
 
   // Separate tasks into Active (Current) vs Past (Archive)
-  const activeTasksList = allQuizzes.filter(q => {
-    const isCompleted = Boolean(completedTasks[q.id]);
+  const activeTasksList = (allQuizzes || []).filter(q => {
+    if (!q) return false;
+    const isCompleted = Boolean(completedTasks && completedTasks[q.id]);
     if (isCompleted) return false;
     if (q.status !== 'active') return false;
     if (q.deadline && new Date(q.deadline) < now) return false;
     return true;
   });
 
-  const archiveTasksList = allQuizzes.filter(q => {
-    const isCompleted = Boolean(completedTasks[q.id]);
+  const archiveTasksList = (allQuizzes || []).filter(q => {
+    if (!q) return false;
+    const isCompleted = Boolean(completedTasks && completedTasks[q.id]);
     if (isCompleted) return true;
     if (q.status === 'closed' || q.status === 'draft') return true;
     if (q.deadline && new Date(q.deadline) < now) return true;
@@ -78,7 +80,7 @@ export default function StudentTasks({
       <div>
         <h3 className="font-extrabold text-slate-900 text-base sm:text-lg flex items-center gap-2">
           <CheckSquare className="w-5 h-5 text-maroon-800" />
-          <span>التاسكات والمسابقات الأسبوعية ({getGradeTitle ? getGradeTitle(user.grade) : user.grade})</span>
+          <span>التاسكات والمسابقات الأسبوعية ({getGradeTitle ? getGradeTitle(user?.grade) : (user?.grade || 'المرحلة الدراسية')})</span>
         </h3>
         <p className="text-xs text-slate-500 mt-0.5">حل مسابقات وتاسكات الخدمة للمتابعة الأسبوعية والتطبيق الروحي والنمو في كلمة الله.</p>
       </div>

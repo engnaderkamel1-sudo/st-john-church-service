@@ -22,13 +22,13 @@ export default function StudentExams({
       <div>
         <h3 className="font-extrabold text-slate-900 text-base flex items-center gap-2">
           <Trophy className="w-5 h-5 text-maroon-800" />
-          <span>المسابقات والامتحانات المتاحة ({getGradeTitle(user.grade)})</span>
+          <span>المسابقات والامتحانات المتاحة ({getGradeTitle ? getGradeTitle(user?.grade) : 'المرحلة الدراسية'})</span>
         </h3>
         <p className="text-xs text-slate-500 mt-0.5">مسابقات وأنشطة أسبوعية معينة من الخدام لمرحلتك الدراسية.</p>
       </div>
 
       {!activeExam ? (
-        availableExams.length === 0 ? (
+        (!availableExams || availableExams.length === 0) ? (
           <div className="text-center py-12 bg-slate-50 border border-dashed border-slate-200 rounded-2xl p-6">
             <FileText className="w-10 h-10 text-slate-300 mx-auto mb-2" />
             <p className="text-xs font-bold text-slate-700">لا توجد أي مسابقات أو امتحانات مجدولة لمرحلتك حالياً.</p>
@@ -36,8 +36,8 @@ export default function StudentExams({
           </div>
         ) : (
           <div className="space-y-3">
-            {availableExams.map((exam) => {
-              const isCompleted = completedExams[exam.id];
+            {(availableExams || []).map((exam) => {
+              const isCompleted = completedExams && exam && completedExams[exam.id];
               const examQuestionsCount = exam.questions?.length || exam.questionsCount || 0;
               const totalScore = exam.totalScore || 20;
 
@@ -129,8 +129,8 @@ export default function StudentExams({
             </div>
           ) : (
             <div className="space-y-4">
-              {activeQuestions.map((q, idx) => (
-                <div key={q.id} className="bg-slate-50 border border-slate-200 p-4 sm:p-5 rounded-2xl space-y-3 text-xs">
+              {(activeQuestions || []).map((q, idx) => (
+                <div key={q?.id || `q_${idx}`} className="bg-slate-50 border border-slate-200 p-4 sm:p-5 rounded-2xl space-y-3 text-xs">
                   <div className="flex items-center justify-between text-slate-500 font-bold">
                     <span className="font-extrabold text-slate-900 text-xs">
                       السؤال {idx + 1}

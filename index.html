@@ -29,25 +29,34 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 
-    <!-- Stale Bundle Auto-Recovery (Recovers transparently when Vercel deploys a new asset hash) -->
+    <!-- Stale Bundle & Chunk Auto-Recovery (Recovers transparently when a new asset hash is deployed) -->
     <script>
-      window.addEventListener('error', function(e) {
-        var isScriptError = e.target && e.target.tagName === 'SCRIPT';
-        var msg = e && (e.message || '');
-        if (isScriptError || (typeof msg === 'string' && /Failed to load module|Loading chunk/i.test(msg))) {
-          var lastReload = sessionStorage.getItem('stale_bundle_reload_ts');
-          var now = Date.now();
-          if (!lastReload || now - parseInt(lastReload, 10) > 10000) {
-            sessionStorage.setItem('stale_bundle_reload_ts', now.toString());
-            window.location.reload(true);
+      (function() {
+        function recoverStaleBundle(msg) {
+          if (typeof msg === 'string' && /Failed to load module|Loading chunk|Failed to fetch dynamically imported module/i.test(msg)) {
+            var lastReload = sessionStorage.getItem('stale_bundle_reload_ts');
+            var now = Date.now();
+            if (!lastReload || now - parseInt(lastReload, 10) > 10000) {
+              sessionStorage.setItem('stale_bundle_reload_ts', now.toString());
+              window.location.reload(true);
+            }
           }
         }
-      }, true);
+        window.addEventListener('error', function(e) {
+          var isScriptError = e.target && e.target.tagName === 'SCRIPT';
+          var msg = e && (e.message || '');
+          if (isScriptError) {
+            recoverStaleBundle('Failed to load module');
+          } else {
+            recoverStaleBundle(msg);
+          }
+        }, true);
+        window.addEventListener('unhandledrejection', function(e) {
+          var reason = e && (e.reason && e.reason.message ? e.reason.message : String(e.reason || ''));
+          recoverStaleBundle(reason);
+        });
+      })();
     </script>
-
-    <!-- QR Code Generator & Scanner Libraries (Fast, cached, offline-ready) -->
-    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
   </head>
   <body class="bg-slate-50 text-slate-800 font-cairo antialiased selection:bg-maroon-600 selection:text-white">
     <div id="root"></div>

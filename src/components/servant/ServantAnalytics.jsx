@@ -22,7 +22,7 @@ export default function ServantAnalytics({
       {/* Header */}
       <div className="border-b border-slate-100 pb-3">
         <h3 className="font-extrabold text-slate-900 text-base">
-          الإحصائيات والمتابعة الرعوية: {getGradeTitle(selectedGrade)}
+          الإحصائيات والمتابعة الرعوية: {getGradeTitle ? getGradeTitle(selectedGrade) : (selectedGrade || 'العامة')}
         </h3>
         <p className="text-xs text-slate-500 mt-0.5">
           متابعة نسب الحضور، كشف العلامات الحمراء (المتغيبين والمقصرين)، وكتابة تقييم وملاحظات الخدام.
@@ -74,11 +74,12 @@ export default function ServantAnalytics({
         </div>
 
         {(() => {
-          const filteredStudents = currentGradeStudents.filter(st => 
+          const safeStudents = currentGradeStudents || [];
+          const filteredStudents = safeStudents.filter(st => 
             !searchQuery.trim() || (st.fullName || '').toLowerCase().includes(searchQuery.trim().toLowerCase())
           );
 
-          if (currentGradeStudents.length === 0) {
+          if (safeStudents.length === 0) {
             return (
               <div className="text-center py-10 bg-slate-50 border border-dashed border-slate-200 rounded-2xl p-6">
                 <Users className="w-10 h-10 text-slate-300 mx-auto mb-2" />

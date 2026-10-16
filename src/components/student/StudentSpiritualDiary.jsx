@@ -9,15 +9,15 @@ export default function StudentSpiritualDiary({
   isEditableDate,
   studentDiarySubTab,
   setStudentDiarySubTab,
-  selectedHistoryMonth,
+  selectedHistoryMonth = new Date().toISOString().substring(0, 7),
   setSelectedHistoryMonth,
-  diaryRecords,
+  diaryRecords = {},
   handleToggleDiaryItem,
   diaryPointsConfig = { bible: 3, communion: 2, prayer: 1, confession: 15 },
   isGracePeriodActive = false,
   availableEntryDates = []
 }) {
-  const currentDayDiary = diaryRecords[selectedDiaryDate] || {
+  const currentDayDiary = (diaryRecords && diaryRecords[selectedDiaryDate]) || {
     baker: false,
     ghoroub: false,
     nowm: false,
@@ -206,11 +206,15 @@ export default function StudentSpiritualDiary({
 
       {/* Sub-view 2: History & Analytics */}
       {studentDiarySubTab === 'history' && (() => {
-        const curMonthDays = Object.keys(diaryRecords).filter(d => d.startsWith(selectedHistoryMonth));
-        const [curY, curM] = selectedHistoryMonth.split('-').map(Number);
-        const prevD = new Date(curY, curM - 2, 1);
+        const safeRecords = diaryRecords || {};
+        const safeMonth = (typeof selectedHistoryMonth === 'string' && selectedHistoryMonth.includes('-')) 
+          ? selectedHistoryMonth 
+          : new Date().toISOString().substring(0, 7);
+        const curMonthDays = Object.keys(safeRecords).filter(d => typeof d === 'string' && d.startsWith(safeMonth));
+        const [curY, curM] = safeMonth.split('-').map(Number);
+        const prevD = new Date(curY || new Date().getFullYear(), (curM || 1) - 2, 1);
         const prevMonthStr = prevD.toISOString().substring(0, 7);
-        const prevMonthDays = Object.keys(diaryRecords).filter(d => d.startsWith(prevMonthStr));
+        const prevMonthDays = Object.keys(safeRecords).filter(d => typeof d === 'string' && d.startsWith(prevMonthStr));
 
         let curBaker = 0, curGhoroub = 0, curNowm = 0, curBible = 0, curComm = 0, curConf = 0;
         curMonthDays.forEach(d => {

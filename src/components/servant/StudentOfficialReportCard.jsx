@@ -13,7 +13,7 @@ export default function StudentOfficialReportCard({
   diaries = [],
   userRole = 'servant'
 }) {
-  const isSecondYear = (student.grade === 'second');
+  const isSecondYear = (student?.grade === 'second');
   const gradeLabel = isSecondYear ? 'سنة ثانية' : 'سنة أولى';
   const totalPossibleMax = isSecondYear ? 1485 : 1285;
 
@@ -130,7 +130,7 @@ export default function StudentOfficialReportCard({
 
   // 11. Academic Curriculum Subjects (المواد الدراسية): 6 subjects * 40 = 240 (Year 1) | 9 subjects * 40 = 360 (Year 2)
   const maxSubjectsScore = isSecondYear ? 360 : 240;
-  const examTotalEarned = examSubmissions.reduce((acc, sub) => acc + (sub.score || 0), 0);
+  const examTotalEarned = (examSubmissions || []).reduce((acc, sub) => acc + (sub?.score || 0), 0);
   const subjectsScore = Math.min(maxSubjectsScore, examTotalEarned || 0);
 
   // 12. Activity & Engagement (الإيجابية): 10 pts per subject (60 for Year 1 / 90 for Year 2)
@@ -156,6 +156,8 @@ export default function StudentOfficialReportCard({
     gradProjectScore;
 
   const grandPercent = Math.min(100, Math.round((grandTotal / totalPossibleMax) * 100));
+
+  if (!student) return null;
 
   return (
     <div className="space-y-5 text-right font-cairo">

@@ -22,11 +22,13 @@ export default function StudentHomeOverview({
 
   // 1. Attendance stats for this month
   const currentMonthAttendanceCount = useMemo(() => {
-    return attendanceRecords.filter(r => r.date && r.date.startsWith(currentMonthStr)).length;
+    if (!Array.isArray(attendanceRecords)) return 0;
+    return attendanceRecords.filter(r => r && typeof r.date === 'string' && r.date.startsWith(currentMonthStr)).length;
   }, [attendanceRecords, currentMonthStr]);
 
   // 2. Spiritual diary stats
   const isTodayDiaryLogged = useMemo(() => {
+    if (!diaryRecords || typeof diaryRecords !== 'object') return false;
     const todayRec = diaryRecords[todayDateStr];
     if (!todayRec) return false;
     return Boolean(
@@ -36,8 +38,9 @@ export default function StudentHomeOverview({
   }, [diaryRecords, todayDateStr]);
 
   const currentMonthDiariesCount = useMemo(() => {
+    if (!diaryRecords || typeof diaryRecords !== 'object') return 0;
     return Object.keys(diaryRecords).filter(date => {
-      if (!date.startsWith(currentMonthStr)) return false;
+      if (typeof date !== 'string' || !date.startsWith(currentMonthStr)) return false;
       const rec = diaryRecords[date];
       return Boolean(rec && (rec.baker || rec.ghoroub || rec.nowm || rec.bible || rec.communion || rec.confession));
     }).length;
@@ -45,18 +48,21 @@ export default function StudentHomeOverview({
 
   // 3. Exams stats
   const completedCount = useMemo(() => {
+    if (!completedExams || typeof completedExams !== 'object') return 0;
     return Object.keys(completedExams).length;
   }, [completedExams]);
 
   const pendingExamsCount = useMemo(() => {
-    return Math.max(0, availableExams.length - completedCount);
-  }, [availableExams.length, completedCount]);
+    const totalExams = Array.isArray(availableExams) ? availableExams.length : 0;
+    return Math.max(0, totalExams - completedCount);
+  }, [availableExams, completedCount]);
 
   // 4. Spiritual encouragement rank
   const spiritualRank = useMemo(() => {
-    if (points >= 300) return { title: 'قدوة مباركة في الأسرة 👑', color: 'from-amber-600 to-gold-500' };
-    if (points >= 150) return { title: 'شعلة خدمة ونشاط 🔥', color: 'from-maroon-800 to-amber-700' };
-    if (points >= 60) return { title: 'مجاهد روحي ملتزم ✝️', color: 'from-emerald-700 to-teal-800' };
+    const safePoints = typeof points === 'number' ? points : 0;
+    if (safePoints >= 300) return { title: 'قدوة مباركة في الأسرة 👑', color: 'from-amber-600 to-gold-500' };
+    if (safePoints >= 150) return { title: 'شعلة خدمة ونشاط 🔥', color: 'from-maroon-800 to-amber-700' };
+    if (safePoints >= 60) return { title: 'مجاهد روحي ملتزم ✝️', color: 'from-emerald-700 to-teal-800' };
     return { title: 'خادم واعد في بداية الطريق 🌱', color: 'from-slate-700 to-slate-900' };
   }, [points]);
 
@@ -68,11 +74,11 @@ export default function StudentHomeOverview({
           <div className="space-y-1.5 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="bg-gold-400/20 text-gold-300 border border-gold-400/30 text-[10px] font-black px-2.5 py-0.5 rounded-full">
-                {getGradeTitle ? getGradeTitle(user.grade) : 'المخدوم'}
+                {getGradeTitle ? getGradeTitle(user?.grade) : 'المخدوم'}
               </span>
             </div>
             <h2 className="text-base sm:text-lg font-black text-white truncate">
-              سلام ونعمة يا {user.fullName || 'مخدوم'} 👋
+              سلام ونعمة يا {user?.fullName || 'مخدوم'} 👋
             </h2>
             <p className="text-[11px] sm:text-xs text-slate-300 font-medium leading-relaxed max-w-xl">
               «لَيْسَ أَنْتُمُ اخْتَرْتُمُونِي بَلْ أَنَا اخْتَرْتُكُمْ وَأَقَمْتُكُمْ لِتَذْهَبُوا وَتَأْتُوا بِثَمَرٍ» (يوحنا ١٥: ١٦)

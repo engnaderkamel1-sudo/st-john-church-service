@@ -196,23 +196,30 @@ export default function StudentProfileModal({ student, onClose, getGradeTitle })
   const formatJoinDate = (dStr) => {
     if (!dStr) return '';
     try {
-      const [y, m, d] = dStr.split('-');
-      const dt = new Date(parseInt(y, 10), parseInt(m, 10) - 1, parseInt(d, 10));
-      return dt.toLocaleDateString('ar-EG', { day: 'numeric', month: 'long', year: 'numeric' });
+      if (typeof dStr === 'object' && dStr.seconds) {
+        return new Date(dStr.seconds * 1000).toLocaleDateString('ar-EG', { day: 'numeric', month: 'long', year: 'numeric' });
+      }
+      if (typeof dStr === 'string' && dStr.includes('-')) {
+        const [y, m, d] = dStr.split('-');
+        const dt = new Date(parseInt(y, 10), parseInt(m, 10) - 1, parseInt(d, 10));
+        return dt.toLocaleDateString('ar-EG', { day: 'numeric', month: 'long', year: 'numeric' });
+      }
+      return String(dStr);
     } catch {
-      return dStr;
+      return '';
     }
   };
 
-  const totalExamsSolved = examSubmissions.length;
+  const totalExamsSolved = (examSubmissions || []).length;
   const avgExamScore = totalExamsSolved > 0 
-    ? Math.round(examSubmissions.reduce((acc, curr) => acc + (curr.autoScore || 0), 0) / totalExamsSolved) 
-    : (student.examScore || 0);
+    ? Math.round((examSubmissions || []).reduce((acc, curr) => acc + (curr?.autoScore || 0), 0) / totalExamsSolved) 
+    : (student?.examScore || 0);
 
   // Diary Stats
-  const totalDiariesLogged = diaries.length;
+  const totalDiariesLogged = (diaries || []).length;
   let totalPrayers = 0, totalBible = 0, totalCommunion = 0, totalConfession = 0;
-  diaries.forEach(d => {
+  (diaries || []).forEach(d => {
+    if (!d) return;
     if (d.baker) totalPrayers++;
     if (d.ghoroub) totalPrayers++;
     if (d.nowm) totalPrayers++;
@@ -220,6 +227,8 @@ export default function StudentProfileModal({ student, onClose, getGradeTitle })
     if (d.communion) totalCommunion++;
     if (d.confession) totalConfession++;
   });
+
+  if (!student) return null;
 
   return (
     <div className="fixed inset-0 z-50 overflow-hidden font-cairo flex items-center justify-center p-3 sm:p-4 text-right">
@@ -253,7 +262,7 @@ export default function StudentProfileModal({ student, onClose, getGradeTitle })
               <div className="flex items-center gap-2 flex-wrap">
                 <h3 className="text-base sm:text-lg font-extrabold text-white truncate max-w-[200px] sm:max-w-none">{student.fullName}</h3>
                 <span className="text-[10px] bg-gold-400 text-maroon-950 px-2 py-0.5 rounded-full font-bold shrink-0">
-                  {getGradeTitle ? getGradeTitle(student.grade || 'first') : student.grade}
+                  {getGradeTitle ? getGradeTitle(student?.grade || 'first') : (student?.grade || 'الأولى')}
                 </span>
               </div>
               <div className="flex flex-wrap items-center gap-2 text-xs text-slate-300 mt-1">
@@ -496,7 +505,7 @@ export default function StudentProfileModal({ student, onClose, getGradeTitle })
                   <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 flex items-center justify-between">
                     <span className="text-slate-500 font-medium">السنة الدراسية / المرحلة:</span>
                     <strong className="text-maroon-900 bg-maroon-50 px-2.5 py-0.5 rounded-lg border border-maroon-200 font-extrabold">
-                      {getGradeTitle ? getGradeTitle(student.grade || 'first') : student.grade}
+                      {getGradeTitle ? getGradeTitle(student?.grade || 'first') : (student?.grade || 'الأولى')}
                     </strong>
                   </div>
 
@@ -933,7 +942,7 @@ export default function StudentProfileModal({ student, onClose, getGradeTitle })
             <div className="text-center w-full">
               <h3 className="text-base sm:text-lg font-black text-white">{student.fullName}</h3>
               <span className="text-xs text-gold-300 font-bold block mt-0.5">
-                {getGradeTitle ? getGradeTitle(student.grade || 'first') : student.grade}
+                {getGradeTitle ? getGradeTitle(student?.grade || 'first') : (student?.grade || 'الأولى')}
               </span>
             </div>
           </div>

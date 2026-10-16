@@ -2,17 +2,17 @@ import React from 'react';
 import { KeyRound, Clock, CheckCircle2, AlertTriangle, CheckCircle, Wifi, WifiOff, Sparkles } from 'lucide-react';
 
 export default function StudentAttendance({
-  currentTimeStr,
-  isWithinTime,
-  bypassTime,
-  servantOpenedAccess,
-  attendanceStatus,
-  inputPinCode,
+  currentTimeStr = '',
+  isWithinTime = false,
+  bypassTime = false,
+  servantOpenedAccess = null,
+  attendanceStatus = null,
+  inputPinCode = '',
   setInputPinCode,
   handlePinAttendance,
-  pinLoading,
-  pinError,
-  attendanceRecords,
+  pinLoading = false,
+  pinError = '',
+  attendanceRecords = [],
   serviceStartTime = '10:30',
   isOffline = false,
   offlineSyncMessage = ''
@@ -140,12 +140,12 @@ export default function StudentAttendance({
       <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-4">
         <h4 className="font-extrabold text-slate-900 text-sm">سجل الحضور الأخير</h4>
         <div className="space-y-3 max-h-96 overflow-y-auto pr-1">
-          {attendanceRecords.length === 0 ? (
+          {(!attendanceRecords || attendanceRecords.length === 0) ? (
             <div className="text-center py-8 text-slate-400 text-xs">
               لا توجد تسجيلات حضور سابقة مسجلة.
             </div>
           ) : (
-            attendanceRecords.map((item) => (
+            (attendanceRecords || []).map((item) => (
               <div key={item.id} className="bg-slate-50 border border-slate-200 p-3.5 rounded-2xl flex items-center justify-between text-xs">
                 <div className="flex items-center gap-2">
                   <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />

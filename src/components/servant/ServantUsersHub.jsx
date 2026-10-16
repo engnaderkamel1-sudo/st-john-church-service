@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Users, History, RefreshCw, Activity, UserPlus, UserX, Check, Sparkles, Key, ExternalLink, Save, Eye, EyeOff, Lock, X, CheckCircle2, ShieldAlert, UserCheck, AlertCircle, PauseCircle, Ban, RotateCcw, Calendar } from 'lucide-react';
+import { Users, History, RefreshCw, Activity, UserPlus, UserX, Check, Sparkles, Key, ExternalLink, Save, Eye, EyeOff, Lock, X, CheckCircle2, ShieldAlert, UserCheck, AlertCircle, PauseCircle, Ban, RotateCcw, Calendar, MessageCircle, Send } from 'lucide-react';
 import { getGeminiApiKey, saveGeminiApiKey } from '../../services/geminiService';
 import { db } from '../../firebase';
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
@@ -43,6 +43,76 @@ export default function ServantUsersHub({
   const [newPassInput, setNewPassInput] = useState('');
   const [resetPassLoading, setResetPassLoading] = useState(false);
   const [resetPassSuccess, setResetPassSuccess] = useState(false);
+
+  // WhatsApp Approval State
+  const [waModalUser, setWaModalUser] = useState(null);
+  const [waMessageText, setWaMessageText] = useState('');
+  const [waSending, setWaSending] = useState(false);
+
+  const formatEgyptianPhone = (phone) => {
+    if (!phone) return '';
+    let cleaned = phone.toString().replace(/\D/g, '');
+    if (cleaned.startsWith('0020')) {
+      cleaned = cleaned.substring(2);
+    } else if (cleaned.startsWith('20')) {
+      // already with 20
+    } else if (cleaned.startsWith('01')) {
+      cleaned = '20' + cleaned.substring(1);
+    } else if (cleaned.startsWith('1')) {
+      cleaned = '20' + cleaned;
+    }
+    return cleaned;
+  };
+
+  const getDefaultWhatsAppMessage = (targetUser) => {
+    const name = targetUser?.fullName ? targetUser.fullName.trim() : 'يا غالي';
+    return `سلام ونعمة يا ${name}،
+تم تفعيل ومراجعة حسابك بنجاح في منصة «خدمة إعداد الخدام - كنيسة القديس ماريوحنا المعمدان بالمعراج» ⛪✨
+
+يمكنك الآن تسجيل الدخول مباشرة برقم هاتفك وكلمة المرور الخاصة بك التي قمت بإدخالها أثناء التسجيل عبر الرابط التالي:
+https://st-john-church-service-rust.vercel.app/
+
+خدمة مباركة ومثمرة! ✝️`;
+  };
+
+  const handleOpenWhatsAppModal = (item) => {
+    const roleSel = document.getElementById(`role-select-${item.id}`)?.value || item.role || 'student';
+    const gradeSel = document.getElementById(`grade-select-${item.id}`)?.value || item.grade || 'first';
+    const joinDateSel = document.getElementById(`joindate-input-${item.id}`)?.value || '2026-10-02';
+
+    setWaModalUser({
+      user: item,
+      roleSel,
+      gradeSel,
+      joinDateSel
+    });
+    setWaMessageText(getDefaultWhatsAppMessage(item));
+  };
+
+  const handleConfirmApproveAndSendWhatsApp = async () => {
+    if (!waModalUser) return;
+    setWaSending(true);
+    try {
+      const { user: targetUser, roleSel, gradeSel, joinDateSel } = waModalUser;
+      
+      // 1. Approve user in Firestore
+      await handleApproveUser(targetUser.id, roleSel, gradeSel, joinDateSel);
+
+      // 2. Open WhatsApp with formatted number and message
+      const cleanPhone = formatEgyptianPhone(targetUser.phone);
+      if (cleanPhone) {
+        const waUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(waMessageText)}`;
+        window.open(waUrl, '_blank', 'noopener,noreferrer');
+      }
+
+      setWaModalUser(null);
+    } catch (err) {
+      console.error('Error approving user with WhatsApp:', err);
+      alert('حدث خطأ أثناء اعتماد الحساب.');
+    } finally {
+      setWaSending(false);
+    }
+  };
 
   useEffect(() => {
     getGeminiApiKey(user?.role).then(k => {
@@ -302,30 +372,42 @@ export default function ServantUsersHub({
                     </div>
                   </div>
 
-                  {/* Approve / Reject buttons */}
-                  <div className="grid grid-cols-2 gap-2 pt-1">
-                    <button
-                      type="button"
-                      disabled={roleUpdatingId === item.id}
-                      onClick={() => {
-                        const roleSel = document.getElementById(`role-select-${item.id}`)?.value || item.role;
-                        const gradeSel = document.getElementById(`grade-select-${item.id}`)?.value || item.grade;
-                        const joinDateSel = document.getElementById(`joindate-input-${item.id}`)?.value || '2026-10-02';
-                        handleApproveUser(item.id, roleSel, gradeSel, joinDateSel);
-                      }}
-                      className="min-h-[44px] bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-3 py-2 rounded-xl transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 disabled:opacity-50"
-                    >
-                      <CheckCircle2 className="w-4 h-4" />
-                      <span>{roleUpdatingId === item.id ? 'جاري الاعتماد...' : 'اعتماد وتفعيل ✓'}</span>
-                    </button>
+                  {/* Approve / WhatsApp / Reject buttons */}
+                  <div className="space-y-2 pt-1">
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        disabled={roleUpdatingId === item.id}
+                        onClick={() => {
+                          const roleSel = document.getElementById(`role-select-${item.id}`)?.value || item.role;
+                          const gradeSel = document.getElementById(`grade-select-${item.id}`)?.value || item.grade;
+                          const joinDateSel = document.getElementById(`joindate-input-${item.id}`)?.value || '2026-10-02';
+                          handleApproveUser(item.id, roleSel, gradeSel, joinDateSel);
+                        }}
+                        className="min-h-[42px] bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs px-2.5 py-2 rounded-xl transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 disabled:opacity-50"
+                      >
+                        <CheckCircle2 className="w-4 h-4 shrink-0" />
+                        <span>{roleUpdatingId === item.id ? 'جاري الاعتماد...' : 'اعتماد فقط ✓'}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        disabled={roleUpdatingId === item.id}
+                        onClick={() => handleOpenWhatsAppModal(item)}
+                        className="min-h-[42px] bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-2.5 py-2 rounded-xl transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 disabled:opacity-50"
+                      >
+                        <MessageCircle className="w-4 h-4 shrink-0 text-emerald-100" />
+                        <span>اعتماد + واتساب 💬</span>
+                      </button>
+                    </div>
 
                     <button
                       type="button"
                       disabled={roleUpdatingId === item.id}
                       onClick={() => handleRejectUser(item.id)}
-                      className="min-h-[44px] bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-300 font-bold text-xs px-3 py-2 rounded-xl transition-all shadow-2xs flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 disabled:opacity-50"
+                      className="w-full min-h-[36px] bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200 font-bold text-xs px-3 py-1.5 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 disabled:opacity-50"
                     >
-                      <UserX className="w-4 h-4 text-rose-700" />
+                      <UserX className="w-3.5 h-3.5 text-rose-700 shrink-0" />
                       <span>رفض الطلب ✕</span>
                     </button>
                   </div>
@@ -1172,6 +1254,89 @@ export default function ServantUsersHub({
                 className="bg-maroon-800 hover:bg-maroon-700 text-white px-5 py-2 text-xs font-bold rounded-xl shadow-xs transition-all flex items-center gap-1.5 disabled:opacity-50"
               >
                 {resetPassLoading ? 'جاري الحفظ...' : 'حفظ كلمة المرور 💾'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: WhatsApp Custom Message Approval */}
+      {waModalUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+          <div className="bg-white rounded-3xl p-5 sm:p-6 max-w-md w-full space-y-4 shadow-xl border border-slate-200 text-right animate-in fade-in duration-200">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-xl bg-emerald-100 text-emerald-800">
+                  <MessageCircle className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="font-extrabold text-sm text-slate-900">اعتماد وإرسال رسالة واتساب</h4>
+                  <p className="text-[11px] text-slate-500 font-mono" dir="ltr">{waModalUser.user.phone}</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setWaModalUser(null)}
+                className="text-slate-400 hover:text-slate-700 p-1.5 rounded-xl hover:bg-slate-100 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-1.5 bg-slate-50 p-3 rounded-2xl border border-slate-200 text-xs">
+              <div className="flex items-center justify-between">
+                <span className="font-medium text-slate-500">صاحب الحساب:</span>
+                <span className="font-extrabold text-maroon-900">{waModalUser.user.fullName || 'بدون اسم'}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="font-medium text-slate-500">رقم الهاتف:</span>
+                <span className="font-mono font-bold text-slate-800" dir="ltr">{waModalUser.user.phone}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="font-medium text-slate-500">الرتبة المعتمدة:</span>
+                <span className="font-bold text-slate-700">
+                  {waModalUser.roleSel === 'servant' ? 'خادم ✝️' : waModalUser.roleSel === 'servant_leader' ? 'أمين خدمة 🛡️' : 'مخدوم 🎓'}
+                </span>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label className="block text-xs font-bold text-slate-700">نص الرسالة (يمكنك تعديلها كما تحب):</label>
+                <button
+                  type="button"
+                  onClick={() => setWaMessageText(getDefaultWhatsAppMessage(waModalUser.user))}
+                  className="text-[11px] text-maroon-800 hover:underline font-bold"
+                >
+                  استعادة النص الأصلي
+                </button>
+              </div>
+              <textarea
+                rows={7}
+                value={waMessageText}
+                onChange={(e) => setWaMessageText(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-300 focus:border-emerald-600 focus:bg-white rounded-2xl p-3 text-xs text-slate-800 leading-relaxed font-sans focus:outline-none resize-none transition-all"
+                placeholder="اكتب أو عدل نص رسالة الواتساب هنا..."
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                disabled={waSending}
+                onClick={() => setWaModalUser(null)}
+                className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors"
+              >
+                إلغاء
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmApproveAndSendWhatsApp}
+                disabled={waSending || !waMessageText.trim()}
+                className="min-h-[42px] bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2 text-xs font-bold rounded-xl shadow-xs transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-95 disabled:opacity-50"
+              >
+                <Send className="w-4 h-4 shrink-0" />
+                <span>{waSending ? 'جاري الاعتماد...' : 'تأكيد الاعتماد وفتح واتساب 💬'}</span>
               </button>
             </div>
           </div>
