@@ -86,7 +86,7 @@ export default function AppSupportToolsDrawerSection({ user, onCloseDrawer }) {
   return (
     <>
       <div className="pt-3 pb-2 border-t border-slate-200/80 mt-2 space-y-1.5 font-cairo">
-        {/* 1. Install PWA App (Priority #1 on Mobile) */}
+        {/* 1. Install App (Priority #1 on Mobile) */}
         <button
           type="button"
           onClick={() => setShowInstallModal(true)}
@@ -96,9 +96,6 @@ export default function AppSupportToolsDrawerSection({ user, onCloseDrawer }) {
             <Smartphone className="w-4 h-4 text-slate-600 shrink-0" />
             <span>تثبيت التطبيق على الهاتف</span>
           </div>
-          <span className="text-[10px] bg-slate-100 text-slate-600 border border-slate-200/80 px-2 py-0.5 rounded-full font-mono font-bold">
-            PWA
-          </span>
         </button>
 
         {/* 2. Toggle Notifications (Clean Unified Styling) */}
@@ -111,7 +108,11 @@ export default function AppSupportToolsDrawerSection({ user, onCloseDrawer }) {
             <Bell className="w-4 h-4 text-slate-600 shrink-0" />
             <span>تفعيل الإشعارات الفورية</span>
           </div>
-          <span className="text-[10px] bg-slate-100 text-slate-600 border border-slate-200/80 px-2 py-0.5 rounded-full font-bold">
+          <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold transition-colors ${
+            hasNotificationPermission 
+              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
+              : 'bg-slate-100 text-slate-600 border border-slate-200/80'
+          }`}>
             {hasNotificationPermission ? 'مفعلة ✓' : 'تفعيل'}
           </span>
         </button>
@@ -126,7 +127,11 @@ export default function AppSupportToolsDrawerSection({ user, onCloseDrawer }) {
             <Camera className="w-4 h-4 text-slate-600 shrink-0" />
             <span>صلاحية الكاميرا (مسح الـ QR)</span>
           </div>
-          <span className="text-[10px] bg-slate-100 text-slate-600 border border-slate-200/80 px-2 py-0.5 rounded-full font-bold">
+          <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold transition-colors ${
+            hasCameraPermission 
+              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
+              : 'bg-slate-100 text-slate-600 border border-slate-200/80'
+          }`}>
             {hasCameraPermission ? 'مفعلة ✓' : 'تفعيل'}
           </span>
         </button>
