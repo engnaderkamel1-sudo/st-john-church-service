@@ -2,54 +2,146 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper Functions
-    function isAuthenticated() {
-      return request.auth != null;
-    }
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // ⚠️  ملاحظة هندسية مهمة:
+    //  التطبيق يستخدم Firestore للمصادقة المخصصة (phone+password)
+    //  لذلك request.auth سيكون null دائماً.
+    //  الحماية هنا تعتمد على:
+    //    1. منع الحذف على كل السجلات الحساسة
+    //    2. منع التعديل على سجلات سجل الدخول (audit trail)
+    //    3. التحقق من وجود الحقول المطلوبة عند الإنشاء (field validation)
+    //    4. رفض تلقائي لأي مجموعة غير مُعرَّفة صراحةً
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-    // 1. Users collection: read by owner or servants/admins, creation open for signup
+    // 1. بيانات المستخدمين
     match /users/{userId} {
       allow read: if true;
-      allow create: if request.resource.data.phone is string && request.resource.data.fullName is string;
+      allow create: if
+        request.resource.data.fullName is string &&
+        request.resource.data.phone is string &&
+        request.resource.data.password is string &&
+        request.resource.data.role is string;
       allow update: if true;
-      allow delete: if false; // Disallow deleting user documents directly from client
+      allow delete: if false;
     }
 
-    // 2. Attendance collection
+    // 2. سجلات الحضور والغياب
+    // الخادم يحتاج update لتعديل تسجيل يدوي موجود (manual_by_servant)
     match /attendance/{attendanceId} {
       allow read: if true;
-      allow create: if request.resource.data.userId is string;
-      allow update, delete: if false;
+      allow create: if
+        request.resource.data.userId is string &&
+        request.resource.data.date is string &&
+        request.resource.data.status is string;
+      allow update: if true; // مطلوب للتعديل اليدوي من الخادم
+      allow delete: if false;
     }
 
-    // 3. Service Settings (attendance window, PIN)
+    // 3. إعدادات الخدمة (نافذة الحضور، الـ PIN، الدورة الدراسية، الإجازات، الـ AI)
     match /service_settings/{settingId} {
       allow read: if true;
-      allow write: if true;
+      allow write: if true; // الخدام يحتاجون كتابة كاملة
+      allow delete: if false;
     }
 
-    // 4. Remote Access Permissions
+    // 4. صلاحيات الدخول عن بُعد (للخادم يفتح لمخدوم بعينه)
     match /remote_access/{studentId} {
-      allow read, write: if true;
+      allow read: if true;
+      allow write: if true;
+      allow delete: if false;
     }
 
-    // 5. Notifications
+    // 5. الإشعارات والتنبيهات
     match /notifications/{notificationId} {
       allow read: if true;
-      allow create: if true;
-      allow update, delete: if false;
+      allow create: if
+        request.resource.data.title is string &&
+        request.resource.data.targetUserId is string;
+      allow update: if false;
+      allow delete: if false;
     }
 
-    // 6. Login Logs
+    // 6. سجل الدخول والأمان (audit trail — لا تعديل ولا حذف أبداً)
     match /login_logs/{logId} {
       allow read: if true;
-      allow create: if true;
-      allow update, delete: if false;
+      allow create: if
+        request.resource.data.userId is string &&
+        request.resource.data.action is string;
+      allow update: if false;
+      allow delete: if false;
     }
 
-    // Default match
-    match /{document=**} {
-      allow read, write: if true;
+    // 7. المناهج والمحاضرات والمراجع
+    match /service_curriculum/{subjectId} {
+      allow read: if true;
+      allow create: if
+        request.resource.data.name is string &&
+        request.resource.data.grade is string;
+      allow update: if true;
+      allow delete: if true; // الخادم قد يحذف مادة كاملة
     }
+
+    // 8. بنك الأسئلة
+    match /service_questions/{questionId} {
+      allow read: if true;
+      allow create: if
+        request.resource.data.questionText is string &&
+        request.resource.data.grade is string;
+      allow update: if true;
+      allow delete: if true; // الخادم قد يحذف سؤالاً
+    }
+
+    // 9. النوتة الروحية
+    match /spiritual_diaries/{diaryId} {
+      allow read: if true;
+      allow create: if
+        request.resource.data.userId is string &&
+        request.resource.data.date is string;
+      allow update: if true; // المستخدم يعدل تدويناته اليومية
+      allow delete: if false;
+    }
+
+    // 10. الامتحانات الرسمية
+    match /service_exams/{examId} {
+      allow read: if true;
+      allow create: if
+        request.resource.data.title is string &&
+        request.resource.data.grade is string;
+      allow update: if true;
+      allow delete: if true; // الخادم قد يحذف امتحاناً
+    }
+
+    // 11. إجابات وتسليمات الامتحانات
+    match /exam_submissions/{submissionId} {
+      allow read: if true;
+      allow create: if
+        request.resource.data.userId is string &&
+        request.resource.data.examId is string;
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    // 12. اقتراحات الميزات من المستخدمين
+    match /feature_suggestions/{suggestionId} {
+      allow read: if true;
+      allow create: if true;
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    // 13. بلاغات الأعطال والمشاكل
+    match /app_errors/{errorId} {
+      allow read: if true;
+      allow create: if true;
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 🔒 القاعدة الذهبية: أي مجموعة غير مذكورة صراحةً أعلاه
+    //    محظورة القراءة والكتابة بشكل تلقائي كامل.
+    //    (لا يوجد wildcard مفتوح هنا بعد الآن)
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   }
 }
+
