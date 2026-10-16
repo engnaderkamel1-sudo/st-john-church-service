@@ -61,26 +61,7 @@ export default function AppSupportToolsDrawerSection({ user, onCloseDrawer }) {
           </span>
         </div>
 
-        {/* 1. Toggle Notifications */}
-        <button
-          type="button"
-          onClick={handleToggleNotification}
-          className={`w-full text-right py-2.5 px-3 rounded-xl flex items-center justify-between text-xs font-bold transition-all cursor-pointer ${
-            hasNotificationPermission
-              ? 'bg-emerald-50 text-emerald-900 border border-emerald-200/70'
-              : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs'
-          }`}
-        >
-          <div className="flex items-center gap-2.5">
-            <Bell className="w-4 h-4 shrink-0" />
-            <span>{hasNotificationPermission ? 'الإشعارات مفعلة بنجاح' : 'تفعيل الإشعارات الفورية'}</span>
-          </div>
-          <span className="text-[11px] font-mono">
-            {hasNotificationPermission ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : '👈'}
-          </span>
-        </button>
-
-        {/* 2. Install PWA App */}
+        {/* 1. Install PWA App (Priority #1 on Mobile) */}
         <button
           type="button"
           onClick={() => setShowInstallModal(true)}
@@ -90,14 +71,35 @@ export default function AppSupportToolsDrawerSection({ user, onCloseDrawer }) {
             <Smartphone className="w-4 h-4 text-slate-600 shrink-0" />
             <span>تثبيت التطبيق على الهاتف</span>
           </div>
-          <span className="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded font-mono">PWA</span>
+          <span className="text-[10px] bg-slate-100 text-slate-600 border border-slate-200/80 px-2 py-0.5 rounded-full font-mono font-bold">
+            PWA
+          </span>
+        </button>
+
+        {/* 2. Toggle Notifications (Clean Unified Styling) */}
+        <button
+          type="button"
+          onClick={handleToggleNotification}
+          className="w-full text-right py-2.5 px-3 rounded-xl flex items-center justify-between text-xs font-bold text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition-all cursor-pointer"
+        >
+          <div className="flex items-center gap-2.5">
+            <Bell className={`w-4 h-4 shrink-0 ${hasNotificationPermission ? 'text-emerald-600' : 'text-slate-500'}`} />
+            <span>تفعيل الإشعارات الفورية</span>
+          </div>
+          <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+            hasNotificationPermission 
+              ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' 
+              : 'bg-slate-100 text-slate-600 border border-slate-200'
+          }`}>
+            {hasNotificationPermission ? 'مفعلة ✓' : 'تفعيل'}
+          </span>
         </button>
 
         {/* 3. Suggest Feature */}
         <button
           type="button"
           onClick={() => setShowFeatureRequestModal(true)}
-          className="w-full text-right py-2.5 px-3 rounded-xl flex items-center justify-between text-xs font-bold text-amber-900 hover:bg-amber-50 transition-all cursor-pointer"
+          className="w-full text-right py-2.5 px-3 rounded-xl flex items-center justify-between text-xs font-bold text-slate-700 hover:bg-amber-50 hover:text-amber-900 transition-all cursor-pointer"
         >
           <div className="flex items-center gap-2.5">
             <Lightbulb className="w-4 h-4 text-amber-600 shrink-0" />
@@ -109,7 +111,7 @@ export default function AppSupportToolsDrawerSection({ user, onCloseDrawer }) {
         <button
           type="button"
           onClick={() => setShowErrorReportModal(true)}
-          className="w-full text-right py-2.5 px-3 rounded-xl flex items-center justify-between text-xs font-bold text-rose-800 hover:bg-rose-50 transition-all cursor-pointer"
+          className="w-full text-right py-2.5 px-3 rounded-xl flex items-center justify-between text-xs font-bold text-slate-700 hover:bg-rose-50 hover:text-rose-900 transition-all cursor-pointer"
         >
           <div className="flex items-center gap-2.5">
             <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
