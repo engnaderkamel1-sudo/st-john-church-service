@@ -5,7 +5,7 @@ import {
   GraduationCap, Briefcase, Heart, MapPin, Users, MessageCircle, ZoomIn, Edit2
 } from 'lucide-react';
 import { db } from '../../firebase';
-import { collection, query, where, onSnapshot, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, doc, updateDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import StudentOfficialReportCard from './StudentOfficialReportCard';
 
 export default function StudentProfileModal({ student, onClose, getGradeTitle }) {
@@ -29,6 +29,57 @@ export default function StudentProfileModal({ student, onClose, getGradeTitle })
   const [commentText, setCommentText] = useState(student?.comment || '');
   const [isSavingComment, setIsSavingComment] = useState(false);
   const [commentSaved, setCommentSaved] = useState(false);
+
+  // Servant retroactive diary logging (Backfill)
+  const [showBackfillForm, setShowBackfillForm] = useState(false);
+  const [backfillDate, setBackfillDate] = useState(new Date().toISOString().split('T')[0]);
+  const [backfillData, setBackfillData] = useState({
+    baker: false,
+    ghoroub: false,
+    nowm: false,
+    bible: false,
+    communion: false,
+    confession: false
+  });
+  const [isSavingBackfill, setIsSavingBackfill] = useState(false);
+  const [backfillSaved, setBackfillSaved] = useState(false);
+
+  const handleSaveBackfillDiary = async () => {
+    if (!student?.id || !backfillDate) return;
+    setIsSavingBackfill(true);
+    try {
+      const docId = `${student.id}_${backfillDate}`;
+      await setDoc(doc(db, 'spiritual_diaries', docId), {
+        userId: student.id,
+        userName: student.fullName || 'مخدوم',
+        userRole: 'student',
+        grade: student.grade || 'first',
+        date: backfillDate,
+        month: backfillDate.substring(0, 7),
+        year: new Date(backfillDate).getFullYear(),
+        ...backfillData,
+        recordedByServant: true,
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+      setBackfillSaved(true);
+      setTimeout(() => {
+        setBackfillSaved(false);
+        setShowBackfillForm(false);
+        setBackfillData({
+          baker: false,
+          ghoroub: false,
+          nowm: false,
+          bible: false,
+          communion: false,
+          confession: false
+        });
+      }, 1200);
+    } catch (err) {
+      console.error('Error saving backfill diary:', err);
+    } finally {
+      setIsSavingBackfill(false);
+    }
+  };
 
   useEffect(() => {
     if (!student?.id) return;
@@ -697,6 +748,78 @@ export default function StudentProfileModal({ student, onClose, getGradeTitle })
                   <span className="text-[10px] font-bold text-emerald-800 block">الأسرار</span>
                   <strong className="text-sm text-emerald-900">تناول: {totalCommunion} • اعتراف: {totalConfession}</strong>
                 </div>
+              </div>
+
+              {/* Servant Backfill Entry Tool */}
+              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                    <Sun className="w-4 h-4 text-amber-500" />
+                    <span>رصد يومية للمخدوم (بأثر رجعي):</span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setShowBackfillForm(!showBackfillForm)}
+                    className="text-xs font-bold px-3 py-1 rounded-xl bg-maroon-800 text-white hover:bg-maroon-900 transition-colors shadow-2xs cursor-pointer flex items-center gap-1"
+                  >
+                    <span>{showBackfillForm ? 'إلغاء ✕' : 'رصد نوتة جديدة ✍️'}</span>
+                  </button>
+                </div>
+
+                {showBackfillForm && (
+                  <div className="mt-3 pt-3 border-t border-slate-200 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-slate-600">تاريخ اليومية:</span>
+                      <input
+                        type="date"
+                        value={backfillDate}
+                        max={new Date().toISOString().split('T')[0]}
+                        onChange={(e) => setBackfillDate(e.target.value)}
+                        className="bg-white border border-slate-300 rounded-lg px-2.5 py-1 text-xs font-mono font-bold text-slate-800 focus:outline-none focus:border-maroon-800"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
+                      {[
+                        { key: 'baker', label: 'باكر' },
+                        { key: 'ghoroub', label: 'غروب' },
+                        { key: 'nowm', label: 'نوم' },
+                        { key: 'bible', label: 'إنجيل' },
+                        { key: 'communion', label: 'تناول' },
+                        { key: 'confession', label: 'اعتراف' }
+                      ].map(item => (
+                        <button
+                          key={item.key}
+                          type="button"
+                          onClick={() => setBackfillData(prev => ({ ...prev, [item.key]: !prev[item.key] }))}
+                          className={`py-1.5 px-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                            backfillData[item.key]
+                              ? 'bg-maroon-800 text-white border-maroon-800 shadow-2xs'
+                              : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                          }`}
+                        >
+                          {item.label} {backfillData[item.key] ? '✓' : ''}
+                        </button>
+                      ))}
+                    </div>
+
+                    <button
+                      type="button"
+                      disabled={isSavingBackfill}
+                      onClick={handleSaveBackfillDiary}
+                      className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl transition-colors shadow-2xs flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      {backfillSaved ? (
+                        <>
+                          <Check className="w-4 h-4" />
+                          <span>تم تسجيل اليومية للمخدوم بنجاح ✓</span>
+                        </>
+                      ) : (
+                        <span>{isSavingBackfill ? 'جاري الحفظ...' : 'حفظ اليومية في سجل المخدوم ✓'}</span>
+                      )}
+                    </button>
+                  </div>
+                )}
               </div>
 
               <div className="border border-slate-200 rounded-2xl divide-y divide-slate-100 text-xs max-h-60 overflow-y-auto">

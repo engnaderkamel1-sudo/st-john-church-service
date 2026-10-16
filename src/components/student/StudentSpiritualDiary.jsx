@@ -1,5 +1,5 @@
 import React from 'react';
-import { Sun, Sunset, Moon, BookOpen, Check, Lock, CheckCircle2, BarChart3, TrendingUp, TrendingDown, Heart } from 'lucide-react';
+import { Sun, Sunset, Moon, BookOpen, Check, Lock, CheckCircle2, BarChart3, TrendingUp, TrendingDown, Heart, Sparkles } from 'lucide-react';
 
 export default function StudentSpiritualDiary({
   selectedDiaryDate,
@@ -13,7 +13,9 @@ export default function StudentSpiritualDiary({
   setSelectedHistoryMonth,
   diaryRecords,
   handleToggleDiaryItem,
-  diaryPointsConfig = { bible: 3, communion: 2, prayer: 1, confession: 15 }
+  diaryPointsConfig = { bible: 3, communion: 2, prayer: 1, confession: 15 },
+  isGracePeriodActive = false,
+  availableEntryDates = []
 }) {
   const currentDayDiary = diaryRecords[selectedDiaryDate] || {
     baker: false,
@@ -69,6 +71,18 @@ export default function StudentSpiritualDiary({
       {/* Sub-view 1: Daily Entry */}
       {studentDiarySubTab === 'entry' && (
         <div className="space-y-6">
+          {/* Grace Period Notification Banner */}
+          {isGracePeriodActive && (
+            <div className="bg-amber-50/90 border border-amber-200 text-amber-900 rounded-2xl p-3 px-4 flex items-center justify-between gap-3 text-xs">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-amber-600 shrink-0" />
+                <span className="font-bold">
+                  فترة استدراك لبداية الخدمة: متاح رصد الأيام السابقة (من 2 أكتوبر) حتى نهاية يوم الجمعة 23 أكتوبر.
+                </span>
+              </div>
+            </div>
+          )}
+
           {/* Date Selector & Rule */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-2">
@@ -78,20 +92,35 @@ export default function StudentSpiritualDiary({
                 onChange={(e) => setSelectedDiaryDate(e.target.value)}
                 className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-800 focus:outline-none focus:border-maroon-800"
               >
-                <option value={todayDateStr}>اليوم ({todayDateStr})</option>
-                <option value={yesterdayDateStr}>أمس ({yesterdayDateStr})</option>
+                {(availableEntryDates.length > 0 ? availableEntryDates : [todayDateStr, yesterdayDateStr]).map((dStr) => {
+                  let label = dStr;
+                  if (dStr === todayDateStr) {
+                    label = `اليوم (${dStr})`;
+                  } else if (dStr === yesterdayDateStr) {
+                    label = `أمس (${dStr})`;
+                  } else {
+                    const dObj = new Date(dStr + 'T00:00:00');
+                    const dayName = dObj.toLocaleDateString('ar-EG', { weekday: 'long' });
+                    label = `${dayName} (${dStr})`;
+                  }
+                  return (
+                    <option key={dStr} value={dStr}>
+                      {label}
+                    </option>
+                  );
+                })}
               </select>
             </div>
 
             {isEditableDate ? (
               <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs px-3 py-1.5 rounded-xl flex items-center gap-2 font-medium">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                <span>متاح التسجيل والتعديل لهذا اليوم (اليوم أو الأمس).</span>
+                <span>متاح التسجيل والتعديل لهذا اليوم.</span>
               </div>
             ) : (
               <div className="bg-slate-100 border border-slate-200 text-slate-600 text-xs px-3 py-1.5 rounded-xl flex items-center gap-2 font-medium">
                 <Lock className="w-4 h-4 text-slate-500 shrink-0" />
-                <span>هذا اليوم للقراءة فقط (تجاوز فترة اليومين).</span>
+                <span>هذا اليوم للقراءة فقط.</span>
               </div>
             )}
           </div>

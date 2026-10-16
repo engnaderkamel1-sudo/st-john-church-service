@@ -143,10 +143,14 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser, externa
     };
   }, [user]);
 
-  // Spiritual Diary State (Today & Yesterday allowed + History Analytics)
+  // Spiritual Diary State (Today & Yesterday allowed + History Analytics + Grace Period)
+  const SERVICE_START_DATE = '2026-10-02';
+  const GRACE_PERIOD_DEADLINE = '2026-10-23T23:59:59';
+  const isGracePeriodActive = new Date() <= new Date(GRACE_PERIOD_DEADLINE);
+
   const todayDateStr = new Date().toISOString().split('T')[0];
   const yesterdayDateStr = new Date(Date.now() - 86400000).toISOString().split('T')[0];
-  const currentMonthStr = todayDateStr.substring(0, 7); // e.g. "2026-09"
+  const currentMonthStr = todayDateStr.substring(0, 7);
   const [selectedDiaryDate, setSelectedDiaryDate] = useState(todayDateStr);
   const [studentDiarySubTab, setStudentDiarySubTab] = useState('entry'); // 'entry' | 'history'
   const [selectedHistoryMonth, setSelectedHistoryMonth] = useState(currentMonthStr);
@@ -154,7 +158,25 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser, externa
     [todayDateStr]: { baker: false, ghoroub: false, nowm: false, bible: false, communion: false, confession: false },
     [yesterdayDateStr]: { baker: false, ghoroub: false, nowm: false, bible: false, communion: false, confession: false }
   });
-  const isEditableDate = selectedDiaryDate === todayDateStr || selectedDiaryDate === yesterdayDateStr;
+
+  // Calculate available entry dates: during grace period, allow all dates back to SERVICE_START_DATE
+  const availableEntryDates = (() => {
+    const dates = [];
+    const minDateStr = isGracePeriodActive ? SERVICE_START_DATE : yesterdayDateStr;
+    const cur = new Date(todayDateStr);
+    const min = new Date(minDateStr);
+    while (cur >= min) {
+      dates.push(cur.toISOString().split('T')[0]);
+      cur.setDate(cur.getDate() - 1);
+    }
+    return dates;
+  })();
+
+  const isEditableDate = (
+    selectedDiaryDate === todayDateStr ||
+    selectedDiaryDate === yesterdayDateStr ||
+    (isGracePeriodActive && selectedDiaryDate >= SERVICE_START_DATE && selectedDiaryDate <= todayDateStr)
+  );
 
   // Sync student's personal spiritual diary from Firestore
   useEffect(() => {
@@ -1026,6 +1048,8 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser, externa
           diaryRecords={diaryRecords}
           handleToggleDiaryItem={handleToggleDiaryItem}
           diaryPointsConfig={getDiaryPointsConfig(stageRegulations, user?.grade)}
+          isGracePeriodActive={isGracePeriodActive}
+          availableEntryDates={availableEntryDates}
         />
       )}
 
