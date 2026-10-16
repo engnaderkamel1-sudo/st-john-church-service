@@ -46,7 +46,14 @@ export default function ServantTasksTotals({
   // Filter tasks matching current stage filter
   const currentStageTasks = useMemo(() => {
     if (activeStageFilter === 'all') return tasksList;
-    return tasksList.filter(t => !t.grade || t.grade === 'all' || t.grade === activeStageFilter);
+    return tasksList.filter(t => 
+      !t.grade || 
+      t.grade === 'all' || 
+      t.grade === 'common_hall' || 
+      t.grade === 'cycle_1' || 
+      t.grade === activeStageFilter ||
+      (activeStageFilter === 'second' && t.grade === 'first')
+    );
   }, [tasksList, activeStageFilter]);
 
   // Submissions map: [studentId][examId] = submission

@@ -74,8 +74,10 @@ export default function ServantExamsBank({
     ex.grade === selectedGrade || 
     ex.grade === 'all' || 
     !ex.grade || 
+    ex.grade === 'common_hall' ||
     (selectedGrade === 'cycle_1' && ex.grade !== 'elisha') ||
-    (selectedGrade === 'first' && ex.grade === 'cycle_1')
+    (selectedGrade === 'first' && (ex.grade === 'cycle_1' || ex.grade === 'common_hall')) ||
+    (selectedGrade === 'second' && (ex.grade === 'cycle_1' || ex.grade === 'common_hall' || ex.grade === 'first'))
   );
 
   const handleAddQuestionSubmit = async (e) => {
