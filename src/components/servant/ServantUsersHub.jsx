@@ -258,6 +258,44 @@ export default function ServantUsersHub({
                     )}
                   </div>
 
+                  {/* Service Join Date Selector for Admin */}
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-2.5 space-y-1.5 text-xs">
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <span className="font-extrabold text-slate-700 flex items-center gap-1">
+                        <Calendar className="w-3.5 h-3.5 text-maroon-800" />
+                        <span>تاريخ بدء الحضور بالخدمة:</span>
+                      </span>
+                      <input
+                        type="date"
+                        id={`joindate-input-${item.id}`}
+                        defaultValue={item.serviceJoinDate || '2026-10-02'}
+                        className="bg-white border border-slate-300 rounded-lg px-2.5 py-1 text-xs font-mono font-bold text-slate-800 focus:outline-none focus:border-maroon-800"
+                      />
+                    </div>
+                    <div className="flex items-center gap-1.5 text-[10px]">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const inp = document.getElementById(`joindate-input-${item.id}`);
+                          if (inp) inp.value = '2026-10-02';
+                        }}
+                        className="px-2 py-0.5 rounded bg-white border border-slate-200 text-slate-700 font-bold hover:bg-slate-100"
+                      >
+                        2 أكتوبر (بداية العام)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const inp = document.getElementById(`joindate-input-${item.id}`);
+                          if (inp) inp.value = new Date().toISOString().split('T')[0];
+                        }}
+                        className="px-2 py-0.5 rounded bg-white border border-slate-200 text-slate-700 font-bold hover:bg-slate-100"
+                      >
+                        اليوم
+                      </button>
+                    </div>
+                  </div>
+
                   {/* Approve / Reject buttons */}
                   <div className="grid grid-cols-2 gap-2 pt-1">
                     <button
@@ -266,7 +304,8 @@ export default function ServantUsersHub({
                       onClick={() => {
                         const roleSel = document.getElementById(`role-select-${item.id}`)?.value || item.role;
                         const gradeSel = document.getElementById(`grade-select-${item.id}`)?.value || item.grade;
-                        handleApproveUser(item.id, roleSel, gradeSel);
+                        const joinDateSel = document.getElementById(`joindate-input-${item.id}`)?.value || '2026-10-02';
+                        handleApproveUser(item.id, roleSel, gradeSel, joinDateSel);
                       }}
                       className="min-h-[44px] bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-3 py-2 rounded-xl transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 disabled:opacity-50"
                     >

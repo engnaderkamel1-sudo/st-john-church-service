@@ -294,7 +294,7 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
   };
 
   // Approve a pending user (موافقة واعتماد الحساب)
-  const handleApproveUser = async (userId, assignedRole = null, assignedGrade = null) => {
+  const handleApproveUser = async (userId, assignedRole = null, assignedGrade = null, serviceJoinDate = null) => {
     if (!isServantLeader) {
       alert('عفواً، اعتماد الحسابات مقتصر على أمين الخدمة ومشرف التطبيق.');
       return;
@@ -308,6 +308,10 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
         approvedAt: serverTimestamp(),
         approvedBy: user.fullName || 'أمين الخدمة'
       };
+
+      if (serviceJoinDate) {
+        updateData.serviceJoinDate = serviceJoinDate;
+      }
 
       if (assignedRole) {
         updateData.role = assignedRole;

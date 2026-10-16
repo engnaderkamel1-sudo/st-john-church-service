@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   X, User, Award, CheckCircle, Calendar, FileText, Sun, Sparkles, 
   MessageSquare, Save, Check, CheckSquare, Clock, Phone, AlertCircle,
-  GraduationCap, Briefcase, Heart, MapPin, Users, MessageCircle
+  GraduationCap, Briefcase, Heart, MapPin, Users, MessageCircle, ZoomIn, Edit2
 } from 'lucide-react';
 import { db } from '../../firebase';
 import { collection, query, where, onSnapshot, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
@@ -14,6 +14,16 @@ export default function StudentProfileModal({ student, onClose, getGradeTitle })
   const [examSubmissions, setExamSubmissions] = useState([]);
   const [diaries, setDiaries] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // Photo Lightbox modal state
+  const [isEnlargedPhotoOpen, setIsEnlargedPhotoOpen] = useState(false);
+
+  // Service join date state & editing
+  const initialJoinDate = student?.serviceJoinDate || student?.joinDate || '2026-10-02';
+  const [serviceJoinDate, setServiceJoinDate] = useState(initialJoinDate);
+  const [isEditingJoinDate, setIsEditingJoinDate] = useState(false);
+  const [tempJoinDate, setTempJoinDate] = useState(initialJoinDate);
+  const [isSavingJoinDate, setIsSavingJoinDate] = useState(false);
 
   // Servant evaluation note state
   const [commentText, setCommentText] = useState(student?.comment || '');
@@ -77,15 +87,71 @@ export default function StudentProfileModal({ student, onClose, getGradeTitle })
     }
   };
 
+  const handleSaveJoinDate = async () => {
+    if (!student?.id || !tempJoinDate) return;
+    setIsSavingJoinDate(true);
+    try {
+      await updateDoc(doc(db, 'users', student.id), {
+        serviceJoinDate: tempJoinDate
+      });
+      setServiceJoinDate(tempJoinDate);
+      setIsEditingJoinDate(false);
+    } catch (err) {
+      console.error('Error saving join date:', err);
+      alert('حدث خطأ أثناء حفظ تاريخ الالتحاق بالخدمة.');
+    } finally {
+      setIsSavingJoinDate(false);
+    }
+  };
+
   // Calculations
   const isPresent = (st) => st === 'حاضر' || st === 'present';
   const isAbsent = (st) => st === 'غائب' || st === 'absent';
 
+  // Calculate actual service Fridays since this student's join date up to today
+  const serviceFridaysSinceJoin = useMemo(() => {
+    const list = [];
+    const start = new Date(serviceJoinDate + 'T12:00:00');
+    const now = new Date();
+    now.setHours(23, 59, 59, 999);
+
+    let cur = new Date(start);
+    while (cur <= now) {
+      if (cur.getDay() === 5) {
+        list.push(cur.toISOString().split('T')[0]);
+      }
+      cur.setDate(cur.getDate() + 1);
+    }
+    return list.length > 0 ? list : [serviceJoinDate];
+  }, [serviceJoinDate]);
+
+  const totalWeeksSinceJoin = Math.max(1, serviceFridaysSinceJoin.length);
   const totalDaysPresent = attendanceRecords.filter(a => isPresent(a.status)).length;
-  const totalDaysAbsent = attendanceRecords.filter(a => isAbsent(a.status)).length;
-  const attendancePercent = (totalDaysPresent + totalDaysAbsent) > 0 
-    ? Math.round((totalDaysPresent / (totalDaysPresent + totalDaysAbsent)) * 100) 
-    : (student.attendanceRate || 85);
+  const attendancePercent = Math.min(100, Math.round((totalDaysPresent / totalWeeksSinceJoin) * 100));
+
+  // Determine if student missed the last 2 consecutive service Fridays
+  const needsPastoralVisit = useMemo(() => {
+    if (serviceFridaysSinceJoin.length < 2) return false;
+    const lastTwoFridays = serviceFridaysSinceJoin.slice(-2);
+    const attendedDates = new Set(
+      attendanceRecords
+        .filter(a => isPresent(a.status))
+        .map(a => a.date)
+    );
+    const attendedAnyOfLastTwo = lastTwoFridays.some(date => attendedDates.has(date));
+    return !attendedAnyOfLastTwo;
+  }, [serviceFridaysSinceJoin, attendanceRecords]);
+
+  const formatJoinDate = (dStr) => {
+    if (!dStr) return '';
+    try {
+      const [y, m, d] = dStr.split('-');
+      const dt = new Date(parseInt(y, 10), parseInt(m, 10) - 1, parseInt(d, 10));
+      return dt.toLocaleDateString('ar-EG', { day: 'numeric', month: 'long', year: 'numeric' });
+    } catch {
+      return dStr;
+    }
+  };
 
   const totalExamsSolved = examSubmissions.length;
   const avgExamScore = totalExamsSolved > 0 
@@ -117,13 +183,21 @@ export default function StudentProfileModal({ student, onClose, getGradeTitle })
         {/* Header */}
         <div className="p-3.5 sm:p-5 border-b border-slate-100 bg-gradient-to-r from-maroon-900 to-maroon-950 text-white flex items-center justify-between gap-3 shrink-0">
           <div className="flex items-center gap-3 min-w-0 flex-1">
-            <div className="w-14 h-14 sm:w-16 sm:h-16 min-w-[56px] min-h-[56px] max-w-[56px] max-h-[56px] sm:min-w-[64px] sm:min-h-[64px] sm:max-w-[64px] sm:max-h-[64px] rounded-2xl bg-white/10 border-2 border-gold-400/40 text-gold-300 flex items-center justify-center font-bold text-xl shadow-xs overflow-hidden shrink-0">
+            <button
+              type="button"
+              onClick={() => setIsEnlargedPhotoOpen(true)}
+              className="relative w-14 h-14 sm:w-16 sm:h-16 min-w-[56px] min-h-[56px] max-w-[56px] max-h-[56px] sm:min-w-[64px] sm:min-h-[64px] sm:max-w-[64px] sm:max-h-[64px] rounded-2xl bg-white/10 border-2 border-gold-400/40 text-gold-300 flex items-center justify-center font-bold text-xl shadow-xs overflow-hidden shrink-0 cursor-pointer active:scale-95 group transition-transform"
+              title="اضغط لتكبير صورة المخدوم 🔍"
+            >
               {student.photoUrl ? (
                 <img src={student.photoUrl} alt={student.fullName} className="w-full h-full object-cover object-top" />
               ) : (
                 <span>{student.fullName ? student.fullName[0] : 'م'}</span>
               )}
-            </div>
+              <span className="absolute bottom-1 left-1 bg-black/60 text-white rounded-md p-0.5 opacity-90 sm:opacity-0 group-hover:opacity-100 transition-opacity">
+                <ZoomIn className="w-2.5 h-2.5 text-gold-300" />
+              </span>
+            </button>
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2 flex-wrap">
                 <h3 className="text-base sm:text-lg font-extrabold text-white truncate max-w-[200px] sm:max-w-none">{student.fullName}</h3>
@@ -232,32 +306,126 @@ export default function StudentProfileModal({ student, onClose, getGradeTitle })
             <div className="space-y-4">
               {/* Key Indicators */}
               <div className="grid grid-cols-2 gap-2.5">
-                <div className="bg-emerald-50 border border-emerald-200 p-3 rounded-2xl text-center">
-                  <span className="text-[10px] font-bold text-emerald-800 block">نسبة الحضور</span>
-                  <span className="text-lg font-extrabold text-emerald-700">{attendancePercent}%</span>
-                  <span className="text-[9px] text-emerald-600 block mt-0.5">{totalDaysPresent} يوم حضور</span>
+                <div className="bg-emerald-50 border border-emerald-200 p-3 rounded-2xl text-center flex flex-col justify-between">
+                  <div>
+                    <span className="text-[10px] font-bold text-emerald-800 block">سجل الحضور بالخدمة</span>
+                    <span className="text-sm sm:text-base font-black text-emerald-700 block mt-1 leading-snug">
+                      حضر {totalDaysPresent} من {totalWeeksSinceJoin} {totalWeeksSinceJoin === 1 ? 'جمعة' : 'جمعات'} ({attendancePercent}%)
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-center gap-1 text-[10px] text-emerald-800/90 mt-1.5 pt-1.5 border-t border-emerald-200/60 font-bold">
+                    <span>منذ {formatJoinDate(serviceJoinDate)}</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setTempJoinDate(serviceJoinDate);
+                        setIsEditingJoinDate(!isEditingJoinDate);
+                      }}
+                      className="text-emerald-700 hover:text-emerald-950 p-0.5 rounded transition-colors"
+                      title="تعديل تاريخ التحاقه بالخدمة"
+                    >
+                      <Edit2 className="w-2.5 h-2.5 inline" />
+                    </button>
+                  </div>
                 </div>
-                <div className="bg-purple-50 border border-purple-200 p-3 rounded-2xl text-center">
-                  <span className="text-[10px] font-bold text-purple-800 block">تسجيلات النوتة</span>
-                  <span className="text-lg font-extrabold text-purple-700">{totalDiariesLogged} يوم</span>
-                  <span className="text-[9px] text-purple-600 block mt-0.5">{totalPrayers} صلاة مسجلة</span>
+
+                <div className="bg-purple-50 border border-purple-200 p-3 rounded-2xl text-center flex flex-col justify-between">
+                  <div>
+                    <span className="text-[10px] font-bold text-purple-800 block">تسجيلات النوتة الروحية</span>
+                    <span className="text-base sm:text-lg font-black text-purple-700 block mt-1">
+                      {totalDiariesLogged} <span className="text-xs font-bold text-purple-600">يوماً</span>
+                    </span>
+                  </div>
+                  <div className="text-[10px] text-purple-800/90 mt-1.5 pt-1.5 border-t border-purple-200/60 font-bold">
+                    {totalPrayers} صلاة أجبية مسجلة
+                  </div>
                 </div>
               </div>
 
-              {/* Status & Pastoral Notice */}
-              <div className="bg-slate-50 border border-slate-200 p-4 rounded-2xl space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-700">الحالة الرعوية:</span>
-                  {attendancePercent < 60 ? (
-                    <span className="bg-rose-100 text-rose-800 border border-rose-300 text-xs font-extrabold px-3 py-1 rounded-full flex items-center gap-1">
-                      🔴 علامة حمراء (يحتاج افتقاد ومتابعة مكثفة)
+              {/* Inline Join Date Editor (When clicked) */}
+              {isEditingJoinDate && (
+                <div className="bg-emerald-50/60 border border-emerald-300 p-3 rounded-2xl space-y-2 animate-in fade-in text-xs">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <span className="font-extrabold text-emerald-950 flex items-center gap-1">
+                      <Calendar className="w-3.5 h-3.5 text-emerald-700" />
+                      <span>تعديل تاريخ بدء الحضور بالخدمة:</span>
                     </span>
-                  ) : (
-                    <span className="bg-emerald-100 text-emerald-800 border border-emerald-300 text-xs font-extrabold px-3 py-1 rounded-full flex items-center gap-1">
-                      🟢 مخدوم منتظم وملتزم
+                    <input
+                      type="date"
+                      value={tempJoinDate}
+                      onChange={(e) => setTempJoinDate(e.target.value)}
+                      className="bg-white border border-emerald-300 rounded-lg px-2.5 py-1 text-xs font-mono font-bold text-slate-800 focus:outline-none focus:border-maroon-800"
+                    />
+                  </div>
+                  <div className="flex items-center justify-between gap-2 pt-1 border-t border-emerald-200/60">
+                    <div className="flex items-center gap-1 text-[10px]">
+                      <button
+                        type="button"
+                        onClick={() => setTempJoinDate('2026-10-02')}
+                        className="px-2 py-0.5 rounded bg-white border border-emerald-200 text-emerald-900 font-bold hover:bg-emerald-100"
+                      >
+                        2 أكتوبر
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setTempJoinDate(new Date().toISOString().split('T')[0])}
+                        className="px-2 py-0.5 rounded bg-white border border-emerald-200 text-emerald-900 font-bold hover:bg-emerald-100"
+                      >
+                        اليوم
+                      </button>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setIsEditingJoinDate(false)}
+                        className="text-xs text-slate-500 hover:text-slate-800 px-2 py-1"
+                      >
+                        إلغاء
+                      </button>
+                      <button
+                        type="button"
+                        disabled={isSavingJoinDate}
+                        onClick={handleSaveJoinDate}
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-3 py-1 rounded-lg transition-colors cursor-pointer"
+                      >
+                        {isSavingJoinDate ? 'جاري الحفظ...' : 'حفظ التاريخ ✓'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Actionable Pastoral Alert (ONLY shown if missed 2 consecutive Fridays) */}
+              {needsPastoralVisit && (
+                <div className="bg-rose-50 border border-rose-300 p-3.5 sm:p-4 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-in fade-in">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-rose-600 animate-ping shrink-0" />
+                    <span className="text-xs font-black text-rose-900">
+                      🔴 يحتاج افتقاد (غائب لجمعتين متتاليتين)
                     </span>
+                  </div>
+                  {student.phone && (
+                    <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+                      <a
+                        href={`https://wa.me/20${student.phone.replace(/^0+/, '')}?text=${encodeURIComponent(`سلام ونعمة يا ${student.fullName}، أسرة خدمة القديس يوحنا المعمدان بتطمن عليك وبنفتقدك لأننا مشفناكش بقالنا جمعتين 🌹`)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1 shadow-2xs transition-colors"
+                      >
+                        <MessageCircle className="w-3.5 h-3.5" />
+                        <span>افتقاد واتساب</span>
+                      </a>
+                      <a
+                        href={`tel:${student.phone}`}
+                        className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs flex items-center gap-1 shadow-2xs transition-colors"
+                      >
+                        <Phone className="w-3.5 h-3.5 text-gold-300" />
+                        <span>اتصال</span>
+                      </a>
+                    </div>
                   )}
                 </div>
+              )}
                 <p className="text-xs text-slate-500">
                   {commentText ? `ملاحظة الخادم: "${commentText}"` : 'لا توجد ملاحظة رعوية خاصة مسجلة لهذا المخدوم بعد.'}
                 </p>
@@ -567,6 +735,49 @@ export default function StudentProfileModal({ student, onClose, getGradeTitle })
           </button>
         </div>
       </div>
+
+      {/* Enlarged Photo Lightbox Modal */}
+      {isEnlargedPhotoOpen && (
+        <div 
+          className="fixed inset-0 z-[100] bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200"
+          onClick={() => setIsEnlargedPhotoOpen(false)}
+        >
+          <div 
+            className="relative bg-gradient-to-b from-slate-900 via-maroon-950 to-slate-950 rounded-3xl p-3 sm:p-4 max-w-sm w-full border border-gold-400/40 shadow-2xl flex flex-col items-center gap-3 animate-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setIsEnlargedPhotoOpen(false)}
+              className="absolute top-3 left-3 w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer"
+              title="إغلاق"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="w-full max-h-[65vh] rounded-2xl overflow-hidden border-2 border-gold-400/50 bg-black/40 flex items-center justify-center">
+              {student.photoUrl ? (
+                <img 
+                  src={student.photoUrl} 
+                  alt={student.fullName} 
+                  className="w-full h-auto max-h-[65vh] object-contain"
+                />
+              ) : (
+                <div className="w-48 h-48 flex items-center justify-center text-gold-300 font-black text-6xl">
+                  {student.fullName ? student.fullName[0] : 'م'}
+                </div>
+              )}
+            </div>
+
+            <div className="text-center w-full">
+              <h3 className="text-base sm:text-lg font-black text-white">{student.fullName}</h3>
+              <span className="text-xs text-gold-300 font-bold block mt-0.5">
+                {getGradeTitle ? getGradeTitle(student.grade || 'first') : student.grade}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
