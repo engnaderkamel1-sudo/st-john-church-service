@@ -829,10 +829,6 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser, externa
                   <div className="w-8 h-8 rounded-lg bg-maroon-900 text-gold-300 flex items-center justify-center font-bold">
                     <BookOpen className="w-5 h-5" />
                   </div>
-                  <div>
-                    <span className="text-xs font-bold text-slate-800 block">أقسام المخدوم</span>
-                    <span className="text-[10px] text-slate-400 font-medium">{getGradeTitle(user.grade)}</span>
-                  </div>
                 </div>
                 <button
                   type="button"
