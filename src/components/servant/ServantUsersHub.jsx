@@ -451,55 +451,6 @@ export default function ServantUsersHub({
 
                       {/* Action Buttons with 44px+ touch targets */}
                       <div className="space-y-2 pt-1 border-t border-slate-100">
-                        {item.role === 'student' && (
-                          <div className="grid grid-cols-2 gap-2">
-                            <button
-                              type="button"
-                              onClick={() => handleManualAttendance(item)}
-                              disabled={manualAttendLoadingId === item.id || manualAbsenceLoadingId === item.id}
-                              className={`min-h-[44px] font-bold text-xs px-3 py-2 rounded-xl transition-all shadow-2xs flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 ${
-                                manualAttendSuccessId === item.id
-                                  ? 'bg-emerald-600 text-white'
-                                  : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300'
-                              }`}
-                            >
-                              {manualAttendSuccessId === item.id ? (
-                                <>
-                                  <Check className="w-4 h-4" />
-                                  <span>تم الحضور ✓</span>
-                                </>
-                              ) : (
-                                <>
-                                  <UserPlus className="w-4 h-4 text-emerald-700" />
-                                  <span>{manualAttendLoadingId === item.id ? '...' : 'تسجيل حاضر'}</span>
-                                </>
-                              )}
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={() => handleManualAbsence(item)}
-                              disabled={manualAbsenceLoadingId === item.id || manualAttendLoadingId === item.id}
-                              className={`min-h-[44px] font-bold text-xs px-3 py-2 rounded-xl transition-all shadow-2xs flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 ${
-                                manualAbsenceSuccessId === item.id
-                                  ? 'bg-rose-600 text-white'
-                                  : 'bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-300'
-                              }`}
-                            >
-                              {manualAbsenceSuccessId === item.id ? (
-                                <>
-                                  <Check className="w-4 h-4" />
-                                  <span>تم الغياب ✓</span>
-                                </>
-                              ) : (
-                                <>
-                                  <UserX className="w-4 h-4 text-rose-700" />
-                                  <span>{manualAbsenceLoadingId === item.id ? '...' : 'تسجيل غائب'}</span>
-                                </>
-                              )}
-                            </button>
-                          </div>
-                        )}
 
                         {/* Role Selector Controls */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -557,7 +508,6 @@ export default function ServantUsersHub({
                       <th className="py-3 px-3">رقم الهاتف</th>
                       <th className="py-3 px-3">الصفة الحالية</th>
                       <th className="py-3 px-3">المرحلة / النطاق</th>
-                      <th className="py-3 px-3">تسجيل الحضور / الغياب اليدوي</th>
                       <th className="py-3 px-3">تعديل الصفة (خادم / مخدوم)</th>
                       <th className="py-3 px-3">تعديل المرحلة</th>
                       <th className="py-3 px-3">إعادة تعيين السر 🔑</th>
@@ -642,61 +592,6 @@ export default function ServantUsersHub({
                               : item.role === 'servant'
                               ? <span className="text-maroon-800 font-bold">خادم عام (جميع المراحل)</span>
                               : getGradeTitle(item.grade || 'first')}
-                          </td>
-                          <td className="py-3.5 px-3">
-                            {item.role === 'student' ? (
-                              <div className="flex items-center gap-1.5">
-                                <button
-                                  type="button"
-                                  onClick={() => handleManualAttendance(item)}
-                                  disabled={manualAttendLoadingId === item.id || manualAbsenceLoadingId === item.id}
-                                  className={`min-h-[38px] font-bold text-[11px] px-3 py-1.5 rounded-xl transition-all shadow-2xs flex items-center gap-1 cursor-pointer active:scale-95 ${
-                                    manualAttendSuccessId === item.id
-                                      ? 'bg-emerald-600 text-white'
-                                      : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300'
-                                  }`}
-                                  title="تسجيل حضور هذا المخدوم فوراً وإضافة 10 نقاط لحسابه"
-                                >
-                                  {manualAttendSuccessId === item.id ? (
-                                    <>
-                                      <Check className="w-3.5 h-3.5" />
-                                      <span>تم الحضور ✓</span>
-                                    </>
-                                  ) : (
-                                    <>
-                                      <UserPlus className="w-3.5 h-3.5 text-emerald-700" />
-                                      <span>{manualAttendLoadingId === item.id ? '...' : 'حاضر'}</span>
-                                    </>
-                                  )}
-                                </button>
-
-                                <button
-                                  type="button"
-                                  onClick={() => handleManualAbsence(item)}
-                                  disabled={manualAbsenceLoadingId === item.id || manualAttendLoadingId === item.id}
-                                  className={`min-h-[38px] font-bold text-[11px] px-3 py-1.5 rounded-xl transition-all shadow-2xs flex items-center gap-1 cursor-pointer active:scale-95 ${
-                                    manualAbsenceSuccessId === item.id
-                                      ? 'bg-rose-600 text-white'
-                                      : 'bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-300'
-                                  }`}
-                                  title="تسجيل هذا المخدوم غائباً لليوم وإرسال تنبيه"
-                                >
-                                  {manualAbsenceSuccessId === item.id ? (
-                                    <>
-                                      <Check className="w-3.5 h-3.5" />
-                                      <span>تم الغياب ✓</span>
-                                    </>
-                                  ) : (
-                                    <>
-                                      <UserX className="w-3.5 h-3.5 text-rose-700" />
-                                      <span>{manualAbsenceLoadingId === item.id ? '...' : 'غائب'}</span>
-                                    </>
-                                  )}
-                                </button>
-                              </div>
-                            ) : (
-                              <span className="text-slate-400 text-[10px]">—</span>
-                            )}
                           </td>
                           <td className="py-3.5 px-3">
                             <select

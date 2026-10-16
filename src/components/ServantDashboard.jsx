@@ -410,28 +410,61 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
         currentTime: new Date()
       });
 
-      // Record attendance in Firestore
-      await addDoc(collection(db, 'attendance'), {
-        userId: targetUser.id,
-        userName: targetUser.fullName,
-        phone: targetUser.phone,
-        grade: targetUser.grade || 'first',
-        date: targetDate,
-        dateFormatted: targetDateFormatted,
-        time: recordedTime,
-        type: 'manual_by_servant',
-        status: 'حاضر',
-        servantName: user.fullName || 'الخادم المسؤول',
-        pointsAwarded: pointsAwarded,
-        punctualityStatus: punctualityStatus,
-        createdAt: serverTimestamp()
-      });
+      // Check if already has record for targetDate to avoid duplicates
+      const attQ = query(
+        collection(db, 'attendance'),
+        where('userId', '==', targetUser.id),
+        where('date', '==', targetDate)
+      );
+      const attSnap = await getDocs(attQ);
 
-      // Update user points in users collection
-      const userRef = doc(db, 'users', targetUser.id);
-      await updateDoc(userRef, {
-        points: (targetUser.points || 0) + pointsAwarded
-      });
+      if (!attSnap.empty) {
+        const existingDoc = attSnap.docs[0];
+        const prevPoints = existingDoc.data().pointsAwarded || 0;
+        const diff = pointsAwarded - prevPoints;
+
+        await updateDoc(doc(db, 'attendance', existingDoc.id), {
+          date: targetDate,
+          dateFormatted: targetDateFormatted,
+          time: recordedTime,
+          type: 'manual_by_servant',
+          status: 'حاضر',
+          servantName: user.fullName || 'الخادم المسؤول',
+          pointsAwarded: pointsAwarded,
+          punctualityStatus: punctualityStatus,
+          updatedAt: serverTimestamp()
+        });
+
+        if (diff !== 0) {
+          const userRef = doc(db, 'users', targetUser.id);
+          await updateDoc(userRef, {
+            points: Math.max(0, (targetUser.points || 0) + diff)
+          });
+        }
+      } else {
+        // Record attendance in Firestore
+        await addDoc(collection(db, 'attendance'), {
+          userId: targetUser.id,
+          userName: targetUser.fullName,
+          phone: targetUser.phone,
+          grade: targetUser.grade || 'first',
+          date: targetDate,
+          dateFormatted: targetDateFormatted,
+          time: recordedTime,
+          type: 'manual_by_servant',
+          status: 'حاضر',
+          servantName: user.fullName || 'الخادم المسؤول',
+          pointsAwarded: pointsAwarded,
+          punctualityStatus: punctualityStatus,
+          createdAt: serverTimestamp()
+        });
+
+        // Update user points in users collection
+        const userRef = doc(db, 'users', targetUser.id);
+        await updateDoc(userRef, {
+          points: (targetUser.points || 0) + pointsAwarded
+        });
+      }
 
       // Send in-app notification to the student
       await addDoc(collection(db, 'notifications'), {
@@ -461,21 +494,52 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
       const targetDate = customDate || todayDateOnly;
       const targetDateFormatted = targetDate === todayDateOnly ? todayStr : new Date(targetDate).toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
-      // Record absence in Firestore
-      await addDoc(collection(db, 'attendance'), {
-        userId: targetUser.id,
-        userName: targetUser.fullName,
-        phone: targetUser.phone,
-        grade: targetUser.grade || 'first',
-        date: targetDate,
-        dateFormatted: targetDateFormatted,
-        time: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }),
-        type: 'manual_absence_by_servant',
-        status: 'غائب',
-        servantName: user.fullName || 'الخادم المسؤول',
-        pointsAwarded: 0,
-        createdAt: serverTimestamp()
-      });
+      // Check if existing record exists on targetDate
+      const attQ = query(
+        collection(db, 'attendance'),
+        where('userId', '==', targetUser.id),
+        where('date', '==', targetDate)
+      );
+      const attSnap = await getDocs(attQ);
+
+      if (!attSnap.empty) {
+        const existingDoc = attSnap.docs[0];
+        const prevPoints = existingDoc.data().pointsAwarded || 0;
+
+        await updateDoc(doc(db, 'attendance', existingDoc.id), {
+          date: targetDate,
+          dateFormatted: targetDateFormatted,
+          time: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }),
+          type: 'manual_absence_by_servant',
+          status: 'غائب',
+          servantName: user.fullName || 'الخادم المسؤول',
+          pointsAwarded: 0,
+          updatedAt: serverTimestamp()
+        });
+
+        if (prevPoints > 0) {
+          const userRef = doc(db, 'users', targetUser.id);
+          await updateDoc(userRef, {
+            points: Math.max(0, (targetUser.points || 0) - prevPoints)
+          });
+        }
+      } else {
+        // Record absence in Firestore
+        await addDoc(collection(db, 'attendance'), {
+          userId: targetUser.id,
+          userName: targetUser.fullName,
+          phone: targetUser.phone,
+          grade: targetUser.grade || 'first',
+          date: targetDate,
+          dateFormatted: targetDateFormatted,
+          time: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }),
+          type: 'manual_absence_by_servant',
+          status: 'غائب',
+          servantName: user.fullName || 'الخادم المسؤول',
+          pointsAwarded: 0,
+          createdAt: serverTimestamp()
+        });
+      }
 
       // Send in-app reminder / notification
       await addDoc(collection(db, 'notifications'), {

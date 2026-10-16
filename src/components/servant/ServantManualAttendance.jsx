@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { UserCheck, Search, Clock, CheckCircle2, XCircle, AlertCircle, Sparkles, Filter, Calendar } from 'lucide-react';
+import { db } from '../../firebase';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
 
 export default function ServantManualAttendance({
   allUsers,
@@ -15,7 +17,9 @@ export default function ServantManualAttendance({
 }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilterGrade, setActiveFilterGrade] = useState('all');
+  const [attendanceFilterStatus, setAttendanceFilterStatus] = useState('all'); // 'all' | 'unrecorded' | 'attended' | 'absent'
   const [selectedAttendanceDate, setSelectedAttendanceDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [dateRecords, setDateRecords] = useState({});
 
   // Helper: Get formatted current time in Arabic (مثلاً: 11:30 ص)
   const getCurrentTimeFormatted = () => {
@@ -32,8 +36,40 @@ export default function ServantManualAttendance({
     }));
   };
 
+  // Realtime subscription to attendance records for the selected date
+  useEffect(() => {
+    if (!selectedAttendanceDate) return;
+    const q = query(
+      collection(db, 'attendance'),
+      where('date', '==', selectedAttendanceDate)
+    );
+    const unsub = onSnapshot(q, (snap) => {
+      const map = {};
+      snap.docs.forEach(d => {
+        const data = d.data();
+        if (data.userId) {
+          map[data.userId] = {
+            id: d.id,
+            status: data.status,
+            time: data.time,
+            pointsAwarded: data.pointsAwarded
+          };
+        }
+      });
+      setDateRecords(map);
+    }, (err) => {
+      console.error('Error fetching date attendance:', err);
+    });
+
+    return () => unsub();
+  }, [selectedAttendanceDate]);
+
   // Filter only students
   const studentsList = (allUsers || []).filter(u => u.role === 'student');
+
+  const attendedCount = studentsList.filter(st => dateRecords[st.id]?.status === 'حاضر').length;
+  const absentCount = studentsList.filter(st => dateRecords[st.id]?.status === 'غائب').length;
+  const unrecordedCount = studentsList.filter(st => !dateRecords[st.id]).length;
 
   const filteredStudents = studentsList.filter(st => {
     const matchesSearch = !searchQuery.trim() || 
@@ -41,7 +77,13 @@ export default function ServantManualAttendance({
       (st.phone || '').includes(searchQuery.trim());
     
     const matchesGrade = activeFilterGrade === 'all' || (st.grade || 'first') === activeFilterGrade;
-    return matchesSearch && matchesGrade;
+
+    let matchesStatus = true;
+    if (attendanceFilterStatus === 'unrecorded') matchesStatus = !dateRecords[st.id];
+    else if (attendanceFilterStatus === 'attended') matchesStatus = dateRecords[st.id]?.status === 'حاضر';
+    else if (attendanceFilterStatus === 'absent') matchesStatus = dateRecords[st.id]?.status === 'غائب';
+
+    return matchesSearch && matchesGrade && matchesStatus;
   });
 
   const isSelectedDateToday = selectedAttendanceDate === new Date().toISOString().split('T')[0];
@@ -118,6 +160,61 @@ export default function ServantManualAttendance({
         </div>
       </div>
 
+      {/* Date Attendance Quick Summary & Status Filter */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+        <button
+          type="button"
+          onClick={() => setAttendanceFilterStatus('all')}
+          className={`p-3 rounded-2xl border text-center transition-all cursor-pointer ${
+            attendanceFilterStatus === 'all'
+              ? 'bg-maroon-900 text-white border-maroon-950 shadow-xs'
+              : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+          }`}
+        >
+          <span className="text-[10px] font-bold block opacity-80">إجمالي المخدومين</span>
+          <span className="text-lg font-black">{studentsList.length}</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setAttendanceFilterStatus('attended')}
+          className={`p-3 rounded-2xl border text-center transition-all cursor-pointer ${
+            attendanceFilterStatus === 'attended'
+              ? 'bg-emerald-700 text-white border-emerald-800 shadow-xs'
+              : 'bg-emerald-50 text-emerald-900 border-emerald-200 hover:bg-emerald-100'
+          }`}
+        >
+          <span className="text-[10px] font-bold block opacity-80">حاضر لهذا التاريخ 🟢</span>
+          <span className="text-lg font-black">{attendedCount}</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setAttendanceFilterStatus('absent')}
+          className={`p-3 rounded-2xl border text-center transition-all cursor-pointer ${
+            attendanceFilterStatus === 'absent'
+              ? 'bg-rose-700 text-white border-rose-800 shadow-xs'
+              : 'bg-rose-50 text-rose-900 border-rose-200 hover:bg-rose-100'
+          }`}
+        >
+          <span className="text-[10px] font-bold block opacity-80">غائب لهذا التاريخ 🔴</span>
+          <span className="text-lg font-black">{absentCount}</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setAttendanceFilterStatus('unrecorded')}
+          className={`p-3 rounded-2xl border text-center transition-all cursor-pointer ${
+            attendanceFilterStatus === 'unrecorded'
+              ? 'bg-amber-600 text-white border-amber-700 shadow-xs'
+              : 'bg-amber-50 text-amber-900 border-amber-200 hover:bg-amber-100'
+          }`}
+        >
+          <span className="text-[10px] font-bold block opacity-80">لم يُرصد بعد ⏳</span>
+          <span className="text-lg font-black">{unrecordedCount}</span>
+        </button>
+      </div>
+
       {/* Grade Selector Tabs */}
       <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
         <button
@@ -160,8 +257,8 @@ export default function ServantManualAttendance({
       {filteredStudents.length === 0 ? (
         <div className="text-center py-12 bg-slate-50 border border-dashed border-slate-200 rounded-3xl p-6 space-y-2">
           <UserCheck className="w-10 h-10 text-slate-300 mx-auto" />
-          <p className="text-xs font-bold text-slate-700">لم يتم العثور على أي مخدومين يطابقون البحث.</p>
-          <p className="text-[11px] text-slate-400">تأكد من كتابة الاسم أو الرقم بصورة صحيحة.</p>
+          <p className="text-xs font-bold text-slate-700">لم يتم العثور على أي مخدومين يطابقون الفلتر المختار.</p>
+          <p className="text-[11px] text-slate-400">يمكنك تغيير فلتر المرحلة أو حالة الرصد من الأعلى.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
@@ -172,11 +269,18 @@ export default function ServantManualAttendance({
             const isAttendSuccess = manualAttendSuccessId === st.id;
             const isAbsenting = manualAbsenceLoadingId === st.id;
             const isAbsentSuccess = manualAbsenceSuccessId === st.id;
+            const existingRecord = dateRecords[st.id];
 
             return (
               <div 
                 key={st.id} 
-                className="bg-white border border-slate-200 hover:border-emerald-300 rounded-3xl p-4 shadow-2xs hover:shadow-sm transition-all flex flex-col justify-between space-y-3 relative group"
+                className={`bg-white border rounded-3xl p-4 shadow-2xs hover:shadow-sm transition-all flex flex-col justify-between space-y-3 relative group ${
+                  existingRecord?.status === 'حاضر'
+                    ? 'border-emerald-300 ring-1 ring-emerald-200'
+                    : existingRecord?.status === 'غائب'
+                    ? 'border-rose-300 ring-1 ring-rose-200'
+                    : 'border-slate-200 hover:border-slate-300'
+                }`}
               >
                 {/* Top Info */}
                 <div className="flex items-start justify-between gap-2">
@@ -198,6 +302,36 @@ export default function ServantManualAttendance({
                     {gradeName}
                   </span>
                 </div>
+
+                {/* Status for Chosen Date Indicator */}
+                {existingRecord ? (
+                  <div className={`p-2 rounded-xl text-xs flex items-center justify-between border ${
+                    existingRecord.status === 'حاضر'
+                      ? 'bg-emerald-50 text-emerald-900 border-emerald-300'
+                      : 'bg-rose-50 text-rose-900 border-rose-300'
+                  }`}>
+                    <div className="flex items-center gap-1.5 font-extrabold text-[11px]">
+                      {existingRecord.status === 'حاضر' ? (
+                        <>
+                          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                          <span>مسجل حاضر ({existingRecord.time || 'في الموعد'})</span>
+                        </>
+                      ) : (
+                        <>
+                          <XCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                          <span>مسجل غائب لهذا التاريخ</span>
+                        </>
+                      )}
+                    </div>
+                    <span className="text-[10px] font-bold text-slate-600">
+                      {existingRecord.status === 'حاضر' ? `+${existingRecord.pointsAwarded || 10}⭐` : '0⭐'}
+                    </span>
+                  </div>
+                ) : (
+                  <div className="p-1.5 rounded-xl text-[11px] text-amber-800 bg-amber-50/80 border border-amber-200 text-center font-bold">
+                    لم يُرصد لهذا التاريخ بعد ⏳
+                  </div>
+                )}
 
                 {/* Time of Arrival Field */}
                 <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-2.5 space-y-1.5">
@@ -231,7 +365,7 @@ export default function ServantManualAttendance({
                     disabled={isAttending || isAbsenting}
                     onClick={() => handleManualAttendanceWithTime(st, studentArrivalTime, selectedAttendanceDate)}
                     className={`min-h-[42px] px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 shadow-2xs ${
-                      isAttendSuccess
+                      isAttendSuccess || existingRecord?.status === 'حاضر'
                         ? 'bg-emerald-600 text-white'
                         : 'bg-emerald-700 hover:bg-emerald-800 text-white'
                     } disabled:opacity-60`}
@@ -242,6 +376,11 @@ export default function ServantManualAttendance({
                       <>
                         <CheckCircle2 className="w-4 h-4" />
                         <span>تم الحضور ✓</span>
+                      </>
+                    ) : existingRecord?.status === 'حاضر' ? (
+                      <>
+                        <CheckCircle2 className="w-4 h-4" />
+                        <span>تحديث الحضور ✓</span>
                       </>
                     ) : (
                       <>
@@ -256,7 +395,7 @@ export default function ServantManualAttendance({
                     disabled={isAttending || isAbsenting}
                     onClick={() => handleManualAbsence(st, selectedAttendanceDate)}
                     className={`min-h-[42px] px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 ${
-                      isAbsentSuccess
+                      isAbsentSuccess || existingRecord?.status === 'غائب'
                         ? 'bg-red-600 text-white'
                         : 'bg-slate-100 hover:bg-red-50 text-slate-600 hover:text-red-700 border border-slate-200'
                     } disabled:opacity-60`}
@@ -267,6 +406,11 @@ export default function ServantManualAttendance({
                       <>
                         <XCircle className="w-4 h-4" />
                         <span>تم غائب</span>
+                      </>
+                    ) : existingRecord?.status === 'غائب' ? (
+                      <>
+                        <XCircle className="w-4 h-4" />
+                        <span>مسجل غياب</span>
                       </>
                     ) : (
                       <>
