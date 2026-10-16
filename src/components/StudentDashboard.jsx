@@ -90,9 +90,10 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser, externa
     return () => unsub();
   }, [user.grade, selectedSubject?.id, activeCycle]);
 
-  // Dynamic Numeric PIN Code Attendance State
+  // Dynamic Numeric PIN & QR Code Attendance State
   const [inputPinCode, setInputPinCode] = useState('');
   const [activeServerPin, setActiveServerPin] = useState('');
+  const [activeServerCode, setActiveServerCode] = useState('');
   const [pinLoading, setPinLoading] = useState(false);
   const [pinError, setPinError] = useState('');
 
@@ -339,6 +340,9 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser, externa
         if (data.activePin) {
           setActiveServerPin(data.activePin.toString());
         }
+        if (data.activeCode) {
+          setActiveServerCode(data.activeCode);
+        }
         if (data.serviceStartTime) {
           setServiceStartTime(data.serviceStartTime);
         }
@@ -491,57 +495,90 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser, externa
     }
   };
 
-  const handleSimulateScan = async () => {
-    setScanning(true);
-    setAttendanceStatus(null);
-    setTimeout(async () => {
-      // Calculate Official Regulation Attendance Points
-      const calcResult = calculateAttendancePoints({
-        stageRegulations,
-        grade: user.grade || 'first',
-        serviceStartTime: serviceStartTime || '10:30',
-        currentTime: new Date()
-      });
-      const pointsAwarded = calcResult.points;
-      const punctualityStatus = calcResult.punctualityStatus;
+  const handleScanQrCode = async (scannedText) => {
+    if (!scannedText || typeof scannedText !== 'string') {
+      return { success: false, message: 'تعذر قراءة الكود، يرجى المحاولة مرة أخرى.' };
+    }
 
-      // Record scan in Firestore or offline queue
-      const todayDateOnly = new Date().toISOString().split('T')[0];
-      const todayFormatted = new Date().toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-      const recordPayload = {
-        userId: user.id,
-        userName: user.fullName,
-        phone: user.phone,
-        grade: user.grade || 'first',
-        date: todayDateOnly,
-        dateFormatted: todayFormatted,
-        time: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }),
-        type: 'qr_scan',
-        status: 'حاضر',
-        pointsAwarded: pointsAwarded,
-        punctualityStatus: punctualityStatus,
-        createdAt: serverTimestamp()
-      };
+    const todayDateOnly = new Date().toISOString().split('T')[0];
+    const cleanScanned = scannedText.trim();
 
-      try {
-        await addDoc(collection(db, 'attendance'), recordPayload);
-      } catch (e) {
-        console.warn('QR scan saved offline:', e);
-        try {
-          const queue = JSON.parse(localStorage.getItem('offline_attendance_queue') || '[]');
-          queue.push({ ...recordPayload, createdAt: new Date().toISOString() });
-          localStorage.setItem('offline_attendance_queue', JSON.stringify(queue));
-          setOfflineSyncMessage('تم حفظ الحضور بالكاميرا محلياً! سيتم الرفع تلقائياً عند عودة النت 📡');
-        } catch (err) {}
+    // 1. Validate Scanned QR Code against active service code
+    const isValid = 
+      (activeServerCode && cleanScanned === activeServerCode.trim()) ||
+      cleanScanned === `STJOHN-ATTENDANCE-${todayDateOnly}` ||
+      (cleanScanned.startsWith('STJOHN-ATTENDANCE-') && cleanScanned.includes(todayDateOnly));
+
+    if (!isValid) {
+      return { success: false, message: 'الكود الممسوح غير صحيح أو ليس كود خدمة اليوم!' };
+    }
+
+    // 2. Check if student already registered attendance today
+    try {
+      const checkAttendQ = query(
+        collection(db, 'attendance'),
+        where('userId', '==', user.id),
+        where('date', '==', todayDateOnly)
+      );
+      const existingSnap = await getDocs(checkAttendQ);
+      if (!existingSnap.empty) {
+        return { success: false, message: 'لقد قمت بتسجيل حضورك بالفعل لهذا اليوم! 🙏' };
       }
+    } catch (checkErr) {
+      console.warn('Could not check double attendance:', checkErr);
+    }
 
-      setAttendanceStatus('success');
-      setAttendanceRecords(prev => [
-        { id: Date.now().toString(), date: `اليوم (${punctualityStatus} - مسح QR)`, status: 'حاضر', time: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }), points: pointsAwarded },
-        ...prev
-      ]);
-      setScanning(false);
-    }, 1200);
+    // 3. Calculate Official Regulation Attendance Points
+    const calcResult = calculateAttendancePoints({
+      stageRegulations,
+      grade: user.grade || 'first',
+      serviceStartTime: serviceStartTime || '10:30',
+      currentTime: new Date()
+    });
+    const pointsAwarded = calcResult.points;
+    const punctualityStatus = calcResult.punctualityStatus;
+
+    // 4. Record attendance in Firestore or offline queue
+    const todayFormatted = new Date().toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    const recordPayload = {
+      userId: user.id,
+      userName: user.fullName,
+      phone: user.phone,
+      grade: user.grade || 'first',
+      date: todayDateOnly,
+      dateFormatted: todayFormatted,
+      time: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }),
+      type: 'qr_scan',
+      qrScanned: cleanScanned,
+      status: 'حاضر',
+      pointsAwarded: pointsAwarded,
+      punctualityStatus: punctualityStatus,
+      createdAt: serverTimestamp()
+    };
+
+    try {
+      await addDoc(collection(db, 'attendance'), recordPayload);
+    } catch (e) {
+      console.warn('QR scan saved offline:', e);
+      try {
+        const queue = JSON.parse(localStorage.getItem('offline_attendance_queue') || '[]');
+        queue.push({ ...recordPayload, createdAt: new Date().toISOString() });
+        localStorage.setItem('offline_attendance_queue', JSON.stringify(queue));
+        setOfflineSyncMessage('تم حفظ الحضور بالكاميرا محلياً! سيتم الرفع تلقائياً عند عودة النت 📡');
+      } catch (err) {}
+    }
+
+    if (navigator.vibrate) {
+      try { navigator.vibrate(200); } catch (vErr) {}
+    }
+
+    setAttendanceStatus('success');
+    setAttendanceRecords(prev => [
+      { id: Date.now().toString(), date: `اليوم (${punctualityStatus} - مسح QR)`, status: 'حاضر', time: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }), points: pointsAwarded },
+      ...prev
+    ]);
+
+    return { success: true };
   };
 
   const handleToggleDiaryItem = async (key, pts) => {
@@ -1021,7 +1058,7 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser, externa
           servantOpenedAccess={servantOpenedAccess}
           scanning={scanning}
           attendanceStatus={attendanceStatus}
-          handleSimulateScan={handleSimulateScan}
+          onScanQrCode={handleScanQrCode}
           inputPinCode={inputPinCode}
           setInputPinCode={setInputPinCode}
           handlePinAttendance={handlePinAttendance}

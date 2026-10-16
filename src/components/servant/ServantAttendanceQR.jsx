@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { QrCode, KeyRound, RefreshCw, Printer, Clock, Unlock, CheckCircle, BellRing, CalendarOff, Plus, Trash2 } from 'lucide-react';
 
 export default function ServantAttendanceQR({
@@ -26,6 +26,33 @@ export default function ServantAttendanceQR({
   const [showAddHolidayForm, setShowAddHolidayForm] = useState(false);
   const [holidayDate, setHolidayDate] = useState('');
   const [holidayLabel, setHolidayLabel] = useState('');
+  const qrCanvasRef = useRef(null);
+
+  useEffect(() => {
+    if (!qrCodeData) return;
+    const renderQR = () => {
+      if (window.QRCode && qrCanvasRef.current) {
+        window.QRCode.toCanvas(qrCanvasRef.current, qrCodeData, {
+          width: 200,
+          margin: 1,
+          color: { dark: '#0f172a', light: '#ffffff' }
+        }, (err) => {
+          if (err) console.warn('QR render warning:', err);
+        });
+      }
+    };
+
+    renderQR();
+    if (!window.QRCode) {
+      const interval = setInterval(() => {
+        if (window.QRCode) {
+          renderQR();
+          clearInterval(interval);
+        }
+      }, 250);
+      return () => clearInterval(interval);
+    }
+  }, [qrCodeData]);
 
   const submitAddHoliday = (e) => {
     e.preventDefault();
@@ -105,8 +132,8 @@ export default function ServantAttendanceQR({
         </div>
 
         <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col items-center justify-center">
-          <div className="w-52 h-52 bg-slate-50 border border-slate-200 rounded-2xl flex flex-col items-center justify-center p-2">
-            <QrCode className="w-40 h-40 text-slate-900" />
+          <div className="w-52 h-52 bg-white border border-slate-200 rounded-2xl flex flex-col items-center justify-center p-2 shadow-inner">
+            <canvas ref={qrCanvasRef} className="max-w-full max-h-full rounded-xl" />
           </div>
           <div className="mt-2 text-slate-600 text-[11px] font-mono font-bold" dir="ltr">
             {qrCodeData}
