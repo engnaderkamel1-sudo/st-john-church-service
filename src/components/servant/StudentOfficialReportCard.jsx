@@ -70,7 +70,7 @@ export default function StudentOfficialReportCard({
   };
 
   // 1. Calculate Attendance Score (3 pts early, 2 pts late * attended weeks, max 141)
-  const presentDays = attendanceRecords.filter(r => r.status === 'حاضر');
+  const presentDays = attendanceRecords.filter(r => r.status === 'حاضر' || r.status === 'present');
   const attendanceScore = Math.min(
     141,
     presentDays.reduce((acc, curr) => acc + (curr.pointsAwarded === 2 ? 2 : 3), 0)

@@ -78,8 +78,11 @@ export default function StudentProfileModal({ student, onClose, getGradeTitle })
   };
 
   // Calculations
-  const totalDaysPresent = attendanceRecords.filter(a => a.status === 'present').length;
-  const totalDaysAbsent = attendanceRecords.filter(a => a.status === 'absent').length;
+  const isPresent = (st) => st === 'حاضر' || st === 'present';
+  const isAbsent = (st) => st === 'غائب' || st === 'absent';
+
+  const totalDaysPresent = attendanceRecords.filter(a => isPresent(a.status)).length;
+  const totalDaysAbsent = attendanceRecords.filter(a => isAbsent(a.status)).length;
   const attendancePercent = (totalDaysPresent + totalDaysAbsent) > 0 
     ? Math.round((totalDaysPresent / (totalDaysPresent + totalDaysAbsent)) * 100) 
     : (student.attendanceRate || 85);
@@ -420,29 +423,41 @@ export default function StudentProfileModal({ student, onClose, getGradeTitle })
                 </div>
               ) : (
                 <div className="border border-slate-200 rounded-2xl divide-y divide-slate-100 text-xs max-h-72 overflow-y-auto">
-                  {attendanceRecords.map((rec) => (
-                    <div key={rec.id} className="p-3 flex items-center justify-between hover:bg-slate-50 transition-colors">
-                      <div className="flex items-center gap-2">
-                        <span className={`w-2.5 h-2.5 rounded-full ${rec.status === 'present' ? 'bg-emerald-500' : 'bg-rose-500'}`}></span>
-                        <span className="font-bold text-slate-800 font-mono" dir="ltr">{rec.date}</span>
-                        <span className="text-[10px] text-slate-400">
-                          {rec.time ? `(${rec.time})` : ''}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                          rec.status === 'present' ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
-                        }`}>
-                          {rec.status === 'present' ? 'حاضر ✓' : 'غائب ✗'}
-                        </span>
-                        {rec.method && (
-                          <span className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md">
-                            {rec.method === 'manual_servant' ? 'تسجيل خادم' : rec.method === 'qr_scan' ? 'باركود QR' : 'كود رقمي'}
+                  {attendanceRecords.map((rec) => {
+                    const isAttended = isPresent(rec.status);
+                    return (
+                      <div key={rec.id} className="p-3 flex items-center justify-between hover:bg-slate-50 transition-colors">
+                        <div className="flex items-center gap-2">
+                          <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${isAttended ? 'bg-emerald-500' : 'bg-rose-500'}`}></span>
+                          <span className="font-bold text-slate-800 font-mono" dir="ltr">{rec.date}</span>
+                          <span className="text-[10px] text-slate-400">
+                            {rec.time ? `(${rec.time})` : ''}
                           </span>
-                        )}
+                        </div>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                            isAttended ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
+                          }`}>
+                            {isAttended ? 'حاضر ✓' : 'غائب ✗'}
+                          </span>
+                          {isAttended && rec.pointsAwarded !== undefined && (
+                            <span className="text-[10px] bg-amber-50 text-amber-900 border border-amber-200 px-1.5 py-0.5 rounded-md font-bold">
+                              +{rec.pointsAwarded} ⭐
+                            </span>
+                          )}
+                          {(rec.method || rec.type) && (
+                            <span className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md">
+                              {rec.type === 'manual_by_servant' || rec.method === 'manual_servant'
+                                ? 'رصد خادم'
+                                : rec.type === 'qr' || rec.method === 'qr_scan'
+                                ? 'باركود QR'
+                                : 'كود رقمي'}
+                            </span>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
