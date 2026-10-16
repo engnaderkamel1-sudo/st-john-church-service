@@ -23,36 +23,48 @@ export default function ServantManualAttendance({
   const [bulkLoading, setBulkLoading] = useState(false);
   const [bulkSuccess, setBulkSuccess] = useState(false);
 
+  // Official Start Friday of the service year (الجمعة الأولى: 2 أكتوبر 2026)
+  const SERVICE_START_FRIDAY = '2026-10-02';
+
   // Dynamic Calculation of most recent Friday (today if Friday, or last Friday)
   const getMostRecentFriday = () => {
     const d = new Date();
     const day = d.getDay(); // 0: Sun, 1: Mon, ..., 5: Fri, 6: Sat
     const diff = (day >= 5) ? (day - 5) : (day + 2);
     d.setDate(d.getDate() - diff);
-    return d.toISOString().split('T')[0];
+    const calculated = d.toISOString().split('T')[0];
+    return calculated < SERVICE_START_FRIDAY ? SERVICE_START_FRIDAY : calculated;
   };
 
   const mostRecentFriday = useMemo(() => getMostRecentFriday(), []);
   const [selectedAttendanceDate, setSelectedAttendanceDate] = useState(mostRecentFriday);
 
-  // Generate dynamic list of Fridays (next Friday + recent Friday + past 16 Fridays)
+  // Generate dynamic list of Fridays starting strictly from 2026-10-02 (الجمعة 1)
   const fridaysList = useMemo(() => {
     const list = [];
-    const baseDate = new Date(mostRecentFriday + 'T12:00:00');
-    
-    // Upcoming Friday (+7 days)
-    const nextFri = new Date(baseDate);
-    nextFri.setDate(nextFri.getDate() + 7);
-    list.push(nextFri.toISOString().split('T')[0]);
+    const startDate = new Date(SERVICE_START_FRIDAY + 'T12:00:00');
+    const now = new Date();
+    // Include up to next upcoming Friday (+7 days from now)
+    const maxDate = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
 
-    // Current recent Friday + past 16 Fridays (covers up to 4 months)
-    for (let i = 0; i <= 16; i++) {
-      const past = new Date(baseDate);
-      past.setDate(past.getDate() - (i * 7));
-      list.push(past.toISOString().split('T')[0]);
+    let cur = new Date(startDate);
+    let weekNum = 1;
+    while (cur <= maxDate) {
+      list.push({
+        dateStr: cur.toISOString().split('T')[0],
+        weekNum: weekNum
+      });
+      cur.setDate(cur.getDate() + 7);
+      weekNum++;
     }
-    return list;
-  }, [mostRecentFriday]);
+
+    if (list.length === 0) {
+      list.push({ dateStr: SERVICE_START_FRIDAY, weekNum: 1 });
+    }
+
+    // Return reversed so latest Friday is at the top of the dropdown
+    return list.slice().reverse();
+  }, []);
 
   // Format date in Arabic (e.g. الجمعة 17 أكتوبر 2026)
   const formatFridayArabic = (dateStr) => {
@@ -189,13 +201,13 @@ export default function ServantManualAttendance({
                     }}
                     className="w-full bg-transparent text-xs font-black text-slate-900 focus:outline-none cursor-pointer pt-0.5"
                   >
-                    {fridaysList.map((friDate) => {
-                      const isRecent = friDate === mostRecentFriday;
-                      const isToday = friDate === new Date().toISOString().split('T')[0];
-                      const label = formatFridayArabic(friDate);
+                    {fridaysList.map(({ dateStr, weekNum }) => {
+                      const isRecent = dateStr === mostRecentFriday;
+                      const isToday = dateStr === new Date().toISOString().split('T')[0];
+                      const label = formatFridayArabic(dateStr);
                       return (
-                        <option key={friDate} value={friDate}>
-                          {label} {isToday ? '⭐️ (جمعة اليوم)' : isRecent ? '📌 (الجمعة الأخيرة تلقائياً)' : ''}
+                        <option key={dateStr} value={dateStr}>
+                          الجمعة ({weekNum}): {label} {isToday ? '⭐️ (اليوم)' : isRecent ? '📌 (الأحدث تلقائياً)' : ''}
                         </option>
                       );
                     })}
