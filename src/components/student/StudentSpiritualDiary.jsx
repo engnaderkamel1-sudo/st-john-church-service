@@ -77,7 +77,7 @@ export default function StudentSpiritualDiary({
               <div className="flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-amber-600 shrink-0" />
                 <span className="font-bold">
-                  فترة استدراك لبداية الخدمة: متاح رصد الأيام السابقة (من 2 أكتوبر) حتى نهاية يوم الجمعة 23 أكتوبر.
+                  فترة سماح لتسجيل النوتة الروحية رجوعاً حتى بداية الخدمة (متاحة حتى الجمعة 23 أكتوبر).
                 </span>
               </div>
             </div>
