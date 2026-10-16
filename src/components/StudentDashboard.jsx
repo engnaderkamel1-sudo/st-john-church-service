@@ -92,7 +92,7 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser, externa
 
   // Dynamic Numeric PIN Code Attendance State
   const [inputPinCode, setInputPinCode] = useState('');
-  const [activeServerPin, setActiveServerPin] = useState('4821');
+  const [activeServerPin, setActiveServerPin] = useState('');
   const [pinLoading, setPinLoading] = useState(false);
   const [pinError, setPinError] = useState('');
 
@@ -390,8 +390,8 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser, externa
 
     try {
       const entered = inputPinCode.trim();
-      // Validate code against active server PIN or match
-      if (entered !== activeServerPin && entered !== '4821') {
+      // Validate code strictly against dynamic server PIN
+      if (!activeServerPin || entered !== activeServerPin) {
         setPinError('الكود الرقمي غير صحيح أو تم تحديثه، اسأل الخادم عن الكود الحالي.');
         setPinLoading(false);
         return;
@@ -1028,6 +1028,7 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser, externa
           pinLoading={pinLoading}
           pinError={pinError}
           attendanceRecords={attendanceRecords}
+          serviceStartTime={serviceStartTime}
           isOffline={isOffline}
           offlineSyncMessage={offlineSyncMessage}
         />

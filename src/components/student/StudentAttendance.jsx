@@ -15,6 +15,7 @@ export default function StudentAttendance({
   pinLoading,
   pinError,
   attendanceRecords,
+  serviceStartTime = '10:30',
   isOffline = false,
   offlineSyncMessage = ''
 }) {
@@ -64,9 +65,9 @@ export default function StudentAttendance({
                   🎯 تم فتح تسجيل الحضور استثنائياً لك بواسطة الخادم ({servantOpenedAccess.openedBy}). يمكنك تسجيل حضورك الآن!
                 </span>
               ) : isWithinTime || bypassTime ? (
-                <span>نافذة الحضور مفتوحة الآن (10:30 ص إلى 02:00 م)</span>
+                <span>نافذة الحضور مفتوحة الآن (من {serviceStartTime} إلى 02:00 م)</span>
               ) : (
-                <span>التسجيل متاح أثناء فترة الخدمة (الجمعة 10:30 ص إلى 02:00 م فقط)</span>
+                <span>التسجيل متاح أثناء فترة الخدمة (الجمعة من {serviceStartTime} إلى 02:00 م فقط)</span>
               )}
             </div>
           </div>
