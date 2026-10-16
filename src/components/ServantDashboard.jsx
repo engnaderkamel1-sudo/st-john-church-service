@@ -33,15 +33,20 @@ import AppSupportToolsDrawerSection from './common/AppSupportToolsDrawerSection'
 import { calculateAttendancePoints, DEFAULT_STAGE_REGULATIONS } from '../utils/regulationsService';
 import { collection, getDocs, doc, updateDoc, setDoc, addDoc, deleteDoc, query, where, orderBy, serverTimestamp, limit, onSnapshot } from 'firebase/firestore';
 
-export default function ServantDashboard({ user, onLogout, onUpdateUser, externalMenuTrigger }) {
+export default function ServantDashboard({ user, onLogout, onUpdateUser, externalMenuTrigger, navTarget }) {
   // Check if current user is App Administrator (Nader Reda or church prep account)
   const isAppAdmin = Boolean(
     user && 
     !user.isPreviewMode &&
-    user.role !== 'servant' &&
-    user.role !== 'servant_leader' &&
-    user.role !== 'student' &&
-    (user.role === 'admin' || user.phone === '01275571569' || (user.email && (user.email.includes('nader.kamel') || user.email.includes('st.johnmaadiservantsprep@gmail.com'))))
+    (
+      user.role === 'admin' || 
+      (user.phone && user.phone.replace(/\D/g, '').endsWith('1275571569')) || 
+      (user.email && (
+        user.email.toLowerCase().includes('nader.reda') || 
+        user.email.toLowerCase().includes('nader.kamel') || 
+        user.email.toLowerCase().includes('st.johnmaadiservantsprep')
+      ))
+    )
   );
   // Check if current user is Servant Leader (أمين خدمة) or Admin
   const isServantLeader = isAppAdmin || (user && user.role === 'servant_leader');
@@ -55,6 +60,17 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
       setMobileSidebarOpen(true);
     }
   }, [externalMenuTrigger]);
+
+  // Sync external navigation target (e.g. from notification clicks)
+  useEffect(() => {
+    if (navTarget?.mainTab) {
+      setMainTab(navTarget.mainTab);
+      if (navTarget.subTab) {
+        setUserHubSubTab(navTarget.subTab);
+      }
+      setMobileSidebarOpen(false);
+    }
+  }, [navTarget]);
   const [selectedGrade, setSelectedGrade] = useState('cycle_1');
   const [showRegulationsModal, setShowRegulationsModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
@@ -102,7 +118,22 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
   };
 
   useEffect(() => {
-    fetchAllUsers();
+    let unsubUsers = () => {};
+    if (isAppAdmin || isServantLeader) {
+      setUsersLoading(true);
+      const q = query(collection(db, 'users'));
+      unsubUsers = onSnapshot(q, (snap) => {
+        const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        setAllUsers(list);
+        setUsersLoading(false);
+      }, (err) => {
+        console.error('Error in realtime users subscription:', err);
+        setUsersLoading(false);
+      });
+    } else {
+      fetchAllUsers();
+    }
+
     if (isAppAdmin) {
       fetchLoginLogs();
     }
@@ -137,10 +168,11 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
     });
 
     return () => {
+      unsubUsers();
       unsubPin();
       unsubCycle();
     };
-  }, [isAppAdmin]);
+  }, [isAppAdmin, isServantLeader]);
 
   // Dynamic Service Start Time (Default: 10:30)
   const [serviceStartTime, setServiceStartTime] = useState('10:30');
@@ -1597,13 +1629,20 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
                       <UserCog className={`w-4 h-4 ${mainTab === 'users_hub' && userHubSubTab === 'accounts' ? 'text-gold-300' : 'text-slate-500'}`} />
                       <span>المستخدمين واعتماد الحسابات</span>
                     </div>
-                    {allUsers.length > 0 && (
-                      <span className={`text-[10px] min-w-5 text-center px-1.5 py-0.2 rounded-md font-bold ${
-                        mainTab === 'users_hub' && userHubSubTab === 'accounts' ? 'bg-gold-400 text-maroon-950' : 'bg-slate-100 text-slate-600'
-                      }`}>
-                        {allUsers.length}
-                      </span>
-                    )}
+                    <div className="flex items-center gap-1.5">
+                      {allUsers.filter(u => u.status === 'pending_approval').length > 0 && (
+                        <span className="text-[10px] bg-amber-500 text-maroon-950 px-2 py-0.5 rounded-full font-black animate-pulse shadow-xs">
+                          {allUsers.filter(u => u.status === 'pending_approval').length} معلق ⏳
+                        </span>
+                      )}
+                      {allUsers.length > 0 && (
+                        <span className={`text-[10px] min-w-5 text-center px-1.5 py-0.2 rounded-md font-bold ${
+                          mainTab === 'users_hub' && userHubSubTab === 'accounts' ? 'bg-gold-400 text-maroon-950' : 'bg-slate-100 text-slate-600'
+                        }`}>
+                          {allUsers.length}
+                        </span>
+                      )}
+                    </div>
                   </button>
                 )}
 

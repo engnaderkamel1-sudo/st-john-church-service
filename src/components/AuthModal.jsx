@@ -315,6 +315,25 @@ export default function AuthModal({ isOpen, onClose, initialRole = 'student', in
           console.error('Failed to log registration:', logErr);
         }
 
+        // Send real-time in-app notification to Admin & Servant Leaders
+        try {
+          await addDoc(collection(db, 'notifications'), {
+            targetUserId: 'ADMIN',
+            targetRole: 'admin',
+            title: `طلب انضمام جديد ⏳: ${newUser.fullName}`,
+            desc: `قام ${newUser.role === 'servant' ? 'الخادم' : 'المخدوم'} ${newUser.fullName} (${newUser.phone}) بالتسجيل وينتظر الاعتماد.`,
+            type: 'pending_registration',
+            applicantId: docRef.id,
+            applicantName: newUser.fullName,
+            applicantRole: newUser.role,
+            applicantPhone: newUser.phone,
+            time: 'الآن',
+            createdAt: serverTimestamp()
+          });
+        } catch (notifErr) {
+          console.error('Failed to notify admins of registration:', notifErr);
+        }
+
         setRegistrationPendingSuccess({
           fullName: newUser.fullName,
           phone: newUser.phone,

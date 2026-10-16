@@ -23,6 +23,7 @@ export default function App() {
   const [previewRole, setPreviewRole] = useState(null);
   // Full-Screen Image Lightbox Preview State (for church logo or user profile photos)
   const [previewModalImage, setPreviewModalImage] = useState(null);
+  const [adminNavTarget, setAdminNavTarget] = useState(null);
 
   // Real-time Firestore Notifications for Current User
   useEffect(() => {
@@ -32,9 +33,22 @@ export default function App() {
     }
 
     const notifRef = collection(db, 'notifications');
+    const targetIds = ['ALL', currentUser.id];
+    const isUserAdminRole = currentUser.role === 'admin' || 
+      (currentUser.phone && currentUser.phone.replace(/\D/g, '').endsWith('1275571569')) || 
+      (currentUser.email && (
+        currentUser.email.toLowerCase().includes('nader.reda') || 
+        currentUser.email.toLowerCase().includes('nader.kamel') || 
+        currentUser.email.toLowerCase().includes('st.johnmaadiservantsprep')
+      ));
+
+    if (isUserAdminRole || currentUser.role === 'servant_leader') {
+      targetIds.push('ADMIN');
+    }
+
     const q = query(
       notifRef,
-      where('targetUserId', 'in', ['ALL', currentUser.id])
+      where('targetUserId', 'in', targetIds)
     );
 
     let usersUnsub = () => {};
@@ -338,8 +352,26 @@ export default function App() {
                     </div>
                   ) : (
                     notifications.map((n) => (
-                      <div key={n.id} className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 text-xs">
-                        <div className="font-bold text-slate-800">{n.title}</div>
+                      <div 
+                        key={n.id} 
+                        onClick={() => {
+                          if (n.type === 'pending_registration') {
+                            setAdminNavTarget({ mainTab: 'users_hub', subTab: 'pending_approvals', ts: Date.now() });
+                            setShowNotifications(false);
+                          }
+                        }}
+                        className={`p-2.5 rounded-xl border text-xs transition-colors ${
+                          n.type === 'pending_registration' 
+                            ? 'bg-amber-50/80 border-amber-200 cursor-pointer hover:bg-amber-100/90' 
+                            : 'bg-slate-50 border-slate-100'
+                        }`}
+                      >
+                        <div className="font-bold text-slate-800 flex items-center justify-between">
+                          <span>{n.title}</span>
+                          {n.type === 'pending_registration' && (
+                            <span className="text-[10px] bg-amber-600 text-white px-1.5 py-0.2 rounded font-bold">مراجعة 👈</span>
+                          )}
+                        </div>
                         <div className="text-[11px] text-slate-500 mt-0.5">{n.desc}</div>
                         <div className="text-[10px] text-slate-400 mt-1">{n.time}</div>
                       </div>
@@ -380,7 +412,13 @@ export default function App() {
 
       {/* Sub-Header Bar: Multi-Role Preview Switcher */}
       {currentUser && currentUser.role !== 'student' && (() => {
-        const isAppAdmin = currentUser.role === 'admin' || currentUser.phone === '01275571569' || (currentUser.email && (currentUser.email.includes('nader.kamel') || currentUser.email.includes('st.johnmaadiservantsprep@gmail.com')));
+        const isAppAdmin = currentUser.role === 'admin' || 
+          (currentUser.phone && currentUser.phone.replace(/\D/g, '').endsWith('1275571569')) || 
+          (currentUser.email && (
+            currentUser.email.toLowerCase().includes('nader.reda') || 
+            currentUser.email.toLowerCase().includes('nader.kamel') || 
+            currentUser.email.toLowerCase().includes('st.johnmaadiservantsprep')
+          ));
         const activeEffectiveRole = previewRole || currentUser.role;
 
         return (
@@ -483,8 +521,17 @@ export default function App() {
       <main className="flex-1 max-w-5xl mx-auto px-4 py-6 w-full flex flex-col justify-center">
         <ErrorBoundary currentUser={currentUser}>
           {currentUser ? (() => {
-            const effectiveRole = previewRole || currentUser.role;
-            const isPreviewing = Boolean(previewRole && previewRole !== currentUser.role);
+            const isUserAdminRole = currentUser.role === 'admin' || 
+              (currentUser.phone && currentUser.phone.replace(/\D/g, '').endsWith('1275571569')) || 
+              (currentUser.email && (
+                currentUser.email.toLowerCase().includes('nader.reda') || 
+                currentUser.email.toLowerCase().includes('nader.kamel') || 
+                currentUser.email.toLowerCase().includes('st.johnmaadiservantsprep')
+              ));
+
+            const baseRole = isUserAdminRole ? 'admin' : currentUser.role;
+            const effectiveRole = previewRole || baseRole;
+            const isPreviewing = Boolean(previewRole && previewRole !== baseRole);
 
             if (effectiveRole === 'student') {
               const emulatedStudent = {
@@ -519,6 +566,7 @@ export default function App() {
                 onLogout={handleLogout}
                 onUpdateUser={(updated) => setCurrentUser(prev => ({ ...prev, ...updated }))}
                 externalMenuTrigger={mobileMenuTrigger}
+                navTarget={adminNavTarget}
               />
             );
           })() : (

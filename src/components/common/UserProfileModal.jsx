@@ -60,10 +60,15 @@ export default function UserProfileModal({
   const isAppAdmin = Boolean(
     user && 
     !user.isPreviewMode &&
-    user.role !== 'student' &&
-    user.role !== 'servant' &&
-    user.role !== 'servant_leader' &&
-    (user.role === 'admin' || user.phone === '01275571569' || (user.email && (user.email.includes('nader.kamel') || user.email.includes('st.johnmaadiservantsprep@gmail.com'))))
+    (
+      user.role === 'admin' || 
+      (user.phone && user.phone.replace(/\D/g, '').endsWith('1275571569')) || 
+      (user.email && (
+        user.email.toLowerCase().includes('nader.reda') || 
+        user.email.toLowerCase().includes('nader.kamel') || 
+        user.email.toLowerCase().includes('st.johnmaadiservantsprep')
+      ))
+    )
   );
 
   const handleSaveProfile = async (e) => {
