@@ -22,7 +22,7 @@ const buildTime = new Date().toISOString();
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  base: './',
+  base: '/',
   plugins: [react()],
   define: {
     __APP_BUILD_TIME__: JSON.stringify(buildTime),
