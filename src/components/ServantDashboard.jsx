@@ -29,6 +29,7 @@ import ServantBirthdaysHub from './servant/ServantBirthdaysHub';
 import StudentProfileModal from './servant/StudentProfileModal';
 import ServantErrorsHub from './servant/ServantErrorsHub';
 import ServantSuggestionsHub from './servant/ServantSuggestionsHub';
+import ServantNotificationsHub from './servant/ServantNotificationsHub';
 import StageRegulationsModal from './common/StageRegulationsModal';
 import UserProfileModal from './common/UserProfileModal';
 import AppSupportToolsDrawerSection from './common/AppSupportToolsDrawerSection';
@@ -1534,6 +1535,26 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
                   </span>
                 </button>
 
+                {/* Notifications & Announcements Hub */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMainTab('notifications_hub');
+                    setActiveSubject(null);
+                    setMobileSidebarOpen(false);
+                  }}
+                  className={`w-full text-right py-2 px-3 rounded-xl flex items-center justify-between text-xs font-bold transition-all cursor-pointer ${
+                    mainTab === 'notifications_hub'
+                      ? 'bg-maroon-800 text-white shadow-xs'
+                      : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Bell className={`w-4 h-4 ${mainTab === 'notifications_hub' ? 'text-gold-300' : 'text-amber-600'}`} />
+                    <span>رسائل وتنبيهات الخدمة 📢</span>
+                  </div>
+                </button>
+
                 {/* 4. Students Spiritual Tracking */}
                 <button
                   type="button"
@@ -1865,6 +1886,14 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
           activeAcademicCycle={activeAcademicCycle}
           academicYear={academicYear}
           onSelectStudent={(st) => setStudent360Profile(st)}
+        />
+      )}
+
+      {/* Notifications & Announcements Hub */}
+      {mainTab === 'notifications_hub' && (
+        <ServantNotificationsHub
+          currentUser={user}
+          allStudents={(allUsers || []).filter(u => u.role === 'student')}
         />
       )}
 

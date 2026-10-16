@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Award, QrCode, Sun, BookOpen, FileText, CheckSquare, Bell, Check, Menu, X, LogOut, Home 
+  Award, QrCode, Sun, BookOpen, FileText, CheckSquare, Bell, Check, Menu, X, LogOut, Home, Trash2 
 } from 'lucide-react';
 import { db } from '../firebase';
-import { collection, addDoc, query, where, getDocs, doc, getDoc, onSnapshot, serverTimestamp, updateDoc, setDoc } from 'firebase/firestore';
+import { collection, addDoc, query, where, getDocs, doc, getDoc, onSnapshot, serverTimestamp, updateDoc, setDoc, deleteDoc } from 'firebase/firestore';
 import StudentHomeOverview from './student/StudentHomeOverview';
 import StudentAttendance from './student/StudentAttendance';
 import StudentSpiritualDiary from './student/StudentSpiritualDiary';
@@ -195,34 +195,8 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser, externa
     }
   };
 
-  // Exams State
-  const [availableExams, setAvailableExams] = useState([
-    {
-      id: 'ex-1',
-      title: 'امتحان أعمال شهر أكتوبر (عقيدة وطقس)',
-      subject: 'عقيدة',
-      durationMinutes: 20,
-      totalScore: 20,
-      questions: [
-        {
-          id: 'q-1',
-          type: 'mcq',
-          points: 10,
-          questionText: 'ما هو سر التجسد الإلهي وأهميته في خلاص البشرية؟',
-          options: ['اتحاد اللاهوت بالناسوت بغير اختلاط ولا امتزاج', 'ظهور رمزي مؤقت', 'حلول مجازي'],
-          correctAnswer: 'اتحاد اللاهوت بالناسوت بغير اختلاط ولا امتزاج'
-        },
-        {
-          id: 'q-2',
-          type: 'true_false',
-          points: 10,
-          questionText: 'انعقد مجمع نيقية المسكوني الأول عام 325م لمقاومة بدعة أريوس.',
-          options: ['صح', 'خطأ'],
-          correctAnswer: 'صح'
-        }
-      ]
-    }
-  ]);
+  // Exams State (Populated exclusively from Firestore service_exams)
+  const [availableExams, setAvailableExams] = useState([]);
   const [completedExams, setCompletedExams] = useState({});
   const [activeExam, setActiveExam] = useState(null);
   const [examAnswers, setExamAnswers] = useState({});
@@ -231,23 +205,8 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser, externa
   // Tasks State (Only real servant-assigned tasks/competitions appear)
   const [tasks, setTasks] = useState([]);
 
-  // Announcements State
-  const [announcements, setAnnouncements] = useState([
-    {
-      id: 'a-1',
-      title: 'ميعاد لقاء الخدمة الأسبوعي القادم',
-      text: 'نلتقي بمشيئة ربنا يوم الجمعة القادم الساعة 10:30 صباحاً في قاعة الكنيسة بالمعراج.',
-      date: 'اليوم',
-      sender: 'أمين الخدمة'
-    },
-    {
-      id: 'a-2',
-      title: 'تنبيه بخصوص الامتحانات الدورية',
-      text: 'يرجى مراجعة مذكرات ومراجع المنهج على المنصة قبل موعد الاختبار القادم.',
-      date: 'أمس',
-      sender: 'خدام المرحلة'
-    }
-  ]);
+  // Announcements / Notifications State (Real-time from Firestore notifications)
+  const [announcements, setAnnouncements] = useState([]);
 
   // Sync attendance records & points from Firestore
   useEffect(() => {
@@ -307,11 +266,31 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser, externa
       setCompletedExams(map);
     }, (err) => console.log('Submissions fetch info:', err));
 
+    // Sync Announcements & Notifications for student
+    const notifTargets = ['ALL', user.id];
+    if (user.grade) {
+      notifTargets.push(user.grade);
+      if (user.grade === 'first' || user.grade === 'second') {
+        notifTargets.push('common_hall');
+        notifTargets.push('cycle_1');
+      }
+    }
+    const qNotif = query(
+      collection(db, 'notifications'), 
+      where('targetUserId', 'in', notifTargets)
+    );
+    const unsubNotif = onSnapshot(qNotif, (snap) => {
+      const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      list.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+      setAnnouncements(list);
+    }, (err) => console.log('Student notif fetch info:', err));
+
     return () => {
       unsubUser();
       unsubAttend();
       unsubEx();
       unsubSubmissions();
+      unsubNotif();
     };
   }, [user?.id, user?.grade]);
 
@@ -668,6 +647,16 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser, externa
       }
       return t;
     }));
+  };
+
+  const handleDeleteAnnouncement = async (notifId, e) => {
+    if (e) e.stopPropagation();
+    try {
+      await deleteDoc(doc(db, 'notifications', notifId));
+    } catch (err) {
+      console.warn('Failed to delete notification:', err);
+    }
+    setAnnouncements(prev => prev.filter(item => item.id !== notifId));
   };
 
   const currentDayDiary = diaryRecords[selectedDiaryDate] || { baker: false, ghoroub: false, nowm: false, bible: false, communion: false, confession: false };
@@ -1106,16 +1095,31 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser, externa
             </div>
           ) : (
             <div className="space-y-3">
-              {announcements.map((item) => (
-                <div key={item.id} className="bg-slate-50 border border-slate-200 p-4 rounded-2xl space-y-1.5 text-xs">
-                  <div className="flex items-center justify-between">
-                    <span className="font-extrabold text-slate-900 text-sm">{item.title}</span>
-                    <span className="text-[10px] text-slate-400">{item.date}</span>
+              {announcements.map((item) => {
+                const sanitizedDesc = (item.desc || item.text || '').replace(/،?\s*وتمت إضافة.*نقطة لرصيدك\.?/g, '').trim();
+                return (
+                  <div key={item.id} className="bg-slate-50 border border-slate-200 p-4 rounded-2xl space-y-2 text-xs">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-extrabold text-slate-900 text-sm">{item.title}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] text-slate-400 font-mono">{item.time || item.date || 'الآن'}</span>
+                        <button
+                          type="button"
+                          onClick={(e) => handleDeleteAnnouncement(item.id, e)}
+                          className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                          title="حذف هذا التنبيه"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                    <p className="text-slate-600 leading-relaxed">{sanitizedDesc}</p>
+                    <div className="text-[10px] text-maroon-800 font-bold pt-1 border-t border-slate-200/60">
+                      المرسل: {item.senderName || item.sender || 'أمين الخدمة'}
+                    </div>
                   </div>
-                  <p className="text-slate-600 leading-relaxed">{item.text}</p>
-                  <div className="text-[10px] text-maroon-800 font-bold pt-1">المرسل: {item.sender}</div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

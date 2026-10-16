@@ -36,6 +36,13 @@ export default function App() {
 
     const notifRef = collection(db, 'notifications');
     const targetIds = ['ALL', currentUser.id];
+    if (currentUser.grade) {
+      targetIds.push(currentUser.grade);
+      if (currentUser.grade === 'first' || currentUser.grade === 'second') {
+        targetIds.push('common_hall');
+        targetIds.push('cycle_1');
+      }
+    }
     const isUserAdminRole = currentUser.role === 'admin' || 
       (currentUser.phone && currentUser.phone.replace(/\D/g, '').endsWith('1275571569')) || 
       (currentUser.email && (
