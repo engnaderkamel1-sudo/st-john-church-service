@@ -13,34 +13,21 @@ service cloud.firestore {
     //    4. رفض تلقائي لأي مجموعة غير مُعرَّفة صراحةً
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-    // 1. بيانات المستخدمين
+    // 1. بيانات المستخدمين (تسجيل الحسابات، تسجيل الدخول، وتحديث الملف الشخصي)
     match /users/{userId} {
-      allow read: if true;
-      allow create: if
-        request.resource.data.fullName is string &&
-        request.resource.data.phone is string &&
-        request.resource.data.password is string &&
-        request.resource.data.role is string;
-      allow update: if true;
-      allow delete: if false;
+      allow read, write: if true;
+      allow delete: if false; // حظر حذف حسابات المستخدمين من جهة العميل
     }
 
-    // 2. سجلات الحضور والغياب
-    // الخادم يحتاج update لتعديل تسجيل يدوي موجود (manual_by_servant)
+    // 2. سجلات الحضور والغياب (تسجيل الحضور بالـ PIN أو QR أو الرصد اليدوي)
     match /attendance/{attendanceId} {
-      allow read: if true;
-      allow create: if
-        request.resource.data.userId is string &&
-        request.resource.data.date is string &&
-        request.resource.data.status is string;
-      allow update: if true; // مطلوب للتعديل اليدوي من الخادم
-      allow delete: if false;
+      allow read, write: if true;
+      allow delete: if false; // حظر حذف سجلات الحضور
     }
 
     // 3. إعدادات الخدمة (نافذة الحضور، الـ PIN، الدورة الدراسية، الإجازات، الـ AI)
     match /service_settings/{settingId} {
-      allow read: if true;
-      allow write: if true; // الخدام يحتاجون كتابة كاملة
+      allow read, write: if true;
       allow delete: if false;
     }
 
