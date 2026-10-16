@@ -438,14 +438,7 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser, externa
         createdAt: serverTimestamp()
       });
 
-      // Update user points
-      const userRef = doc(db, 'users', user.id);
-      await updateDoc(userRef, {
-        points: (user.points || 0) + pointsAwarded
-      });
-
       setAttendanceStatus('success');
-      setPoints(p => p + pointsAwarded);
       setAttendanceRecords(prev => [
         { id: Date.now().toString(), date: `اليوم (${punctualityStatus})`, status: 'حاضر', time: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }), points: pointsAwarded },
         ...prev
@@ -487,7 +480,6 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser, externa
       }
 
       setAttendanceStatus('success');
-      setPoints(p => p + pointsAwarded);
       setAttendanceRecords(prev => [
         { id: Date.now().toString(), date: `اليوم (${punctualityStatus} - أوفلاين 📡)`, status: 'حاضر', time: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }), points: pointsAwarded },
         ...prev
@@ -532,8 +524,6 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser, externa
 
       try {
         await addDoc(collection(db, 'attendance'), recordPayload);
-        const userRef = doc(db, 'users', user.id);
-        await updateDoc(userRef, { points: (user.points || 0) + pointsAwarded });
       } catch (e) {
         console.warn('QR scan saved offline:', e);
         try {
@@ -545,7 +535,6 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser, externa
       }
 
       setAttendanceStatus('success');
-      setPoints(p => p + pointsAwarded);
       setAttendanceRecords(prev => [
         { id: Date.now().toString(), date: `اليوم (${punctualityStatus} - مسح QR)`, status: 'حاضر', time: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }), points: pointsAwarded },
         ...prev
@@ -578,7 +567,6 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser, externa
       year: new Date(selectedDiaryDate).getFullYear()
     };
 
-    setPoints(p => nextVal ? p + pts : Math.max(0, p - pts));
     setDiaryRecords(prev => ({ ...prev, [selectedDiaryDate]: updatedDay }));
 
     try {
@@ -629,15 +617,11 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser, externa
 
     setExamResult(result);
     setCompletedExams(prev => ({ ...prev, [exam.id]: result }));
-    setPoints(p => p + autoScore);
 
     try {
       await addDoc(collection(db, 'exam_submissions'), {
         ...result,
         createdAt: serverTimestamp()
-      });
-      await updateDoc(doc(db, 'users', user.id), {
-        points: (points || 0) + autoScore
       });
     } catch (err) {
       console.log('Error saving exam submission to Firestore:', err);
@@ -646,7 +630,7 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser, externa
 
   const handleSubmitTask = async (task, answers, autoScore, totalScore, isPracticeMode = false) => {
     if (isPracticeMode) {
-      // Practice mode: self-study only, does NOT add competition points!
+      // Practice mode: self-study only
       return;
     }
 
@@ -666,25 +650,20 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser, externa
     };
 
     setCompletedExams(prev => ({ ...prev, [task.id]: result }));
-    setPoints(p => p + autoScore);
 
     try {
       await addDoc(collection(db, 'exam_submissions'), {
         ...result,
         createdAt: serverTimestamp()
       });
-      await updateDoc(doc(db, 'users', user.id), {
-        points: (points || 0) + autoScore
-      });
     } catch (err) {
       console.log('Error saving task submission:', err);
     }
   };
 
-  const handleCompleteTask = (taskId, pts) => {
+  const handleCompleteTask = (taskId) => {
     setTasks(prev => prev.map(t => {
       if (t.id === taskId) {
-        if (!t.completed) setPoints(p => p + pts);
         return { ...t, completed: true };
       }
       return t;

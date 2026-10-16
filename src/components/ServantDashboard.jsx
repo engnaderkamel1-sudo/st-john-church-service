@@ -472,12 +472,6 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
           updatedAt: serverTimestamp()
         });
 
-        if (diff !== 0) {
-          const userRef = doc(db, 'users', targetUser.id);
-          await updateDoc(userRef, {
-            points: Math.max(0, (targetUser.points || 0) + diff)
-          });
-        }
       } else {
         // Record attendance in Firestore
         await addDoc(collection(db, 'attendance'), {
@@ -495,19 +489,13 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
           punctualityStatus: punctualityStatus,
           createdAt: serverTimestamp()
         });
-
-        // Update user points in users collection
-        const userRef = doc(db, 'users', targetUser.id);
-        await updateDoc(userRef, {
-          points: (targetUser.points || 0) + pointsAwarded
-        });
       }
 
       // Send in-app notification to the student
       await addDoc(collection(db, 'notifications'), {
         targetUserId: targetUser.id,
         title: 'تسجيل حضور يدوي في الخدمة ✓',
-        desc: `قام الخادم (${user.fullName || 'المسؤول'}) بتسجيل حضورك يدوياً لتاريخ (${targetDate}) وتمت إضافة ${pointsAwarded} نقطة لرصيدك.`,
+        desc: `قام الخادم (${user.fullName || 'المسؤول'}) بتسجيل حضورك يدوياً للخدمة بتاريخ (${targetDate}).`,
         time: 'الآن',
         createdAt: serverTimestamp()
       });

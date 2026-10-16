@@ -81,7 +81,7 @@ export default function StudentAttendance({
               <div className="flex flex-col items-center gap-2 p-6 text-center">
                 <CheckCircle className="w-14 h-14 text-emerald-600 animate-bounce" />
                 <span className="text-sm font-extrabold text-slate-900">تم تسجيل حضورك بنجاح!</span>
-                <span className="text-xs text-emerald-700 font-bold">+10 نقاط إنجاز أضيفت لرصيدك</span>
+                <span className="text-xs text-emerald-700 font-bold">تم رصد وتأكيد حضورك اليوم في الخدمة ✓</span>
               </div>
             ) : (
               <div className="flex flex-col items-center gap-2 text-center px-4">

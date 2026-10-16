@@ -507,7 +507,7 @@ export default function App() {
                               </div>
                             </div>
                             <div className={`text-[11px] mt-1 ${!isRead ? 'text-slate-700' : 'text-slate-400'}`}>
-                              {n.desc}
+                              {(n.desc || '').replace(/،?\s*وتمت إضافة.*نقطة لرصيدك\.?/g, '').trim()}
                             </div>
                             <div className="flex items-center justify-between mt-1.5 pt-1 border-t border-slate-100 text-[10px] text-slate-400">
                               <span>{n.time}</span>

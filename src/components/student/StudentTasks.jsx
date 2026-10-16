@@ -80,7 +80,7 @@ export default function StudentTasks({
           <CheckSquare className="w-5 h-5 text-maroon-800" />
           <span>التاسكات والمسابقات الأسبوعية ({getGradeTitle ? getGradeTitle(user.grade) : user.grade})</span>
         </h3>
-        <p className="text-xs text-slate-500 mt-0.5">حل مسابقات وتاسكات الخدمة لكسب نقاط إضافية والنمو في معرفة كلمة الله.</p>
+        <p className="text-xs text-slate-500 mt-0.5">حل مسابقات وتاسكات الخدمة للمتابعة الأسبوعية والتطبيق الروحي والنمو في كلمة الله.</p>
       </div>
 
       {!activeTask ? (
