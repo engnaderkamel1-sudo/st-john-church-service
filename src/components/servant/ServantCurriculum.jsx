@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   BookOpen, ShieldCheck, Plus, Trash2, ChevronLeft, UploadCloud, 
-  FileText, Music, Video, Check, ExternalLink, Eye, EyeOff,
+  FileText, Music, Video, Check, ExternalLink, Eye, EyeOff, Download,
   FileSpreadsheet, File, Image as ImageIcon, Sparkles, Presentation,
   Calendar, User, FolderPlus, Pencil, X
 } from 'lucide-react';
@@ -2109,15 +2109,33 @@ export default function ServantCurriculum({
                         
                         <div className="flex items-center gap-2 shrink-0 flex-wrap">
                           {rf.url && (
-                            <a
-                              href={rf.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 font-bold px-2.5 py-1 rounded-lg text-[11px] flex items-center gap-1"
-                            >
-                              <ExternalLink className="w-3 h-3" />
-                              <span>فتح</span>
-                            </a>
+                            <>
+                              <a
+                                href={
+                                  rf.fileId
+                                    ? `https://drive.google.com/uc?export=download&id=${rf.fileId}`
+                                    : (rf.url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/) || rf.url.match(/[?&]id=([a-zA-Z0-9_-]+)/))
+                                      ? `https://drive.google.com/uc?export=download&id=${(rf.url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/) || rf.url.match(/[?&]id=([a-zA-Z0-9_-]+)/))[1]}`
+                                      : rf.url
+                                }
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-2.5 py-1 rounded-lg text-[11px] flex items-center gap-1 shadow-xs"
+                                title="تحميل الملف مباشرة"
+                              >
+                                <Download className="w-3 h-3" />
+                                <span>تحميل</span>
+                              </a>
+                              <a
+                                href={rf.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 font-bold px-2.5 py-1 rounded-lg text-[11px] flex items-center gap-1"
+                              >
+                                <ExternalLink className="w-3 h-3" />
+                                <span>فتح</span>
+                              </a>
+                            </>
                           )}
 
                           {/* Direct AI Presentation from this file */}

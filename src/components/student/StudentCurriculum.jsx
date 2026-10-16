@@ -1,8 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  BookOpen, ChevronLeft, ExternalLink, Download, FileText, Video, X, 
+  BookOpen, ChevronLeft, Download, FileText, Video, X, Eye,
   FileSpreadsheet, Music, Image as ImageIcon, File, Calendar, User, FolderPlus, Sparkles 
 } from 'lucide-react';
+
+const getDriveFileId = (mat) => {
+  if (!mat) return null;
+  if (mat.fileId) return mat.fileId;
+  if (!mat.url) return null;
+  const match = mat.url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/) || mat.url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+  return match ? match[1] : null;
+};
 
 const normalizeLectures = (subject) => {
   if (!subject) return [];
@@ -376,36 +384,23 @@ export default function StudentCurriculum({
                               </button>
                             )}
 
-                            {/* PDF In-App Preview Trigger */}
-                            {mat.type === 'pdf' && mat.url && (
+                            {/* In-App Preview Trigger for all documents / files */}
+                            {mat.type !== 'video' && (mat.fileId || getDriveFileId(mat)) && (
                               <button
-                                onClick={() => setActivePreviewPdf(mat)}
+                                onClick={() => setActivePreviewPdf({ ...mat, fileId: mat.fileId || getDriveFileId(mat) })}
                                 className="bg-maroon-800 hover:bg-maroon-700 text-white font-bold px-3 py-1.5 rounded-xl flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
                               >
-                                <FileText className="w-3.5 h-3.5" />
+                                <Eye className="w-3.5 h-3.5" />
                                 <span>معاينة داخل المنصة</span>
                               </button>
                             )}
 
-                            {/* External Drive Link */}
-                            {mat.url && (
-                              <a
-                                href={mat.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 font-bold px-3 py-1.5 rounded-xl flex items-center gap-1.5 transition-all shadow-xs"
-                              >
-                                <ExternalLink className="w-3.5 h-3.5" />
-                                <span>معاينة درايف</span>
-                              </a>
-                            )}
-
                             {/* Direct Download Button */}
-                            {mat.url && (
+                            {(mat.fileId || getDriveFileId(mat) || mat.url) && (
                               <a
                                 href={
-                                  mat.fileId 
-                                    ? `https://drive.google.com/uc?export=download&id=${mat.fileId}`
+                                  (mat.fileId || getDriveFileId(mat))
+                                    ? `https://drive.google.com/uc?export=download&id=${mat.fileId || getDriveFileId(mat)}`
                                     : mat.url
                                 }
                                 target="_blank"
@@ -428,22 +423,22 @@ export default function StudentCurriculum({
         </div>
       )}
 
-      {/* PDF In-App Preview Modal */}
+      {/* Document In-App Preview Modal */}
       {activePreviewPdf && (
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 animate-in fade-in">
           <div className="bg-white rounded-3xl w-full max-w-4xl h-[88vh] flex flex-col overflow-hidden shadow-2xl border border-slate-200">
             <div className="p-3.5 sm:p-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
-              <div className="flex items-center gap-2">
-                <FileText className="w-5 h-5 text-maroon-800" />
-                <span className="font-extrabold text-sm text-slate-900">{activePreviewPdf.title}</span>
+              <div className="flex items-center gap-2 min-w-0 pr-2">
+                <FileText className="w-5 h-5 text-maroon-800 shrink-0" />
+                <span className="font-extrabold text-sm text-slate-900 truncate">{activePreviewPdf.title}</span>
               </div>
-              <div className="flex items-center gap-2">
-                {activePreviewPdf.fileId && (
+              <div className="flex items-center gap-2 shrink-0">
+                {(activePreviewPdf.fileId || getDriveFileId(activePreviewPdf)) && (
                   <a
-                    href={`https://drive.google.com/uc?export=download&id=${activePreviewPdf.fileId}`}
+                    href={`https://drive.google.com/uc?export=download&id=${activePreviewPdf.fileId || getDriveFileId(activePreviewPdf)}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="bg-maroon-800 hover:bg-maroon-700 text-white text-xs font-bold py-1.5 px-3 rounded-xl flex items-center gap-1"
+                    className="bg-maroon-800 hover:bg-maroon-700 text-white text-xs font-bold py-1.5 px-3 rounded-xl flex items-center gap-1 shadow-xs"
                   >
                     <Download className="w-3.5 h-3.5" />
                     <span>تحميل الملف</span>
@@ -451,7 +446,7 @@ export default function StudentCurriculum({
                 )}
                 <button
                   onClick={() => setActivePreviewPdf(null)}
-                  className="p-1.5 text-slate-500 hover:bg-slate-200 rounded-lg transition-colors"
+                  className="p-1.5 text-slate-500 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -459,9 +454,10 @@ export default function StudentCurriculum({
             </div>
             <div className="flex-1 w-full bg-slate-100">
               <iframe
-                src={`https://drive.google.com/file/d/${activePreviewPdf.fileId}/preview`}
+                src={`https://drive.google.com/file/d/${activePreviewPdf.fileId || getDriveFileId(activePreviewPdf)}/preview`}
                 className="w-full h-full border-none"
                 title={activePreviewPdf.title}
+                allow="autoplay"
               />
             </div>
           </div>

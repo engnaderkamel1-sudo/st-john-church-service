@@ -217,7 +217,7 @@ export default function StudentHomeOverview({
                 <span className="text-xs font-black text-slate-900 block group-hover:text-maroon-800 transition-colors">
                   المناهج والمحاضرات الدراسية
                 </span>
-                <span className="text-[10px] text-slate-500">مذكرات، ملفات درايف، وتسجيلات مرحلتك</span>
+                <span className="text-[10px] text-slate-500">مذكرات، مراجع دراسية، وتسجيلات مرحلتك</span>
               </div>
             </div>
             <ArrowLeft className="w-4 h-4 text-slate-400 group-hover:text-maroon-800 transition-colors shrink-0" />
