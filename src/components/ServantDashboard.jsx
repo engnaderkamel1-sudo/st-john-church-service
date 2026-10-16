@@ -1287,10 +1287,10 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
 
   const getGradeTitle = (g) => {
     const titles = {
-      first: 'سنة أولى',
-      second: 'سنة ثانية',
-      third: 'سنة ثالثة',
-      elisha: 'فصل أليشع (إعداد خدام)',
+      first: 'سنة أولى إعدادي خدام',
+      second: 'سنة ثانية إعدادي خدام',
+      third: 'سنة ثالثة إعدادي خدام',
+      elisha: 'فصل أليشع',
       common_hall: 'القاعة المشتركة (المرحلة الأولى: سنة أولى + ثانية)',
       cycle_1: 'منهج المرحلة الأولى',
       cycle_2: 'منهج المرحلة الثانية',

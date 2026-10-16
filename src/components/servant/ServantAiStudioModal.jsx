@@ -448,10 +448,10 @@ export default function ServantAiStudioModal({
                 onChange={(e) => setSelectedGrade(e.target.value)}
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-800 focus:outline-none focus:border-maroon-800"
               >
-                <option value="first">سنة أولى</option>
-                <option value="second">سنة ثانية</option>
-                <option value="third">سنة ثالثة</option>
-                <option value="elisha">فصل أليشع (إعداد خدام)</option>
+                <option value="first">سنة أولى إعدادي خدام</option>
+                <option value="second">سنة ثانية إعدادي خدام</option>
+                <option value="third">سنة ثالثة إعدادي خدام</option>
+                <option value="elisha">فصل أليشع</option>
               </select>
             </div>
 

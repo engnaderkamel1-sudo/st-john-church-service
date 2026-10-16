@@ -402,10 +402,10 @@ export default function ServantSpiritualDiary({
                 onChange={(e) => setStudentTrackingGrade(e.target.value)}
                 className="bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-800 focus:outline-none focus:border-maroon-800"
               >
-                <option value="first">سنة أولى</option>
-                <option value="second">سنة ثانية</option>
-                <option value="third">سنة ثالثة</option>
-                <option value="elisha">فصل أليشع (إعداد خدام)</option>
+                <option value="first">سنة أولى إعدادي خدام</option>
+                <option value="second">سنة ثانية إعدادي خدام</option>
+                <option value="third">سنة ثالثة إعدادي خدام</option>
+                <option value="elisha">فصل أليشع</option>
               </select>
 
               <select

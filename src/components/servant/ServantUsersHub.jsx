@@ -240,10 +240,10 @@ export default function ServantUsersHub({
                         id={`grade-select-${item.id}`}
                         className="bg-white border border-slate-300 rounded-lg px-2 py-1 text-xs font-bold text-slate-800 focus:outline-none focus:border-maroon-800"
                       >
-                        <option value="first">سنة أولى</option>
-                        <option value="second">سنة ثانية</option>
-                        <option value="third">سنة ثالثة</option>
-                        <option value="elisha">فصل أليشع (إعداد خدام)</option>
+                        <option value="first">سنة أولى إعدادي خدام</option>
+                        <option value="second">سنة ثانية إعدادي خدام</option>
+                        <option value="third">سنة ثالثة إعدادي خدام</option>
+                        <option value="elisha">فصل أليشع</option>
                       </select>
                     </div>
 
@@ -392,7 +392,7 @@ export default function ServantUsersHub({
               <span className="text-xl font-extrabold text-emerald-700">{allUsers.filter(u => u.role === 'servant').length}</span>
             </div>
             <div className="bg-purple-50 border border-purple-200 p-4 rounded-2xl text-center">
-              <span className="text-[11px] text-purple-800 font-bold block">فصل أليشع (إعداد خدام)</span>
+              <span className="text-[11px] text-purple-800 font-bold block">فصل أليشع</span>
               <span className="text-xl font-extrabold text-purple-700">{allUsers.filter(u => u.grade === 'elisha').length}</span>
             </div>
           </div>
@@ -504,10 +504,10 @@ export default function ServantUsersHub({
                               disabled={roleUpdatingId === item.id}
                               className="bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-bold focus:outline-none focus:border-maroon-800"
                             >
-                              <option value="first">سنة أولى</option>
-                              <option value="second">سنة ثانية</option>
-                              <option value="third">سنة ثالثة</option>
-                              <option value="elisha">فصل أليشع (إعداد خدام)</option>
+                              <option value="first">سنة أولى إعدادي خدام</option>
+                              <option value="second">سنة ثانية إعدادي خدام</option>
+                              <option value="third">سنة ثالثة إعدادي خدام</option>
+                              <option value="elisha">فصل أليشع</option>
                             </select>
                           )}
                         </div>
@@ -797,10 +797,10 @@ export default function ServantUsersHub({
                                 disabled={roleUpdatingId === item.id}
                                 className="bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs focus:outline-none focus:border-maroon-800"
                               >
-                                <option value="first">سنة أولى</option>
-                                <option value="second">سنة ثانية</option>
-                                <option value="third">سنة ثالثة</option>
-                                <option value="elisha">فصل أليشع (إعداد خدام)</option>
+                                <option value="first">سنة أولى إعدادي خدام</option>
+                                <option value="second">سنة ثانية إعدادي خدام</option>
+                                <option value="third">سنة ثالثة إعدادي خدام</option>
+                                <option value="elisha">فصل أليشع</option>
                               </select>
                             )}
                           </td>
