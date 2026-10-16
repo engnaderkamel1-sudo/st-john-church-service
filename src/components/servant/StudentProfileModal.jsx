@@ -426,10 +426,13 @@ export default function StudentProfileModal({ student, onClose, getGradeTitle })
                   )}
                 </div>
               )}
-                <p className="text-xs text-slate-500">
-                  {commentText ? `ملاحظة الخادم: "${commentText}"` : 'لا توجد ملاحظة رعوية خاصة مسجلة لهذا المخدوم بعد.'}
-                </p>
-              </div>
+
+              {commentText && (
+                <div className="bg-slate-50 border border-slate-200/80 p-3 rounded-2xl text-xs text-slate-600 flex items-center gap-2">
+                  <span className="font-extrabold text-slate-800 shrink-0">ملاحظة الخادم:</span>
+                  <span className="font-medium italic truncate">"{commentText}"</span>
+                </div>
+              )}
 
               {/* Personal Data & Comprehensive Pastoral Card */}
               <div className="bg-white border border-slate-200 rounded-2xl p-4 space-y-4">

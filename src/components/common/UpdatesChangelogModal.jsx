@@ -11,6 +11,12 @@ export default function UpdatesChangelogModal({ isOpen, onClose }) {
   // Recent system updates list (Curated changelog of major enhancements)
   const updatesList = [
     {
+      version: 'v2.5.0',
+      date: '2026-10-16 23:00',
+      title: 'تكبير صور المخدومين، تواريخ الالتحاق بالخدمة، ونسبة الحضور الدقيقة',
+      details: 'إضافة نافذة تكبير صور المخدومين عالية الدقة (Lightbox)، تحديد تاريخ بدء الحضور بالخدمة عند الاعتماد وداخل ملف المخدوم، حساب دقيق لنسبة الحضور بالجمعات المنقضية، وتنبيه افتقاد فوري لمن تغيب جمعتين متتاليتين.'
+    },
+    {
       version: 'v2.4.0',
       date: '2026-10-13 19:30',
       title: 'إضافة أدوات سهولة الاستخدام، زر تخطي البداية، وبلاغات الأعطال',
