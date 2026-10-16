@@ -1312,8 +1312,12 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
       second: 'سنة ثانية',
       third: 'سنة ثالثة',
       elisha: 'فصل أليشع (إعداد خدام)',
+      common_hall: 'القاعة المشتركة (المرحلة الأولى: سنة أولى + ثانية)',
       cycle_1: 'منهج المرحلة الأولى',
-      cycle_2: 'منهج المرحلة الثانية'
+      cycle_2: 'منهج المرحلة الثانية',
+      first_only: 'سنة أولى فقط',
+      second_only: 'سنة ثانية فقط',
+      all: 'كافة المراحل والخدام'
     };
     return titles[g] || g;
   };

@@ -279,8 +279,14 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser, externa
       const relevantExams = list.filter(ex => {
         if (ex.status !== 'active') return false;
         if (!ex.grade || ex.grade === 'all' || ex.grade === 'all_grades') return true;
+        // Common Hall / Cycle 1 / First Stage (Servants Prep year 1 + year 2 shared classroom)
+        if (ex.grade === 'common_hall' || ex.grade === 'cycle_1' || ex.grade === 'first' || ex.grade === 'first_stage') {
+          return studentGrade !== 'elisha';
+        }
+        if (ex.grade === 'first_only') return studentGrade === 'first';
+        if (ex.grade === 'second_only') return studentGrade === 'second';
+        if (ex.grade === 'elisha') return studentGrade === 'elisha';
         if (ex.grade === studentGrade) return true;
-        if ((ex.grade === 'cycle_1' || ex.grade === 'cycle_2') && studentGrade !== 'elisha') return true;
         return false;
       });
       // Sort newest first

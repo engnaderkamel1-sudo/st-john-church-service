@@ -18,8 +18,7 @@ export default function ServantQuickQuizBuilderModal({
   onQuizPublished,
   editingQuiz = null
 }) {
-  const validGrades = ['first', 'second', 'third', 'elisha', 'all'];
-  const initialGrade = validGrades.includes(selectedGrade) ? selectedGrade : 'first';
+  const initialGrade = (selectedGrade === 'elisha') ? 'elisha' : 'common_hall';
   const [quizTitle, setQuizTitle] = useState('');
   const [subject, setSubject] = useState(currentGradeSubjects[0]?.name || 'كتاب مقدس');
   const [grade, setGrade] = useState(initialGrade);
@@ -48,7 +47,12 @@ export default function ServantQuickQuizBuilderModal({
     if (editingQuiz) {
       setQuizTitle(editingQuiz.title || '');
       setSubject(editingQuiz.subject || currentGradeSubjects[0]?.name || 'كتاب مقدس');
-      setGrade(editingQuiz.grade || initialGrade);
+      const qg = editingQuiz.grade;
+      if (!qg || qg === 'first' || qg === 'cycle_1' || qg === 'common_hall') {
+        setGrade('common_hall');
+      } else {
+        setGrade(qg);
+      }
       setDeadline(editingQuiz.deadline || '');
       setDurationMinutes(editingQuiz.durationMinutes || 0);
       if (editingQuiz.questions && editingQuiz.questions.length > 0) {
@@ -330,17 +334,17 @@ export default function ServantQuickQuizBuilderModal({
             </div>
 
             <div>
-              <label className="block text-[11px] font-bold text-slate-700 mb-1">المرحلة الدراسية</label>
+              <label className="block text-[11px] font-bold text-slate-700 mb-1">المرحلة الدراسية الموجه لها</label>
               <select
                 value={grade}
                 onChange={(e) => setGrade(e.target.value)}
                 className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold"
               >
-                <option value="first">سنة أولى</option>
-                <option value="second">سنة ثانية</option>
-                <option value="third">سنة ثالثة</option>
-                <option value="elisha">فصل أليشع (إعداد خدام)</option>
-                <option value="all">كافة المراحل (مسابقة عامة) 🌟</option>
+                <option value="common_hall">القاعة المشتركة (منهج المرحلة الأولى: سنة أولى + ثانية معاً) 🏛️</option>
+                <option value="first_only">تخصيص لطلبة السنة الأولى فقط 🎓</option>
+                <option value="second_only">تخصيص لطلبة السنة الثانية فقط 🎓</option>
+                <option value="elisha">فصل أليشع (التمهيدي لإعداد الخدام) 🕊️</option>
+                <option value="all">كافة المراحل والخدام (مسابقة عامة) 🌟</option>
               </select>
             </div>
 
