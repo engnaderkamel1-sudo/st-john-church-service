@@ -1,12 +1,12 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   X, Sparkles, Camera, Plus, Trash2, CheckCircle, HelpCircle, 
-  Clock, Calendar, BookOpen, AlertCircle, Loader2, ArrowRight, Save
+  Clock, Calendar, BookOpen, AlertCircle, Loader2, ArrowRight, Save, Edit3
 } from 'lucide-react';
 import { transcribeHandwrittenQuizFromImage } from '../../services/geminiService';
 import { compressImage } from '../../utils/imageCompressor';
 import { db } from '../../firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 
 export default function ServantQuickQuizBuilderModal({
   isOpen,
@@ -15,7 +15,8 @@ export default function ServantQuickQuizBuilderModal({
   getGradeTitle,
   currentGradeSubjects = [],
   user,
-  onQuizPublished
+  onQuizPublished,
+  editingQuiz = null
 }) {
   const validGrades = ['first', 'second', 'third', 'elisha', 'all'];
   const initialGrade = validGrades.includes(selectedGrade) ? selectedGrade : 'first';
@@ -40,6 +41,38 @@ export default function ServantQuickQuizBuilderModal({
   const [aiError, setAiError] = useState('');
   const [isPublishing, setIsPublishing] = useState(false);
   const fileInputRef = useRef(null);
+
+  // Synchronize state when opening for edit or new quiz
+  useEffect(() => {
+    if (!isOpen) return;
+    if (editingQuiz) {
+      setQuizTitle(editingQuiz.title || '');
+      setSubject(editingQuiz.subject || currentGradeSubjects[0]?.name || 'كتاب مقدس');
+      setGrade(editingQuiz.grade || initialGrade);
+      setDeadline(editingQuiz.deadline || '');
+      setDurationMinutes(editingQuiz.durationMinutes || 0);
+      if (editingQuiz.questions && editingQuiz.questions.length > 0) {
+        setQuestions(editingQuiz.questions);
+      }
+    } else {
+      setQuizTitle('');
+      setSubject(currentGradeSubjects[0]?.name || 'كتاب مقدس');
+      setGrade(initialGrade);
+      setDeadline('');
+      setDurationMinutes(0);
+      setQuestions([
+        {
+          id: 'q_1',
+          questionText: '',
+          type: 'true_false',
+          options: ['صح', 'خطأ'],
+          correctAnswer: 'صح',
+          points: 2,
+          explanation: ''
+        }
+      ]);
+    }
+  }, [isOpen, editingQuiz]);
 
   if (!isOpen) return null;
 
@@ -144,9 +177,21 @@ export default function ServantQuickQuizBuilderModal({
     };
 
     try {
-      const docRef = await addDoc(collection(db, 'service_exams'), quizData);
-      if (onQuizPublished) {
-        onQuizPublished({ id: docRef.id, ...quizData });
+      if (editingQuiz?.id) {
+        await updateDoc(doc(db, 'service_exams', editingQuiz.id), {
+          ...quizData,
+          status: editingQuiz.status || targetStatus,
+          updatedBy: user?.fullName || 'الخادم المسؤول',
+          updatedAt: serverTimestamp()
+        });
+        if (onQuizPublished) {
+          onQuizPublished({ id: editingQuiz.id, ...quizData, status: editingQuiz.status || targetStatus });
+        }
+      } else {
+        const docRef = await addDoc(collection(db, 'service_exams'), quizData);
+        if (onQuizPublished) {
+          onQuizPublished({ id: docRef.id, ...quizData });
+        }
       }
       onClose();
     } catch (err) {
@@ -165,11 +210,22 @@ export default function ServantQuickQuizBuilderModal({
         <div className="p-4 sm:p-5 bg-gradient-to-l from-maroon-900 via-maroon-800 to-slate-900 text-white flex items-center justify-between shrink-0">
           <div>
             <h3 className="font-black text-sm sm:text-base flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-gold-300" />
-              <span>إنشاء مسابقة وتاسك سريع (Google Forms)</span>
+              {editingQuiz ? (
+                <>
+                  <Edit3 className="w-5 h-5 text-gold-300" />
+                  <span>تعديل المسابقة والتاسك ✏️</span>
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-5 h-5 text-gold-300" />
+                  <span>إنشاء مسابقة وتاسك سريع (Google Forms)</span>
+                </>
+              )}
             </h3>
             <p className="text-[11px] text-amber-200/90 mt-0.5">
-              صمم مسابقة تفاعلية لمرحلتك أو استخرج الأسئلة فوراً من صورة كشكول بالذكاء الاصطناعي
+              {editingQuiz 
+                ? 'قم بتعديل الأسئلة أو العنوان أو الدرجات وحفظ التغييرات فوراً' 
+                : 'صمم مسابقة تفاعلية لمرحلتك أو استخرج الأسئلة فوراً من صورة كشكول بالذكاء الاصطناعي'}
             </p>
           </div>
           <button 
@@ -503,45 +559,69 @@ export default function ServantQuickQuizBuilderModal({
           </button>
 
           <div className="flex items-center gap-2 w-full sm:w-auto">
-            <button
-              type="button"
-              disabled={Boolean(isPublishing)}
-              onClick={() => handlePublishQuiz('draft')}
-              className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-950 border border-amber-300 font-black text-xs shadow-2xs transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-1.5 cursor-pointer"
-              title="حفظ المسابقة كمسودة في لوحة الخادم دون إتاحتها للطلبة الآن"
-            >
-              {isPublishing === 'draft' ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin text-amber-800" />
-                  <span>جاري الحفظ...</span>
-                </>
-              ) : (
-                <>
-                  <Save className="w-4 h-4 text-amber-700" />
-                  <span>💾 حفظ كمسودة (مغلقة)</span>
-                </>
-              )}
-            </button>
+            {editingQuiz ? (
+              <button
+                type="button"
+                disabled={Boolean(isPublishing)}
+                onClick={() => handlePublishQuiz(editingQuiz.status || 'active')}
+                className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white font-black text-xs shadow-md transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-1.5 cursor-pointer"
+                title="تأكيد وحفظ تعديلات المسابقة"
+              >
+                {isPublishing ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin text-white" />
+                    <span>جاري حفظ التعديلات...</span>
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-4 h-4 text-gold-300" />
+                    <span>💾 حفظ التعديلات الآن</span>
+                  </>
+                )}
+              </button>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  disabled={Boolean(isPublishing)}
+                  onClick={() => handlePublishQuiz('draft')}
+                  className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-950 border border-amber-300 font-black text-xs shadow-2xs transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-1.5 cursor-pointer"
+                  title="حفظ المسابقة كمسودة في لوحة الخادم دون إتاحتها للطلبة الآن"
+                >
+                  {isPublishing === 'draft' ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin text-amber-800" />
+                      <span>جاري الحفظ...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-4 h-4 text-amber-700" />
+                      <span>💾 حفظ كمسودة (مغلقة)</span>
+                    </>
+                  )}
+                </button>
 
-            <button
-              type="button"
-              disabled={Boolean(isPublishing)}
-              onClick={() => handlePublishQuiz('active')}
-              className="flex-1 sm:flex-none px-5 py-2.5 rounded-xl bg-maroon-800 hover:bg-maroon-700 text-white font-black text-xs shadow-md transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-1.5 cursor-pointer"
-              title="حفظ المسابقة وإتاحتها للطلبة فوراً"
-            >
-              {isPublishing === 'active' ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin text-white" />
-                  <span>جاري النشر...</span>
-                </>
-              ) : (
-                <>
-                  <CheckCircle className="w-4 h-4 text-gold-300" />
-                  <span>🚀 حفظ ونشر فوري للطلبة</span>
-                </>
-              )}
-            </button>
+                <button
+                  type="button"
+                  disabled={Boolean(isPublishing)}
+                  onClick={() => handlePublishQuiz('active')}
+                  className="flex-1 sm:flex-none px-5 py-2.5 rounded-xl bg-maroon-800 hover:bg-maroon-700 text-white font-black text-xs shadow-md transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-1.5 cursor-pointer"
+                  title="حفظ المسابقة وإتاحتها للطلبة فوراً"
+                >
+                  {isPublishing === 'active' ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin text-white" />
+                      <span>جاري النشر...</span>
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle className="w-4 h-4 text-gold-300" />
+                      <span>🚀 حفظ ونشر فوري للطلبة</span>
+                    </>
+                  )}
+                </button>
+              </>
+            )}
           </div>
         </div>
 

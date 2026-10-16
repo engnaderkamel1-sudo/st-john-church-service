@@ -123,7 +123,7 @@ export default function UpdatesChangelogModal({ isOpen, onClose }) {
   );
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3.5 sm:p-5 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-200 font-cairo text-right">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-3.5 sm:p-5 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-200 font-cairo text-right">
       <div className="bg-white border border-slate-200 rounded-3xl max-w-xl w-full p-5 sm:p-6 shadow-2xl flex flex-col max-h-[90vh]">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-100 pb-3.5 shrink-0">

@@ -616,34 +616,66 @@ export default function StudentProfileModal({ student, onClose, getGradeTitle })
           {activeTab === 'exams' && (
             <div className="space-y-3">
               <div className="flex items-center justify-between text-xs">
-                <span className="font-extrabold text-slate-900">سجل حل الامتحانات والاختبارات:</span>
-                <span className="text-slate-500">{examSubmissions.length} اختبار</span>
+                <span className="font-extrabold text-slate-900">سجل حل الامتحانات والتاسكات الأسبوعية:</span>
+                <span className="text-slate-500">{examSubmissions.length} اختبار مسلّم</span>
+              </div>
+
+              {/* Summary Stats Cards */}
+              <div className="grid grid-cols-2 gap-2 text-center text-xs">
+                <div className="bg-amber-50 p-2.5 rounded-xl border border-amber-200">
+                  <span className="text-[10px] font-bold text-amber-800 block">التاسكات والمسابقات المسلّمة</span>
+                  <strong className="text-sm text-amber-900 font-black">{examSubmissions.length} تاسكات</strong>
+                </div>
+                <div className="bg-emerald-50 p-2.5 rounded-xl border border-emerald-200">
+                  <span className="text-[10px] font-bold text-emerald-800 block">إجمالي درجات التاسكات</span>
+                  <strong className="text-sm text-emerald-900 font-black">
+                    {examSubmissions.reduce((acc, e) => acc + (e.autoScore ?? e.score ?? 0), 0)} نقطة
+                  </strong>
+                </div>
               </div>
 
               {examSubmissions.length === 0 ? (
                 <div className="text-center py-10 bg-slate-50 border border-dashed border-slate-200 rounded-2xl p-4 text-xs text-slate-400 font-bold">
-                  لم يسلم المخدوم أي امتحان بعد عبر التطبيق.
+                  لم يسلم المخدوم أي امتحان أو تاسك بعد عبر التطبيق.
                 </div>
               ) : (
                 <div className="space-y-2 max-h-72 overflow-y-auto">
-                  {examSubmissions.map((ex) => (
-                    <div key={ex.id} className="bg-slate-50 border border-slate-200 p-3.5 rounded-2xl flex items-center justify-between text-xs">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-extrabold text-slate-900">{ex.examTitle || 'امتحان مادة'}</span>
-                          <span className="text-[10px] bg-maroon-100 text-maroon-900 font-bold px-2 py-0.5 rounded-md">
-                            {ex.subject || 'عام'}
-                          </span>
+                  {examSubmissions.map((ex) => {
+                    const score = ex.autoScore ?? ex.score;
+                    const maxScore = ex.totalScore || 20;
+                    const percent = score != null ? Math.round((score / maxScore) * 100) : null;
+
+                    return (
+                      <div key={ex.id} className="bg-slate-50 border border-slate-200 p-3.5 rounded-2xl flex items-center justify-between text-xs hover:border-slate-300 transition-all">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-extrabold text-slate-900">{ex.examTitle || 'امتحان مادة'}</span>
+                            <span className="text-[10px] bg-maroon-100 text-maroon-900 font-bold px-2 py-0.5 rounded-md">
+                              {ex.subject || 'عام'}
+                            </span>
+                          </div>
+                          <span className="text-[10px] text-slate-400 block mt-1">تاريخ التسليم: {ex.date} - {ex.submittedAt}</span>
                         </div>
-                        <span className="text-[10px] text-slate-400 block mt-1">تاريخ التسليم: {ex.date} - {ex.submittedAt}</span>
+                        <div className="text-left flex items-center gap-2 shrink-0">
+                          {score != null ? (
+                            <span className={`text-xs font-black font-mono px-2.5 py-1 rounded-xl border ${
+                              percent >= 80
+                                ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                                : percent >= 50
+                                ? 'bg-amber-50 text-amber-900 border-amber-200'
+                                : 'bg-rose-50 text-rose-800 border-rose-200'
+                            }`}>
+                              {score} / {maxScore} ({percent}%)
+                            </span>
+                          ) : (
+                            <span className="text-xs font-bold bg-emerald-100 text-emerald-800 px-2.5 py-1 rounded-xl inline-block">
+                              تم التسليم ✓
+                            </span>
+                          )}
+                        </div>
                       </div>
-                      <div className="text-left">
-                        <span className="text-xs font-bold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full inline-block">
-                          تم التسليم ✓
-                        </span>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>

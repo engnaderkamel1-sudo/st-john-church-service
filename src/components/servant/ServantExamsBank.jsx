@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, FileText, Sparkles, Presentation, PenTool, CheckCircle, Award, UserCheck, Trash2, Users, Eye, Calendar, Lock, Unlock } from 'lucide-react';
+import { Plus, FileText, Sparkles, Presentation, PenTool, CheckCircle, Award, UserCheck, Trash2, Users, Eye, Calendar, Lock, Unlock, Edit3, FileSpreadsheet } from 'lucide-react';
 import { db } from '../../firebase';
 import { collection, addDoc, doc, updateDoc, deleteDoc, getDocs, query, where, serverTimestamp } from 'firebase/firestore';
 import ServantAiStudioModal from './ServantAiStudioModal';
 import AiPresentationViewer from './AiPresentationViewer';
 import ServantQuickQuizBuilderModal from './ServantQuickQuizBuilderModal';
 import ServantQuizResponsesModal from './ServantQuizResponsesModal';
+import ServantTasksTotals from './ServantTasksTotals';
 
 export default function ServantExamsBank({
   user,
@@ -17,10 +18,12 @@ export default function ServantExamsBank({
   createdExams,
   setCreatedExams,
   allUsers = [],
-  fetchAllUsers
+  fetchAllUsers,
+  onSelectStudent
 }) {
-  const [examSubSection, setExamSubSection] = useState('assign'); // 'assign' | 'bank' | 'paper'
+  const [examSubSection, setExamSubSection] = useState('assign'); // 'assign' | 'totals' | 'bank' | 'paper'
   const [showQuickQuizModal, setShowQuickQuizModal] = useState(false);
+  const [editingQuiz, setEditingQuiz] = useState(null);
   const [showResponsesModal, setShowResponsesModal] = useState(false);
   const [selectedExamForResponses, setSelectedExamForResponses] = useState(null);
   const [showAddQuestionModal, setShowAddQuestionModal] = useState(false);
@@ -196,6 +199,15 @@ export default function ServantExamsBank({
             المسابقات والامتحانات المنشورة ({currentGradeExams.length})
           </button>
           <button
+            onClick={() => setExamSubSection('totals')}
+            className={`text-xs px-3.5 py-2 rounded-xl font-bold transition-all shrink-0 flex items-center gap-1.5 ${
+              examSubSection === 'totals' ? 'bg-maroon-800 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <FileSpreadsheet className="w-3.5 h-3.5 text-gold-400" />
+            <span>كشف إجماليات ونسب حل التاسكات 📊</span>
+          </button>
+          <button
             onClick={() => setExamSubSection('bank')}
             className={`text-xs px-3.5 py-2 rounded-xl font-bold transition-all shrink-0 ${
               examSubSection === 'bank' ? 'bg-maroon-800 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:text-slate-900'
@@ -216,7 +228,10 @@ export default function ServantExamsBank({
 
         <button
           type="button"
-          onClick={() => setShowQuickQuizModal(true)}
+          onClick={() => {
+            setEditingQuiz(null);
+            setShowQuickQuizModal(true);
+          }}
           className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-600 via-amber-500 to-gold-500 hover:from-amber-700 hover:to-amber-600 text-maroon-950 font-black text-xs shadow-xs flex items-center justify-center gap-1.5 transition-all active:scale-95 cursor-pointer shrink-0"
         >
           <Sparkles className="w-4 h-4 text-maroon-950" />
@@ -474,6 +489,19 @@ export default function ServantExamsBank({
 
                     <button
                       type="button"
+                      onClick={() => {
+                        setEditingQuiz(ex);
+                        setShowQuickQuizModal(true);
+                      }}
+                      className="px-3 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 text-xs font-bold flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer active:scale-95"
+                      title="تعديل أسئلة أو بيانات المسابقة"
+                    >
+                      <Edit3 className="w-3.5 h-3.5 text-amber-700" />
+                      <span>تعديل ✏️</span>
+                    </button>
+
+                    <button
+                      type="button"
                       onClick={() => handleDeleteExam(ex.id)}
                       className="p-1.5 rounded-xl text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-200 transition-colors cursor-pointer"
                       title="حذف المسابقة"
@@ -486,6 +514,20 @@ export default function ServantExamsBank({
             </div>
           )}
         </div>
+      )}
+
+      {/* 2. Tasks Totals & Matrix Sub-Section */}
+      {examSubSection === 'totals' && (
+        <ServantTasksTotals
+          allUsers={allUsers}
+          createdExams={createdExams}
+          getGradeTitle={getGradeTitle}
+          onSelectStudent={onSelectStudent}
+          onOpenResponses={(task) => {
+            setSelectedExamForResponses(task);
+            setShowResponsesModal(true);
+          }}
+        />
       )}
 
       {/* Paper / Offline Exam Grading Tab */}
@@ -691,13 +733,24 @@ export default function ServantExamsBank({
       {/* Quick Quiz Builder Modal (Google Forms) */}
       <ServantQuickQuizBuilderModal
         isOpen={showQuickQuizModal}
-        onClose={() => setShowQuickQuizModal(false)}
+        onClose={() => {
+          setShowQuickQuizModal(false);
+          setEditingQuiz(null);
+        }}
         selectedGrade={selectedGrade}
         getGradeTitle={getGradeTitle}
         currentGradeSubjects={currentGradeSubjects}
         user={user}
-        onQuizPublished={(newQuiz) => {
-          setCreatedExams(prev => [newQuiz, ...prev]);
+        editingQuiz={editingQuiz}
+        onQuizPublished={(savedQuiz) => {
+          setCreatedExams(prev => {
+            const exists = prev.some(e => e.id === savedQuiz.id);
+            if (exists) {
+              return prev.map(e => e.id === savedQuiz.id ? { ...e, ...savedQuiz } : e);
+            }
+            return [savedQuiz, ...prev];
+          });
+          setEditingQuiz(null);
         }}
       />
 

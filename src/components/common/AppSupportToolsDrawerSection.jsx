@@ -83,10 +83,7 @@ export default function AppSupportToolsDrawerSection({ user, onCloseDrawer }) {
         {/* 2. Install PWA App */}
         <button
           type="button"
-          onClick={() => {
-            setShowInstallModal(true);
-            onCloseDrawer?.();
-          }}
+          onClick={() => setShowInstallModal(true)}
           className="w-full text-right py-2.5 px-3 rounded-xl flex items-center justify-between text-xs font-bold text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition-all cursor-pointer"
         >
           <div className="flex items-center gap-2.5">
@@ -99,10 +96,7 @@ export default function AppSupportToolsDrawerSection({ user, onCloseDrawer }) {
         {/* 3. Suggest Feature */}
         <button
           type="button"
-          onClick={() => {
-            setShowFeatureRequestModal(true);
-            onCloseDrawer?.();
-          }}
+          onClick={() => setShowFeatureRequestModal(true)}
           className="w-full text-right py-2.5 px-3 rounded-xl flex items-center justify-between text-xs font-bold text-amber-900 hover:bg-amber-50 transition-all cursor-pointer"
         >
           <div className="flex items-center gap-2.5">
@@ -114,10 +108,7 @@ export default function AppSupportToolsDrawerSection({ user, onCloseDrawer }) {
         {/* 4. Report Bug */}
         <button
           type="button"
-          onClick={() => {
-            setShowErrorReportModal(true);
-            onCloseDrawer?.();
-          }}
+          onClick={() => setShowErrorReportModal(true)}
           className="w-full text-right py-2.5 px-3 rounded-xl flex items-center justify-between text-xs font-bold text-rose-800 hover:bg-rose-50 transition-all cursor-pointer"
         >
           <div className="flex items-center gap-2.5">
@@ -130,10 +121,7 @@ export default function AppSupportToolsDrawerSection({ user, onCloseDrawer }) {
         {isAppAdmin && (
           <button
             type="button"
-            onClick={() => {
-              setShowUpdatesModal(true);
-              onCloseDrawer?.();
-            }}
+            onClick={() => setShowUpdatesModal(true)}
             className="w-full text-right py-2.5 px-3 rounded-xl flex items-center justify-between text-xs font-bold text-indigo-900 bg-indigo-50/70 hover:bg-indigo-100 border border-indigo-200/70 transition-all cursor-pointer"
           >
             <div className="flex items-center gap-2.5">
@@ -150,23 +138,35 @@ export default function AppSupportToolsDrawerSection({ user, onCloseDrawer }) {
       {/* Tools Modals */}
       <InstallPromptModal
         isOpen={showInstallModal}
-        onClose={() => setShowInstallModal(false)}
+        onClose={() => {
+          setShowInstallModal(false);
+          onCloseDrawer?.();
+        }}
         deferredPrompt={typeof window !== 'undefined' ? window.deferredPrompt : null}
       />
       <FeatureRequestModal
         isOpen={showFeatureRequestModal}
-        onClose={() => setShowFeatureRequestModal(false)}
+        onClose={() => {
+          setShowFeatureRequestModal(false);
+          onCloseDrawer?.();
+        }}
         currentUser={user}
       />
       <ErrorReportModal
         isOpen={showErrorReportModal}
-        onClose={() => setShowErrorReportModal(false)}
+        onClose={() => {
+          setShowErrorReportModal(false);
+          onCloseDrawer?.();
+        }}
         currentUser={user}
       />
       {isAppAdmin && (
         <UpdatesChangelogModal
           isOpen={showUpdatesModal}
-          onClose={() => setShowUpdatesModal(false)}
+          onClose={() => {
+            setShowUpdatesModal(false);
+            onCloseDrawer?.();
+          }}
         />
       )}
     </>

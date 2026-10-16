@@ -1976,6 +1976,7 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
           setCreatedExams={setCreatedExams}
           allUsers={allUsers}
           fetchAllUsers={fetchAllUsers}
+          onSelectStudent={(st) => setStudent360Profile(st)}
         />
       )}
 
