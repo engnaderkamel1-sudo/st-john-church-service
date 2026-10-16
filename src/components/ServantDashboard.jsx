@@ -22,6 +22,7 @@ import ServantAttendanceQR from './servant/ServantAttendanceQR';
 import ServantUsersHub from './servant/ServantUsersHub';
 import ServantStudentsHub from './servant/ServantStudentsHub';
 import ServantManualAttendance from './servant/ServantManualAttendance';
+import ServantAttendanceTotals from './servant/ServantAttendanceTotals';
 import ServantHolidaysManager from './servant/ServantHolidaysManager';
 import ServantBirthdaysHub from './servant/ServantBirthdaysHub';
 import StudentProfileModal from './servant/StudentProfileModal';
@@ -1457,6 +1458,29 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
                   </div>
                 </button>
 
+                {/* 2b. Attendance Totals & Excel Sheet */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMainTab('attendance_totals');
+                    setActiveSubject(null);
+                    setMobileSidebarOpen(false);
+                  }}
+                  className={`w-full text-right py-2 px-3 rounded-xl flex items-center justify-between text-xs font-bold transition-all cursor-pointer ${
+                    mainTab === 'attendance_totals'
+                      ? 'bg-maroon-800 text-white shadow-xs'
+                      : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <FileSpreadsheet className={`w-4 h-4 ${mainTab === 'attendance_totals' ? 'text-gold-300' : 'text-blue-700'}`} />
+                    <span>كشف الحضور والإجماليات</span>
+                  </div>
+                  <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-md bg-slate-100 text-slate-600 font-bold">
+                    Totals
+                  </span>
+                </button>
+
                 {/* 3. Students Data Hub */}
                 <button
                   type="button"
@@ -1833,6 +1857,16 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
           manualAbsenceSuccessId={manualAbsenceSuccessId}
           todayStr={todayStr}
           onOpenHolidays={() => setMainTab('holidays_manager')}
+          onSwitchToTotals={() => setMainTab('attendance_totals')}
+        />
+      )}
+
+      {/* Attendance Totals & Excel Sheet (All Servants & Leaders) */}
+      {mainTab === 'attendance_totals' && (
+        <ServantAttendanceTotals
+          allUsers={allUsers}
+          todayStr={todayStr}
+          onSwitchToManualAttendance={() => setMainTab('manual_attendance')}
         />
       )}
 

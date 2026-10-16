@@ -13,7 +13,8 @@ export default function ServantManualAttendance({
   manualAbsenceLoadingId,
   manualAbsenceSuccessId,
   todayStr,
-  onOpenHolidays
+  onOpenHolidays,
+  onSwitchToTotals
 }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilterGrade, setActiveFilterGrade] = useState('all');
@@ -106,8 +107,8 @@ export default function ServantManualAttendance({
     return () => unsub();
   }, [selectedAttendanceDate]);
 
-  // Filter only students
-  const studentsList = (allUsers || []).filter(u => u.role === 'student');
+  // Filter only students of Servants Prep (exclude Elisha stage which has its own independent service)
+  const studentsList = (allUsers || []).filter(u => u.role === 'student' && u.grade !== 'elisha');
 
   const attendedCount = studentsList.filter(st => dateRecords[st.id]?.status === 'حاضر').length;
   const absentCount = studentsList.filter(st => dateRecords[st.id]?.status === 'غائب').length;
@@ -238,6 +239,17 @@ export default function ServantManualAttendance({
             </div>
           )}
 
+          {onSwitchToTotals && (
+            <button
+              type="button"
+              onClick={onSwitchToTotals}
+              className="px-3 py-2 bg-blue-50 hover:bg-blue-100 text-blue-900 border border-blue-200 rounded-2xl text-xs font-black transition-all flex items-center justify-center gap-1.5 min-h-[46px] cursor-pointer shadow-2xs shrink-0"
+              title="كشف الحضور والإجماليات الشامل"
+            >
+              <span>📊 كشف الإجماليات (Totals)</span>
+            </button>
+          )}
+
           {onOpenHolidays && (
             <button
               type="button"
@@ -319,11 +331,12 @@ export default function ServantManualAttendance({
                 : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
             }`}
           >
-            كافة المراحل ({studentsList.length})
+            القاعة المشتركة (سنة أولى + ثانية) ({studentsList.length})
           </button>
 
-          {['first', 'second', 'third', 'elisha'].map((g) => {
+          {['first', 'second'].map((g) => {
             const count = studentsList.filter(s => (s.grade || 'first') === g).length;
+            const label = g === 'first' ? 'السنة الأولى' : 'السنة الثانية';
             return (
               <button
                 key={g}
@@ -335,7 +348,7 @@ export default function ServantManualAttendance({
                     : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                 }`}
               >
-                <span>{getGradeTitle(g)}</span>
+                <span>{label}</span>
                 <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
                   activeFilterGrade === g ? 'bg-gold-400 text-maroon-950' : 'bg-slate-200 text-slate-700'
                 }`}>
@@ -483,48 +496,78 @@ export default function ServantManualAttendance({
                   </div>
                 )}
 
-                {/* Large 48px Touch Action Buttons: Present or Absent */}
-                <div className="grid grid-cols-2 gap-2 pt-1">
-                  <button
-                    type="button"
-                    disabled={isAttending || isAbsenting || bulkLoading}
-                    onClick={() => handleManualAttendanceWithTime(st, '10:30 ص', selectedAttendanceDate)}
-                    className={`min-h-[48px] px-3 py-2.5 rounded-2xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 shadow-2xs ${
-                      existingRecord?.status === 'حاضر' || isAttendSuccess
-                        ? 'bg-emerald-600 hover:bg-emerald-700 text-white ring-2 ring-emerald-400 shadow-xs'
-                        : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-2 border-emerald-300'
-                    } disabled:opacity-60`}
-                  >
-                    {isAttending ? (
-                      <span className="inline-block w-4 h-4 border-2 border-emerald-700 border-t-transparent rounded-full animate-spin"></span>
+                {/* Action Buttons: State-aware to eliminate clutter & confusion */}
+                {existingRecord ? (
+                  <div className="pt-1">
+                    {existingRecord.status === 'حاضر' ? (
+                      <button
+                        type="button"
+                        disabled={isAttending || isAbsenting || bulkLoading}
+                        onClick={() => handleManualAbsence(st, selectedAttendanceDate)}
+                        className="w-full min-h-[42px] px-3 py-2 rounded-2xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 border border-rose-200 text-rose-800 bg-rose-50/60 hover:bg-rose-100 disabled:opacity-60"
+                      >
+                        {isAbsenting ? (
+                          <span className="inline-block w-4 h-4 border-2 border-rose-700 border-t-transparent rounded-full animate-spin"></span>
+                        ) : (
+                          <>
+                            <XCircle className="w-3.5 h-3.5 text-rose-600" />
+                            <span>تغيير الحالة إلى غائب</span>
+                          </>
+                        )}
+                      </button>
                     ) : (
-                      <>
-                        <CheckCircle2 className="w-4 h-4" />
-                        <span>{existingRecord?.status === 'حاضر' ? 'حاضر ✓ (+10⭐)' : 'تسجيل حاضر (+10⭐)'}</span>
-                      </>
+                      <button
+                        type="button"
+                        disabled={isAttending || isAbsenting || bulkLoading}
+                        onClick={() => handleManualAttendanceWithTime(st, '10:30 ص', selectedAttendanceDate)}
+                        className="w-full min-h-[42px] px-3 py-2 rounded-2xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 border border-emerald-300 text-emerald-800 bg-emerald-50/60 hover:bg-emerald-100 disabled:opacity-60"
+                      >
+                        {isAttending ? (
+                          <span className="inline-block w-4 h-4 border-2 border-emerald-700 border-t-transparent rounded-full animate-spin"></span>
+                        ) : (
+                          <>
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>تغيير الحالة إلى حاضر (+10⭐)</span>
+                          </>
+                        )}
+                      </button>
                     )}
-                  </button>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-2 pt-1">
+                    <button
+                      type="button"
+                      disabled={isAttending || isAbsenting || bulkLoading}
+                      onClick={() => handleManualAttendanceWithTime(st, '10:30 ص', selectedAttendanceDate)}
+                      className="min-h-[48px] px-3 py-2.5 rounded-2xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 shadow-xs bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-60"
+                    >
+                      {isAttending ? (
+                        <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                      ) : (
+                        <>
+                          <CheckCircle2 className="w-4 h-4 text-gold-300" />
+                          <span>تسجيل حاضر (+10⭐)</span>
+                        </>
+                      )}
+                    </button>
 
-                  <button
-                    type="button"
-                    disabled={isAttending || isAbsenting || bulkLoading}
-                    onClick={() => handleManualAbsence(st, selectedAttendanceDate)}
-                    className={`min-h-[48px] px-3 py-2.5 rounded-2xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 shadow-2xs ${
-                      existingRecord?.status === 'غائب' || isAbsentSuccess
-                        ? 'bg-rose-600 hover:bg-rose-700 text-white ring-2 ring-rose-400 shadow-xs'
-                        : 'bg-rose-50 hover:bg-rose-100 text-rose-800 border-2 border-rose-300'
-                    } disabled:opacity-60`}
-                  >
-                    {isAbsenting ? (
-                      <span className="inline-block w-4 h-4 border-2 border-rose-700 border-t-transparent rounded-full animate-spin"></span>
-                    ) : (
-                      <>
-                        <XCircle className="w-4 h-4" />
-                        <span>{existingRecord?.status === 'غائب' ? 'غائب ✕' : 'تسجيل غياب'}</span>
-                      </>
-                    )}
-                  </button>
-                </div>
+                    <button
+                      type="button"
+                      disabled={isAttending || isAbsenting || bulkLoading}
+                      onClick={() => handleManualAbsence(st, selectedAttendanceDate)}
+                      className="min-h-[48px] px-3 py-2.5 rounded-2xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 shadow-2xs bg-rose-50 hover:bg-rose-100 text-rose-800 border-2 border-rose-200 disabled:opacity-60"
+                    >
+                      {isAbsenting ? (
+                        <span className="inline-block w-4 h-4 border-2 border-rose-700 border-t-transparent rounded-full animate-spin"></span>
+                      ) : (
+                        <>
+                          <XCircle className="w-4 h-4 text-rose-600" />
+                          <span>تسجيل غياب</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                )}
               </div>
             );
           })}
