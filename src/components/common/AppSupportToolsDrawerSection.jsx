@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
-  Bell, Lightbulb, Smartphone, AlertTriangle, Rocket, Sparkles, Check
+  Bell, Lightbulb, Smartphone, AlertTriangle, Rocket, Sparkles, Check, Camera
 } from 'lucide-react';
 import InstallPromptModal from './InstallPromptModal';
 import FeatureRequestModal from './FeatureRequestModal';
@@ -16,6 +16,21 @@ export default function AppSupportToolsDrawerSection({ user, onCloseDrawer }) {
   const [hasNotificationPermission, setHasNotificationPermission] = useState(() => {
     return typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted';
   });
+
+  const [hasCameraPermission, setHasCameraPermission] = useState(false);
+
+  useEffect(() => {
+    if (typeof navigator !== 'undefined' && navigator.permissions?.query) {
+      navigator.permissions.query({ name: 'camera' }).then(result => {
+        setHasCameraPermission(result.state === 'granted');
+        result.onchange = () => {
+          setHasCameraPermission(result.state === 'granted');
+        };
+      }).catch(() => {
+        // quiet fail on browsers that don't support camera permission query
+      });
+    }
+  }, []);
 
   const isAppAdmin = Boolean(
     user && 
@@ -48,19 +63,29 @@ export default function AppSupportToolsDrawerSection({ user, onCloseDrawer }) {
     }
   };
 
+  const handleRequestCameraPermission = async () => {
+    if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
+      alert('متصفحك لا يدعم الوصول المباشر إلى الكاميرا.');
+      return;
+    }
+    if (hasCameraPermission) {
+      alert('صلاحية الكاميرا مفعلة بالفعل وجاهزة للاستخدام.');
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+      stream.getTracks().forEach(track => track.stop());
+      setHasCameraPermission(true);
+      alert('تم منح صلاحية الكاميرا بنجاح! يمكنك الآن مسح كود الـ QR لتسجيل الحضور.');
+    } catch (err) {
+      console.warn('Camera permission request denied or failed', err);
+      alert('تعذر الوصول إلى الكاميرا. يرجى السماح بالوصول إليها من إعدادات المتصفح أو الهاتف.');
+    }
+  };
+
   return (
     <>
       <div className="pt-3 pb-2 border-t border-slate-200/80 mt-2 space-y-1.5 font-cairo">
-        {/* Section Header */}
-        <div className="px-3 pb-1 flex items-center justify-between">
-          <span className="text-[11px] font-black text-slate-400 uppercase tracking-wider">
-            أدوات المنظومة والدعم
-          </span>
-          <span className="text-[10px] bg-slate-100 text-slate-600 font-bold px-2 py-0.5 rounded-full border border-slate-200/60">
-            خدمات
-          </span>
-        </div>
-
         {/* 1. Install PWA App (Priority #1 on Mobile) */}
         <button
           type="button"
@@ -83,15 +108,26 @@ export default function AppSupportToolsDrawerSection({ user, onCloseDrawer }) {
           className="w-full text-right py-2.5 px-3 rounded-xl flex items-center justify-between text-xs font-bold text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition-all cursor-pointer"
         >
           <div className="flex items-center gap-2.5">
-            <Bell className={`w-4 h-4 shrink-0 ${hasNotificationPermission ? 'text-emerald-600' : 'text-slate-500'}`} />
+            <Bell className="w-4 h-4 text-slate-600 shrink-0" />
             <span>تفعيل الإشعارات الفورية</span>
           </div>
-          <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
-            hasNotificationPermission 
-              ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' 
-              : 'bg-slate-100 text-slate-600 border border-slate-200'
-          }`}>
+          <span className="text-[10px] bg-slate-100 text-slate-600 border border-slate-200/80 px-2 py-0.5 rounded-full font-bold">
             {hasNotificationPermission ? 'مفعلة ✓' : 'تفعيل'}
+          </span>
+        </button>
+
+        {/* 3. Camera Permission (QR Code Attendance) */}
+        <button
+          type="button"
+          onClick={handleRequestCameraPermission}
+          className="w-full text-right py-2.5 px-3 rounded-xl flex items-center justify-between text-xs font-bold text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition-all cursor-pointer"
+        >
+          <div className="flex items-center gap-2.5">
+            <Camera className="w-4 h-4 text-slate-600 shrink-0" />
+            <span>صلاحية الكاميرا (مسح الـ QR)</span>
+          </div>
+          <span className="text-[10px] bg-slate-100 text-slate-600 border border-slate-200/80 px-2 py-0.5 rounded-full font-bold">
+            {hasCameraPermission ? 'مفعلة ✓' : 'تفعيل'}
           </span>
         </button>
 
