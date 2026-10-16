@@ -94,7 +94,7 @@ export default function ServantAttendanceQR({
                   setIsEditingStartTime(true);
                 }}
                 className="bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 px-3 py-1 rounded-xl text-xs font-bold font-mono flex items-center gap-1 cursor-pointer shadow-2xs"
-                title="اضغط لتعديل موعد بدء خدمة اليوم (مثلاً 10:45 أو 11:00)"
+                title="تعديل موعد بدء الخدمة"
               >
                 <Clock className="w-3.5 h-3.5 text-amber-700" />
                 <span>{serviceStartTime} ص</span>
@@ -210,7 +210,7 @@ export default function ServantAttendanceQR({
                   onChange={(e) => setSelectedStudentForAccess(e.target.value)}
                   className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-amber-600"
                 >
-                  <option value="">-- اضغط لاختيار المخدوم --</option>
+                  <option value="">-- اختيار المخدوم --</option>
                   {allUsers
                     .filter(u => u.role === 'student')
                     .map(st => (

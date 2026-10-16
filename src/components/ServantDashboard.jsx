@@ -1353,7 +1353,7 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
       <div 
         onClick={() => setShowProfileModal(true)}
         className="bg-white border border-slate-200 rounded-3xl p-3.5 sm:p-5 shadow-sm flex items-center justify-between gap-3 cursor-pointer group hover:bg-slate-50/80 transition-all"
-        title="اضغط لعرض وتعديل بيانات الحساب أو تسجيل الخروج"
+        title="بيانات الحساب وتسجيل الخروج"
       >
         <div className="flex items-center gap-3 min-w-0">
           {/* Avatar with click to enlarge */}
@@ -1365,7 +1365,7 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
               }
             }}
             className="w-11 h-11 sm:w-14 sm:h-14 rounded-2xl bg-maroon-800 text-white flex items-center justify-center font-bold text-lg sm:text-xl shrink-0 shadow-xs group-hover:scale-105 transition-transform overflow-hidden relative"
-            title={user.photoUrl ? "اضغط لتكبير الصورة الشخصية" : ""}
+            title={user.photoUrl ? "عرض الصورة الشخصية" : ""}
           >
             {user.photoUrl ? (
               <img src={user.photoUrl} alt={user.fullName} className="w-full h-full object-cover" />

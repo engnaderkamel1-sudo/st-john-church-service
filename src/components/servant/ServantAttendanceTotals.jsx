@@ -560,7 +560,7 @@ export default function ServantAttendanceTotals({
                             <td 
                               key={dateStr}
                               onClick={() => handleToggleCell(st, dateStr)}
-                              title="اضغط لتغيير الحالة (حاضر / غائب)"
+                              title="تعديل حالة الحضور"
                               className="py-2 px-1 text-center border-l border-slate-100 cursor-pointer hover:bg-slate-100/70 transition-all active:scale-90 select-none"
                             >
                               {isUpdating ? (

@@ -216,7 +216,7 @@ export default function FeatureRequestModal({ isOpen, onClose, currentUser }) {
 
             {/* Voice Note Recording Section */}
             <div className="p-3 bg-amber-50/70 border border-amber-200/80 rounded-2xl space-y-2">
-              <span className="text-[11px] font-bold text-amber-950 block">تسجيل فويس نوت صوتي للفكرة (اختياري 🎙️)</span>
+              <span className="text-[11px] font-bold text-amber-950 block">تسجيل صوتي للمقترح (اختياري)</span>
               
               {!audioUrl && !isRecording && (
                 <button
@@ -225,7 +225,7 @@ export default function FeatureRequestModal({ isOpen, onClose, currentUser }) {
                   className="w-full py-2 px-3 rounded-xl bg-white hover:bg-amber-100/70 border border-amber-300 text-amber-900 font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-2xs"
                 >
                   <Mic className="w-4 h-4 text-amber-600" />
-                  <span>اضغط لتسجيل فويس نوت صوتي</span>
+                  <span>تسجيل رسالة صوتية للمقترح</span>
                 </button>
               )}
 

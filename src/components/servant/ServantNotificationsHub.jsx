@@ -251,7 +251,7 @@ export default function ServantNotificationsHub({ currentUser, allStudents = [] 
         <div className="flex items-center justify-between">
           <span className="text-xs font-black text-slate-800 flex items-center gap-1.5">
             <Sparkles className="w-4 h-4 text-amber-500" />
-            <span>قوالب تنبيهات قياسية جاهزة (اضغط للإدراج الفوري)</span>
+            <span>نماذج تنبيهات الخدمة الجاهزة</span>
           </span>
         </div>
 
@@ -262,7 +262,7 @@ export default function ServantNotificationsHub({ currentUser, allStudents = [] 
               type="button"
               onClick={() => handleApplyTemplate(tpl)}
               className="shrink-0 px-3 py-2 rounded-2xl bg-slate-50 hover:bg-amber-50/80 border border-slate-200 hover:border-amber-300 text-slate-700 hover:text-amber-950 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer active:scale-95"
-              title="اضغط لتعبئة التنبيه وتخصيصه أو إرساله فوراً"
+              title="تعبئة نموذج التنبيه"
             >
               <span>{tpl.badge}</span>
             </button>
@@ -387,7 +387,7 @@ export default function ServantNotificationsHub({ currentUser, allStudents = [] 
           <div className="text-center py-10 bg-slate-50 border border-dashed border-slate-200 rounded-2xl p-6">
             <Bell className="w-10 h-10 text-slate-300 mx-auto mb-2" />
             <p className="text-xs font-bold text-slate-700">لا توجد تنبيهات مرسلة حالياً.</p>
-            <p className="text-[11px] text-slate-400 mt-1">اضغط على أحد القوالب الجاهزة أعلاه لإرسال أول تنبيه بضغطة زر واحدة.</p>
+            <p className="text-[11px] text-slate-400 mt-1">يمكنك اختيار أحد النماذج المعتمدة أعلاه لإرسال تنبيه للخدمة.</p>
           </div>
         ) : (
           <div className="space-y-3">

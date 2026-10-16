@@ -217,7 +217,7 @@ export default function ErrorReportModal({ isOpen, onClose, currentUser }) {
 
             {/* Voice Note Recording Section */}
             <div className="p-3 bg-rose-50/70 border border-rose-200/80 rounded-2xl space-y-2">
-              <span className="text-[11px] font-bold text-rose-950 block">تسجيل فويس نوت صوتي للعطل (اختياري 🎙️)</span>
+              <span className="text-[11px] font-bold text-rose-950 block">تسجيل صوتي للملاحظة (اختياري)</span>
               
               {!audioUrl && !isRecording && (
                 <button
@@ -226,7 +226,7 @@ export default function ErrorReportModal({ isOpen, onClose, currentUser }) {
                   className="w-full py-2 px-3 rounded-xl bg-white hover:bg-rose-100/70 border border-rose-300 text-rose-900 font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-2xs"
                 >
                   <Mic className="w-4 h-4 text-rose-600" />
-                  <span>اضغط لتسجيل فويس نوت صوتي للمشكلة</span>
+                  <span>تسجيل رسالة صوتية توضيحية</span>
                 </button>
               )}
 

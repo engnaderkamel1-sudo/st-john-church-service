@@ -109,7 +109,7 @@ export default function StudentCurriculum({
                       {sub.name}
                     </h4>
                     <p className="text-xs text-slate-500 leading-relaxed mb-4">
-                      اضغط لفتح المذكرات وملفات الشرح والمحاضرات المسجلة.
+                      المذكرات الدراسية وملفات الشرح والمحاضرات المعتمدة.
                     </p>
                   </div>
                   <div className="flex items-center justify-between text-xs font-bold text-maroon-800 pt-3 border-t border-slate-200/60">

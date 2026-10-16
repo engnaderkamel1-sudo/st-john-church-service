@@ -238,7 +238,7 @@ export default function StudentProfileModal({ student, onClose, getGradeTitle })
               type="button"
               onClick={() => setIsEnlargedPhotoOpen(true)}
               className="relative w-14 h-14 sm:w-16 sm:h-16 min-w-[56px] min-h-[56px] max-w-[56px] max-h-[56px] sm:min-w-[64px] sm:min-h-[64px] sm:max-w-[64px] sm:max-h-[64px] rounded-2xl bg-white/10 border-2 border-gold-400/40 text-gold-300 flex items-center justify-center font-bold text-xl shadow-xs overflow-hidden shrink-0 cursor-pointer active:scale-95 group transition-transform"
-              title="اضغط لتكبير صورة المخدوم 🔍"
+              title="عرض صورة المخدوم"
             >
               {student.photoUrl ? (
                 <img src={student.photoUrl} alt={student.fullName} className="w-full h-full object-cover object-top" />

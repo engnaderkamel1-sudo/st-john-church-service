@@ -775,7 +775,7 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser, externa
         <div 
           onClick={() => setShowProfileModal(true)}
           className="flex items-center gap-2.5 sm:gap-3.5 text-right min-w-0 cursor-pointer group p-1.5 rounded-2xl hover:bg-slate-50 transition-all"
-          title="اضغط لعرض وتعديل بيانات الحساب أو تسجيل الخروج"
+          title="بيانات الحساب وتسجيل الخروج"
         >
           <div 
             onClick={(e) => {
@@ -785,7 +785,7 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser, externa
               }
             }}
             className="w-10 h-10 sm:w-14 sm:h-14 rounded-2xl bg-maroon-50 border border-maroon-200 text-maroon-900 flex items-center justify-center font-bold text-lg sm:text-xl shrink-0 shadow-xs group-hover:scale-105 transition-transform overflow-hidden relative"
-            title={user.photoUrl ? "اضغط لتكبير الصورة الشخصية" : ""}
+            title={user.photoUrl ? "عرض الصورة الشخصية" : ""}
           >
             {user.photoUrl ? (
               <img src={user.photoUrl} alt={user.fullName} className="w-full h-full object-cover" />

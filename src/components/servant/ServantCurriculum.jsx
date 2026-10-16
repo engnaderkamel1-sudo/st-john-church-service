@@ -1094,7 +1094,7 @@ export default function ServantCurriculum({
                   }
                 }}
                 className={`font-mono text-slate-700 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200 text-xs flex items-center gap-1.5 ${canManageCycle ? 'cursor-pointer hover:bg-slate-200' : ''}`}
-                title={canManageCycle ? "اضغط لتعديل العام الدراسي" : ""}
+                title={canManageCycle ? "تعديل العام الدراسي" : ""}
               >
                 <span>{academicYear}</span>
                 {canManageCycle && <Pencil className="w-2.5 h-2.5 text-slate-400" />}
@@ -1298,7 +1298,7 @@ export default function ServantCurriculum({
             <div className="text-center py-12 bg-slate-50 border border-dashed border-slate-200 rounded-2xl p-6">
               <BookOpen className="w-10 h-10 text-slate-300 mx-auto mb-2" />
               <p className="text-xs font-bold text-slate-700">لا توجد مواد مضافة في هذا القسم لهذه المرحلة بعد.</p>
-              <p className="text-[11px] text-slate-400 mt-1">اضغط على زر "إضافة مادة جديدة" للبدء في إضافة المواد ورفع المذكرات والمحاضرات.</p>
+              <p className="text-[11px] text-slate-400 mt-1">لم تُضَف مواد دراسية بعد، يمكنك البدء بإضافة المادة الأولى.</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1346,8 +1346,8 @@ export default function ServantCurriculum({
                       <h4 className="font-extrabold text-slate-900 text-base group-hover:text-maroon-800 transition-colors mb-1">{sub.name}</h4>
                       <p className="text-xs text-slate-500 leading-relaxed mb-4">
                         {isServantMode 
-                          ? 'اضغط للدخول واستعراض مراجع وكتب المادة وتوليد الملخصات والعروض التقديمية.'
-                          : 'اضغط للدخول وإدارة المذكرات والملفات والتسجيلات وفتح المحاضرات للمخدومين.'
+                          ? 'استعراض مراجع وكتب المادة وإعداد الملخصات والعروض التقديمية.'
+                          : 'إدارة المذكرات والملفات والتسجيلات وإتاحة المحاضرات للمخدومين.'
                         }
                       </p>
                     </div>
@@ -1624,7 +1624,7 @@ export default function ServantCurriculum({
                     <div className="text-center py-12 bg-slate-50 border border-dashed border-slate-200 rounded-2xl p-6">
                       <BookOpen className="w-10 h-10 text-slate-300 mx-auto mb-2" />
                       <p className="text-xs font-bold text-slate-700">لم يتم إضافة محاضرات لهذه المادة بعد.</p>
-                      <p className="text-[11px] text-slate-400 mt-1">اضغط على زر "إضافة محاضرة جديدة" للبدء في تنظيم المحاضرات ورفع مذكراتها وملفاتها.</p>
+                      <p className="text-[11px] text-slate-400 mt-1">لا توجد محاضرات مسجلة حالياً، يمكنك البدء بإضافة المحاضرة الأولى.</p>
                     </div>
                   );
                 }
@@ -2006,8 +2006,8 @@ export default function ServantCurriculum({
                           </div>
                         ) : (
                           <div>
-                            <span className="text-xs font-bold text-slate-800 block">اضغط هنا لاختيار الملف من الموبايل أو الكمبيوتر</span>
-                            <span className="text-[10px] text-slate-400 mt-0.5 block">سيقوم التطبيق برفعه مباشرة إلى Google Drive الخاص بالخدمة تلقائياً</span>
+                            <span className="text-xs font-bold text-slate-800 block">اختيار ملف من الجهاز</span>
+                            <span className="text-[10px] text-slate-400 mt-0.5 block">يتم حفظ الملف مباشرة في السحابة الخاصة بالخدمة</span>
                           </div>
                         )}
                       </div>
@@ -2074,7 +2074,7 @@ export default function ServantCurriculum({
                   <div className="text-center py-12 bg-slate-50 border border-dashed border-slate-200 rounded-2xl p-6 text-slate-400 text-xs">
                     <FileText className="w-8 h-8 text-slate-300 mx-auto mb-2" />
                     <p className="font-bold text-slate-600">لا توجد ملفات أو محتويات مرفوعة لهذه المحاضرة حتى الآن.</p>
-                    <p className="text-[11px] text-slate-400 mt-1">اضغط على زر "إضافة محتوى / ملف للمحاضرة" لرفع مذكرات PDF، عروض PowerPoint، أو تسجيلات صوتية وفيديو.</p>
+                    <p className="text-[11px] text-slate-400 mt-1">يمكنك إضافة مذكرات أو تسجيلات أو عروض تقديمية للمحاضرة.</p>
                   </div>
                 ) : (
                   activeLecture.files.map((rf) => {
@@ -2190,7 +2190,7 @@ export default function ServantCurriculum({
                                   ? 'bg-emerald-50 text-emerald-800 border border-emerald-300 hover:bg-emerald-100'
                                   : 'bg-amber-50 text-amber-800 border border-amber-300 hover:bg-amber-100'
                               }`}
-                              title="اضغط لتفعيل أو إخفاء المحتوى عن المخدومين"
+                              title="تبديل حالة النشر للمخدومين"
                             >
                               {rf.isPublishedForStudents !== false ? (
                                 <>

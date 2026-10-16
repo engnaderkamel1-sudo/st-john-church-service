@@ -322,19 +322,19 @@ export default function StageRegulationsModal({
                         ? 'bg-emerald-100 hover:bg-emerald-200 text-emerald-900 border border-emerald-300' 
                         : 'bg-rose-100 hover:bg-rose-200 text-rose-900 border border-rose-300'
                     }`}
-                    title={isStagePublished ? 'اضغط لإخفاء اللائحة عن المخدومين مؤقتاً لحين تعديلها' : 'اضغط لإظهار ونشر اللائحة للمخدومين فوراً'}
+                    title={isStagePublished ? 'إخفاء اللائحة عن المخدومين مؤقتاً' : 'إتاحة ونشر اللائحة للمخدومين'}
                   >
                     {togglePublishLoading ? (
                       <span className="animate-spin text-xs">⏳</span>
                     ) : isStagePublished ? (
                       <>
                         <Globe className="w-3.5 h-3.5 text-emerald-700" />
-                        <span>ظاهرة للطلبة ✅ (اضغط للإخفاء)</span>
+                        <span>منشورة للمخدومين</span>
                       </>
                     ) : (
                       <>
                         <Lock className="w-3.5 h-3.5 text-rose-700" />
-                        <span>مخفية عن الطلبة 🔒 (اضغط للإظهار)</span>
+                        <span>مسودة خاصة بالخدام</span>
                       </>
                     )}
                   </button>

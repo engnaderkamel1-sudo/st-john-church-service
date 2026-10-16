@@ -337,7 +337,7 @@ export default function ServantExamsBank({
             <div className="text-center py-12 bg-slate-50 border border-dashed border-slate-200 rounded-2xl p-6">
               <FileText className="w-10 h-10 text-slate-300 mx-auto mb-2" />
               <p className="text-xs font-bold text-slate-700">بنك الأسئلة فارغ لهذه المرحلة حالياً.</p>
-              <p className="text-[11px] text-slate-400 mt-1">اضغط على "إضافة سؤال لبنك الأسئلة" للبدء في تجميع بنك أسئلة المرحلة.</p>
+              <p className="text-[11px] text-slate-400 mt-1">لا توجد أسئلة مسجلة حالياً، يمكنك البدء بإضافة السؤال الأول.</p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -429,8 +429,8 @@ export default function ServantExamsBank({
           {currentGradeExams.length === 0 ? (
             <div className="text-center py-12 bg-slate-50 border border-dashed border-slate-200 rounded-2xl p-6">
               <FileText className="w-10 h-10 text-slate-300 mx-auto mb-2" />
-              <p className="text-xs font-bold text-slate-700">لا توجد تاسكات أو مسابقات منشورة لهذه المرحلة حتى الآن.</p>
-              <p className="text-[11px] text-slate-400 mt-1">اضغط على زر "إنشاء مسابقة سريعة (Google Forms)" أو التقط صورة كشكول بالذكاء الاصطناعي.</p>
+              <p className="text-xs font-bold text-slate-700">لا توجد مسابقات منشورة لهذه المرحلة حتى الآن.</p>
+              <p className="text-[11px] text-slate-400 mt-1">لا توجد مسابقات منشأة حالياً، يمكنك إنشاء مسابقة جديدة للمرحلة.</p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -462,17 +462,17 @@ export default function ServantExamsBank({
                           ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-emerald-300'
                           : 'bg-amber-50 hover:bg-amber-100 text-amber-900 border-amber-300'
                       }`}
-                      title={ex.status === 'active' ? 'المسابقة متاحة للطلبة حالياً - اضغط لإيقافها' : 'المسابقة موقوفة أو مسودة - اضغط لفتحها للطلبة'}
+                      title={ex.status === 'active' ? 'إيقاف إتاحة المسابقة' : 'إتاحة المسابقة للطلبة'}
                     >
                       {ex.status === 'active' ? (
                         <>
                           <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse"></span>
-                          <span>مفتوحة للطلبة 🟢</span>
+                          <span>مفتوحة للطلبة</span>
                         </>
                       ) : (
                         <>
                           <Lock className="w-3.5 h-3.5 text-amber-700" />
-                          <span>موقوفة / مسودة 🔒</span>
+                          <span>مسودة موقوفة</span>
                         </>
                       )}
                     </button>

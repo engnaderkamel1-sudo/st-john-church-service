@@ -119,8 +119,8 @@ export default function AutoUpdateWatcher() {
             <Sparkles className="w-5 h-5 fill-slate-950" />
           </div>
           <div>
-            <h5 className="font-extrabold text-xs text-white">تحديث جديد متوفر للمنظومة! 🚀</h5>
-            <p className="text-[11px] text-slate-300 mt-0.5">اضغط للتحديث الفوري لضمان ظهور أحدث الميزات.</p>
+            <h5 className="font-extrabold text-xs text-white">تحديث متاح للمنظومة</h5>
+            <p className="text-[11px] text-slate-300 mt-0.5">يتوفر إصدار أحدث يتضمن تحسينات الأداء والخدمة.</p>
           </div>
         </div>
 
@@ -128,10 +128,10 @@ export default function AutoUpdateWatcher() {
           <button
             onClick={handleApplyUpdate}
             disabled={isUpdating}
-            className="bg-gold-400 hover:bg-gold-500 text-slate-950 font-extrabold px-3 py-1.5 rounded-xl text-xs flex items-center gap-1 transition-all shadow-xs"
+            className="bg-gold-400 hover:bg-gold-500 text-slate-950 font-extrabold px-3 py-1.5 rounded-xl text-xs flex items-center gap-1 transition-all shadow-xs cursor-pointer"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isUpdating ? 'animate-spin' : ''}`} />
-            <span>{isUpdating ? 'جاري...' : 'تحديث الآن'}</span>
+            <span>{isUpdating ? 'جاري التحديث...' : 'تحديث الآن'}</span>
           </button>
           <button
             onClick={() => setUpdateAvailable(false)}
