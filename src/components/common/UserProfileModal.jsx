@@ -7,6 +7,7 @@ import {
 import { db } from '../../firebase';
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { compressImage } from '../../utils/imageCompressor';
+import { hashPassword } from '../../utils/security';
 
 export default function UserProfileModal({
   isOpen,
@@ -98,7 +99,7 @@ export default function UserProfileModal({
         updatedAt: serverTimestamp()
       };
       if (password.trim()) {
-        updates.password = password.trim();
+        updates.password = await hashPassword(password.trim());
       }
 
       const userRef = doc(db, 'users', user.id);

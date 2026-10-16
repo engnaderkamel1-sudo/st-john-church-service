@@ -3,6 +3,7 @@ import { Users, History, RefreshCw, Activity, UserPlus, UserX, Check, Sparkles, 
 import { getGeminiApiKey, saveGeminiApiKey } from '../../services/geminiService';
 import { db } from '../../firebase';
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { hashPassword } from '../../utils/security';
 
 export default function ServantUsersHub({
   user,
@@ -68,8 +69,9 @@ export default function ServantUsersHub({
     if (!resettingUser || !newPassInput.trim()) return;
     setResetPassLoading(true);
     try {
+      const hashedPassword = await hashPassword(newPassInput.trim());
       await updateDoc(doc(db, 'users', resettingUser.id), {
-        password: newPassInput.trim(),
+        password: hashedPassword,
         updatedAt: serverTimestamp()
       });
       setResetPassSuccess(true);

@@ -4,9 +4,10 @@ import {
   ArrowRight, ArrowLeft, CheckCircle2, Camera, Heart, MapPin, Briefcase, Calendar, Users, Church
 } from 'lucide-react';
 import { db, auth } from '../firebase';
-import { collection, addDoc, getDocs, query, where, limit, serverTimestamp } from 'firebase/firestore';
+import { collection, doc, updateDoc, addDoc, getDocs, query, where, limit, serverTimestamp } from 'firebase/firestore';
 import { sendPasswordResetEmail } from 'firebase/auth';
 import { compressImage } from '../utils/imageCompressor';
+import { hashPassword, isPasswordMatch } from '../utils/security';
 
 export default function AuthModal({ isOpen, onClose, initialRole = 'student', initialMode = 'login', onLoginSuccess }) {
   const [isLogin, setIsLogin] = useState(initialMode !== 'register');
@@ -238,7 +239,7 @@ export default function AuthModal({ isOpen, onClose, initialRole = 'student', in
         const q = query(
           usersRef,
           where('phone', '==', phone.trim()),
-          where('password', '==', password.trim())
+          limit(1)
         );
         const snapshot = await getDocs(q);
 
@@ -249,6 +250,28 @@ export default function AuthModal({ isOpen, onClose, initialRole = 'student', in
         }
 
         const userData = { id: snapshot.docs[0].id, ...snapshot.docs[0].data() };
+        const enteredPass = password.trim();
+        const isMatch = await isPasswordMatch(enteredPass, userData.password);
+
+        if (!isMatch) {
+          setError('رقم الهاتف أو كلمة المرور غير صحيحة');
+          setLoading(false);
+          return;
+        }
+
+        // Silent auto-upgrade of legacy plain-text password to secure SHA-256 hash
+        const expectedHash = await hashPassword(enteredPass);
+        if (userData.password !== expectedHash) {
+          try {
+            await updateDoc(doc(db, 'users', userData.id), {
+              password: expectedHash,
+              updatedAt: serverTimestamp()
+            });
+            userData.password = expectedHash;
+          } catch (upgradeErr) {
+            console.warn('Silent password upgrade warning:', upgradeErr);
+          }
+        }
 
         // Check if user is pending admin approval
         if (userData.status === 'pending_approval') {
@@ -311,11 +334,13 @@ export default function AuthModal({ isOpen, onClose, initialRole = 'student', in
           return;
         }
 
+        const hashedPassword = await hashPassword(password.trim());
+
         const newUser = {
           fullName: fullName.trim(),
           email: email.trim().toLowerCase(),
           phone: phone.trim(),
-          password: password.trim(),
+          password: hashedPassword,
           role: role,
           grade: role === 'student' ? grade : null,
           servantScope: role === 'servant' ? 'all' : null,
