@@ -97,7 +97,14 @@ export default function ServantTasksTotals({
       let totalSolved = 0;
 
       studentsList.forEach(st => {
-        const studentTasks = tasksList.filter(t => !t.grade || t.grade === 'all' || t.grade === st.grade);
+        const studentTasks = tasksList.filter(t => 
+          !t.grade || 
+          t.grade === 'all' || 
+          t.grade === 'common_hall' || 
+          t.grade === 'cycle_1' || 
+          t.grade === 'first' || 
+          t.grade === st.grade
+        );
         totalPossible += studentTasks.length;
         studentTasks.forEach(t => {
           if (submissionsMap[st.id]?.[t.id]) {
@@ -112,7 +119,12 @@ export default function ServantTasksTotals({
     // Task breakdown stats
     const perTaskStats = tasksList.map(task => {
       const eligibleStudents = servantsPrepStudents.filter(s => 
-        !task.grade || task.grade === 'all' || task.grade === s.grade
+        !task.grade || 
+        task.grade === 'all' || 
+        task.grade === 'common_hall' || 
+        task.grade === 'cycle_1' || 
+        task.grade === 'first' || 
+        task.grade === s.grade
       );
       const solvedList = eligibleStudents.filter(s => submissionsMap[s.id]?.[task.id]);
       const solvedCount = solvedList.length;
@@ -151,7 +163,14 @@ export default function ServantTasksTotals({
     const headers = ['م', 'اسم الطالب', 'رقم الهاتف', 'المرحلة', 'نسبة الالتزام %', 'التاسكات المحلولة', ...taskHeaders];
 
     const rows = filteredStudents.map((st, idx) => {
-      const studentTasks = currentStageTasks.filter(t => !t.grade || t.grade === 'all' || t.grade === st.grade);
+      const studentTasks = currentStageTasks.filter(t => 
+        !t.grade || 
+        t.grade === 'all' || 
+        t.grade === 'common_hall' || 
+        t.grade === 'cycle_1' || 
+        t.grade === 'first' || 
+        t.grade === st.grade
+      );
       const solvedCount = studentTasks.filter(t => submissionsMap[st.id]?.[t.id]).length;
       const percent = studentTasks.length > 0 ? Math.round((solvedCount / studentTasks.length) * 100) : 0;
 
@@ -462,7 +481,14 @@ export default function ServantTasksTotals({
                 </tr>
               ) : (
                 filteredStudents.map((st, idx) => {
-                  const studentTasks = currentStageTasks.filter(t => !t.grade || t.grade === 'all' || t.grade === st.grade);
+                  const studentTasks = currentStageTasks.filter(t => 
+                    !t.grade || 
+                    t.grade === 'all' || 
+                    t.grade === 'common_hall' || 
+                    t.grade === 'cycle_1' || 
+                    t.grade === 'first' || 
+                    t.grade === st.grade
+                  );
                   const solvedCount = studentTasks.filter(t => submissionsMap[st.id]?.[t.id]).length;
                   const percent = studentTasks.length > 0 ? Math.round((solvedCount / studentTasks.length) * 100) : 0;
 
