@@ -358,6 +358,37 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
     }
   };
 
+  // Update User Account Status (اعتماد / تعليق / تعطيل / تنشيط)
+  const handleUpdateUserStatus = async (userId, newStatus) => {
+    if (!isServantLeader) {
+      alert('عفواً، تعديل حالة الحسابات مقتصر على أمين الخدمة ومشرف التطبيق.');
+      return;
+    }
+
+    setRoleUpdatingId(userId);
+    try {
+      const userRef = doc(db, 'users', userId);
+      const updateData = {
+        status: newStatus,
+        statusUpdatedAt: serverTimestamp(),
+        statusUpdatedBy: user.fullName || 'أمين الخدمة'
+      };
+
+      if (newStatus === 'active') {
+        updateData.approvedAt = serverTimestamp();
+        updateData.approvedBy = user.fullName || 'أمين الخدمة';
+      }
+
+      await updateDoc(userRef, updateData);
+      setAllUsers(prev => prev.map(u => u.id === userId ? { ...u, ...updateData } : u));
+    } catch (err) {
+      console.error('Error updating user status:', err);
+      alert('حدث خطأ أثناء تعديل حالة الحساب.');
+    } finally {
+      setRoleUpdatingId(null);
+    }
+  };
+
   // Dynamic QR & Numeric PIN Code
   const todayStr = new Date().toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
   const [qrCodeData, setQrCodeData] = useState(`STJOHN-ATTENDANCE-${new Date().toISOString().split('T')[0]}`);
@@ -1905,6 +1936,7 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
           handleUpdateUserRole={handleUpdateUserRole}
           handleApproveUser={handleApproveUser}
           handleRejectUser={handleRejectUser}
+          handleUpdateUserStatus={handleUpdateUserStatus}
           roleUpdatingId={roleUpdatingId}
           onSelectStudent={(st) => setStudent360Profile(st)}
         />

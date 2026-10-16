@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Users, History, RefreshCw, Activity, UserPlus, UserX, Check, Sparkles, Key, ExternalLink, Save, Eye, EyeOff, Lock, X, CheckCircle2, ShieldAlert, UserCheck, AlertCircle } from 'lucide-react';
+import { Users, History, RefreshCw, Activity, UserPlus, UserX, Check, Sparkles, Key, ExternalLink, Save, Eye, EyeOff, Lock, X, CheckCircle2, ShieldAlert, UserCheck, AlertCircle, PauseCircle, Ban, RotateCcw } from 'lucide-react';
 import { getGeminiApiKey, saveGeminiApiKey } from '../../services/geminiService';
 import { db } from '../../firebase';
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
@@ -28,6 +28,7 @@ export default function ServantUsersHub({
   handleUpdateUserRole,
   handleApproveUser,
   handleRejectUser,
+  handleUpdateUserStatus,
   roleUpdatingId,
   onSelectStudent
 }) {
@@ -316,6 +317,8 @@ export default function ServantUsersHub({
                 <option value="student">المخدومين فقط ({allUsers.filter(u => u.role === 'student' && u.status !== 'pending_approval').length})</option>
                 <option value="servant">الخدام فقط ({allUsers.filter(u => u.role === 'servant' && u.status !== 'pending_approval').length})</option>
                 <option value="servant_leader">أمناء الخدمة فقط ({allUsers.filter(u => u.role === 'servant_leader').length})</option>
+                <option value="suspended">المعلقين مؤقتاً ⏸️ ({allUsers.filter(u => u.status === 'suspended').length})</option>
+                <option value="inactive">المعطلين 🚫 ({allUsers.filter(u => u.status === 'inactive' || u.status === 'rejected').length})</option>
               </select>
 
               <button
@@ -369,7 +372,9 @@ export default function ServantUsersHub({
                   .filter(u => {
                     if (userRoleFilter === 'all') return true;
                     if (userRoleFilter === 'pending') return u.status === 'pending_approval';
-                    return u.role === userRoleFilter && u.status !== 'pending_approval';
+                    if (userRoleFilter === 'suspended') return u.status === 'suspended';
+                    if (userRoleFilter === 'inactive') return u.status === 'inactive' || u.status === 'rejected';
+                    return u.role === userRoleFilter && u.status !== 'pending_approval' && u.status !== 'suspended' && u.status !== 'inactive' && u.status !== 'rejected';
                   })
                   .map((item) => (
                     <div key={`m-${item.id}`} className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs space-y-3">
@@ -379,6 +384,10 @@ export default function ServantUsersHub({
                           <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm shrink-0 ${
                             item.status === 'pending_approval'
                               ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                              : item.status === 'suspended'
+                              ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                              : (item.status === 'inactive' || item.status === 'rejected')
+                              ? 'bg-rose-100 text-rose-800 border border-rose-300'
                               : item.role === 'servant' ? 'bg-maroon-800 text-white' : 'bg-slate-100 text-slate-700'
                           }`}>
                             {item.fullName ? item.fullName[0] : '؟'}
@@ -392,6 +401,16 @@ export default function ServantUsersHub({
                               {item.status === 'pending_approval' && (
                                 <span className="text-[10px] bg-amber-100 text-amber-900 border border-amber-300 px-2 py-0.5 rounded-full font-extrabold">
                                   قيد الاعتماد ⏳
+                                </span>
+                              )}
+                              {item.status === 'suspended' && (
+                                <span className="text-[10px] bg-amber-100 text-amber-900 border border-amber-300 px-2 py-0.5 rounded-full font-extrabold">
+                                  معلق مؤقتاً ⏸️
+                                </span>
+                              )}
+                              {(item.status === 'inactive' || item.status === 'rejected') && (
+                                <span className="text-[10px] bg-rose-100 text-rose-800 border border-rose-300 px-2 py-0.5 rounded-full font-extrabold">
+                                  معطل 🚫
                                 </span>
                               )}
                             </div>
@@ -483,6 +502,101 @@ export default function ServantUsersHub({
                           </button>
                         </div>
 
+                        {/* Status Management Actions (اعتماد / تعليق / تعطيل / تنشيط) */}
+                        {item.phone !== '01275571569' && item.id !== user.id && (
+                          <div className="pt-2 border-t border-slate-100">
+                            {item.status === 'pending_approval' ? (
+                              <div className="grid grid-cols-2 gap-2">
+                                <button
+                                  type="button"
+                                  disabled={roleUpdatingId === item.id}
+                                  onClick={() => handleApproveUser(item.id, item.role, item.grade)}
+                                  className="min-h-[44px] bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-3 py-2 rounded-xl transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 disabled:opacity-50"
+                                >
+                                  <CheckCircle2 className="w-4 h-4" />
+                                  <span>{roleUpdatingId === item.id ? 'جاري الاعتماد...' : 'اعتماد وتفعيل ✓'}</span>
+                                </button>
+
+                                <button
+                                  type="button"
+                                  disabled={roleUpdatingId === item.id}
+                                  onClick={() => handleRejectUser(item.id)}
+                                  className="min-h-[44px] bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-300 font-bold text-xs px-3 py-2 rounded-xl transition-all shadow-2xs flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 disabled:opacity-50"
+                                >
+                                  <UserX className="w-4 h-4 text-rose-700" />
+                                  <span>رفض الطلب ✕</span>
+                                </button>
+                              </div>
+                            ) : item.status === 'suspended' ? (
+                              <div className="grid grid-cols-2 gap-2">
+                                <button
+                                  type="button"
+                                  disabled={roleUpdatingId === item.id}
+                                  onClick={() => handleUpdateUserStatus(item.id, 'active')}
+                                  className="min-h-[44px] bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-3 py-2 rounded-xl transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 disabled:opacity-50"
+                                >
+                                  <RotateCcw className="w-4 h-4" />
+                                  <span>{roleUpdatingId === item.id ? 'جاري التفعيل...' : 'إلغاء التعليق وتفعيل ✓'}</span>
+                                </button>
+
+                                <button
+                                  type="button"
+                                  disabled={roleUpdatingId === item.id}
+                                  onClick={() => {
+                                    if (window.confirm('هل أنت متأكد من تعطيل هذا الحساب نهائياً؟')) {
+                                      handleUpdateUserStatus(item.id, 'inactive');
+                                    }
+                                  }}
+                                  className="min-h-[44px] bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-300 font-bold text-xs px-3 py-2 rounded-xl transition-all shadow-2xs flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 disabled:opacity-50"
+                                >
+                                  <Ban className="w-4 h-4 text-rose-700" />
+                                  <span>تعطيل الحساب 🚫</span>
+                                </button>
+                              </div>
+                            ) : (item.status === 'inactive' || item.status === 'rejected') ? (
+                              <button
+                                type="button"
+                                disabled={roleUpdatingId === item.id}
+                                onClick={() => handleUpdateUserStatus(item.id, 'active')}
+                                className="w-full min-h-[44px] bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-3 py-2 rounded-xl transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 disabled:opacity-50"
+                              >
+                                <RotateCcw className="w-4 h-4" />
+                                <span>{roleUpdatingId === item.id ? 'جاري إعادة التفعيل...' : 'إعادة تفعيل الحساب 🔄'}</span>
+                              </button>
+                            ) : (
+                              <div className="grid grid-cols-2 gap-2">
+                                <button
+                                  type="button"
+                                  disabled={roleUpdatingId === item.id}
+                                  onClick={() => {
+                                    if (window.confirm(`هل أنت متأكد من تعليق حساب ${item.fullName || 'المستخدم'} مؤقتاً؟`)) {
+                                      handleUpdateUserStatus(item.id, 'suspended');
+                                    }
+                                  }}
+                                  className="min-h-[44px] bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 font-bold text-xs px-3 py-2 rounded-xl transition-all shadow-2xs flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 disabled:opacity-50"
+                                >
+                                  <PauseCircle className="w-4 h-4 text-amber-700" />
+                                  <span>تعليق مؤقت ⏸️</span>
+                                </button>
+
+                                <button
+                                  type="button"
+                                  disabled={roleUpdatingId === item.id}
+                                  onClick={() => {
+                                    if (window.confirm(`هل أنت متأكد من تعطيل حساب ${item.fullName || 'المستخدم'}؟`)) {
+                                      handleUpdateUserStatus(item.id, 'inactive');
+                                    }
+                                  }}
+                                  className="min-h-[44px] bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-300 font-bold text-xs px-3 py-2 rounded-xl transition-all shadow-2xs flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 disabled:opacity-50"
+                                >
+                                  <Ban className="w-4 h-4 text-rose-700" />
+                                  <span>تعطيل الحساب 🚫</span>
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
                         {item.role === 'student' && onSelectStudent && (
                           <button
                             type="button"
@@ -511,6 +625,7 @@ export default function ServantUsersHub({
                       <th className="py-3 px-3">تعديل الصفة (خادم / مخدوم)</th>
                       <th className="py-3 px-3">تعديل المرحلة</th>
                       <th className="py-3 px-3">إعادة تعيين السر 🔑</th>
+                      <th className="py-3 px-3 text-center">حالة الحساب والإجراءات</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
@@ -518,7 +633,9 @@ export default function ServantUsersHub({
                       .filter(u => {
                         if (userRoleFilter === 'all') return true;
                         if (userRoleFilter === 'pending') return u.status === 'pending_approval';
-                        return u.role === userRoleFilter && u.status !== 'pending_approval';
+                        if (userRoleFilter === 'suspended') return u.status === 'suspended';
+                        if (userRoleFilter === 'inactive') return u.status === 'inactive' || u.status === 'rejected';
+                        return u.role === userRoleFilter && u.status !== 'pending_approval' && u.status !== 'suspended' && u.status !== 'inactive' && u.status !== 'rejected';
                       })
                       .map((item) => (
                         <tr key={item.id} className="hover:bg-slate-50/80 transition-colors">
@@ -527,6 +644,10 @@ export default function ServantUsersHub({
                               <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs ${
                                 item.status === 'pending_approval'
                                   ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                                  : item.status === 'suspended'
+                                  ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                                  : (item.status === 'inactive' || item.status === 'rejected')
+                                  ? 'bg-rose-100 text-rose-800 border border-rose-300'
                                   : item.role === 'servant' ? 'bg-maroon-800 text-white' : 'bg-slate-100 text-slate-700'
                               }`}>
                                 {item.fullName ? item.fullName[0] : '؟'}
@@ -540,6 +661,16 @@ export default function ServantUsersHub({
                                   {item.status === 'pending_approval' && (
                                     <span className="text-[10px] bg-amber-100 text-amber-900 border border-amber-300 px-1.5 py-0.2 rounded font-extrabold mr-1">
                                       قيد الاعتماد ⏳
+                                    </span>
+                                  )}
+                                  {item.status === 'suspended' && (
+                                    <span className="text-[10px] bg-amber-100 text-amber-900 border border-amber-300 px-1.5 py-0.2 rounded font-extrabold mr-1">
+                                      معلق مؤقتاً ⏸️
+                                    </span>
+                                  )}
+                                  {(item.status === 'inactive' || item.status === 'rejected') && (
+                                    <span className="text-[10px] bg-rose-100 text-rose-800 border border-rose-300 px-1.5 py-0.2 rounded font-extrabold mr-1">
+                                      معطل 🚫
                                     </span>
                                   )}
                                 </div>
@@ -642,6 +773,103 @@ export default function ServantUsersHub({
                               <Key className="w-3.5 h-3.5 text-amber-700" />
                               <span>تغيير السر 🔑</span>
                             </button>
+                          </td>
+                          <td className="py-3.5 px-3 text-center">
+                            {item.phone === '01275571569' || item.id === user.id ? (
+                              <span className="text-[11px] font-bold text-slate-400">حساب محمي 🛡️</span>
+                            ) : item.status === 'pending_approval' ? (
+                              <div className="flex items-center justify-center gap-1.5">
+                                <button
+                                  type="button"
+                                  disabled={roleUpdatingId === item.id}
+                                  onClick={() => handleApproveUser(item.id, item.role, item.grade)}
+                                  className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-[11px] shadow-2xs flex items-center gap-1 transition-all cursor-pointer disabled:opacity-50 active:scale-95"
+                                  title="اعتماد وتفعيل الحساب فوراً"
+                                >
+                                  <CheckCircle2 className="w-3.5 h-3.5" />
+                                  <span>{roleUpdatingId === item.id ? 'جاري الاعتماد...' : 'اعتماد ✓'}</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={roleUpdatingId === item.id}
+                                  onClick={() => handleRejectUser(item.id)}
+                                  className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-300 rounded-xl font-bold text-[11px] shadow-2xs flex items-center gap-1 transition-all cursor-pointer disabled:opacity-50 active:scale-95"
+                                  title="رفض الطلب"
+                                >
+                                  <UserX className="w-3.5 h-3.5 text-rose-700" />
+                                  <span>رفض ✕</span>
+                                </button>
+                              </div>
+                            ) : item.status === 'suspended' ? (
+                              <div className="flex items-center justify-center gap-1.5">
+                                <button
+                                  type="button"
+                                  disabled={roleUpdatingId === item.id}
+                                  onClick={() => handleUpdateUserStatus(item.id, 'active')}
+                                  className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-[11px] shadow-2xs flex items-center gap-1 transition-all cursor-pointer disabled:opacity-50 active:scale-95"
+                                  title="إلغاء التعليق وتفعيل الحساب"
+                                >
+                                  <RotateCcw className="w-3.5 h-3.5" />
+                                  <span>تفعيل ✓</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={roleUpdatingId === item.id}
+                                  onClick={() => {
+                                    if (window.confirm('هل أنت متأكد من تعطيل هذا الحساب نهائياً؟')) {
+                                      handleUpdateUserStatus(item.id, 'inactive');
+                                    }
+                                  }}
+                                  className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-300 rounded-xl font-bold text-[11px] shadow-2xs flex items-center gap-1 transition-all cursor-pointer disabled:opacity-50 active:scale-95"
+                                  title="تعطيل نهائي"
+                                >
+                                  <Ban className="w-3.5 h-3.5 text-rose-700" />
+                                  <span>تعطيل 🚫</span>
+                                </button>
+                              </div>
+                            ) : (item.status === 'inactive' || item.status === 'rejected') ? (
+                              <button
+                                type="button"
+                                disabled={roleUpdatingId === item.id}
+                                onClick={() => handleUpdateUserStatus(item.id, 'active')}
+                                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-[11px] shadow-2xs flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50 active:scale-95"
+                                title="إعادة تنشيط وتفعيل الحساب"
+                              >
+                                <RotateCcw className="w-3.5 h-3.5" />
+                                <span>إعادة تفعيل 🔄</span>
+                              </button>
+                            ) : (
+                              <div className="flex items-center justify-center gap-1.5">
+                                <button
+                                  type="button"
+                                  disabled={roleUpdatingId === item.id}
+                                  onClick={() => {
+                                    if (window.confirm(`هل أنت متأكد من تعليق حساب ${item.fullName || 'المستخدم'} مؤقتاً؟`)) {
+                                      handleUpdateUserStatus(item.id, 'suspended');
+                                    }
+                                  }}
+                                  className="px-2.5 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-xl font-bold text-[11px] shadow-2xs flex items-center gap-1 transition-all cursor-pointer disabled:opacity-50 active:scale-95"
+                                  title="تعليق مؤقت للحساب"
+                                >
+                                  <PauseCircle className="w-3.5 h-3.5 text-amber-700" />
+                                  <span>تعليق ⏸️</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={roleUpdatingId === item.id}
+                                  onClick={() => {
+                                    if (window.confirm(`هل أنت متأكد من تعطيل حساب ${item.fullName || 'المستخدم'}؟`)) {
+                                      handleUpdateUserStatus(item.id, 'inactive');
+                                    }
+                                  }}
+                                  className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-300 rounded-xl font-bold text-[11px] shadow-2xs flex items-center gap-1 transition-all cursor-pointer disabled:opacity-50 active:scale-95"
+                                  title="تعطيل الحساب"
+                                >
+                                  <Ban className="w-3.5 h-3.5 text-rose-700" />
+                                  <span>تعطيل 🚫</span>
+                                </button>
+                              </div>
+                            )}
                           </td>
                         </tr>
                       ))}

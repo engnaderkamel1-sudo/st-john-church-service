@@ -223,6 +223,13 @@ export default function AuthModal({ isOpen, onClose, initialRole = 'student', in
           return;
         }
 
+        // Check if user is suspended
+        if (userData.status === 'suspended') {
+          setError('تم تعليق هذا الحساب مؤقتاً. يرجى مراجعة إدارة الخدمة.');
+          setLoading(false);
+          return;
+        }
+
         // Check if user is rejected or inactive
         if (userData.status === 'inactive' || userData.status === 'rejected') {
           setError('تم إيقاف تفعيل هذا الحساب. يرجى التواصل مع أمين الخدمة.');
