@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Church, BookOpen, QrCode, ShieldCheck, HeartHandshake, LogOut, CheckCircle2, User, Bell, ChevronLeft, Sparkles, RefreshCw, AlertCircle, ArrowLeftRight, Eye, Menu } from 'lucide-react';
+import { Church, BookOpen, QrCode, ShieldCheck, HeartHandshake, LogOut, CheckCircle2, User, Bell, ChevronLeft, Sparkles, RefreshCw, AlertCircle, ArrowLeftRight, Eye, Menu, Check, CheckCheck, Trash2 } from 'lucide-react';
 import { db } from './firebase';
 import AuthModal from './components/AuthModal';
 import StudentDashboard from './components/StudentDashboard';
@@ -19,6 +19,8 @@ export default function App() {
   const notificationRef = useRef(null);
 
   const [notifications, setNotifications] = useState([]);
+  const [readNotificationIds, setReadNotificationIds] = useState([]);
+  const [deletedNotificationIds, setDeletedNotificationIds] = useState([]);
   // Multi-Role Live Preview State (null = original role, or 'student' | 'servant' | 'servant_leader' | 'admin')
   const [previewRole, setPreviewRole] = useState(null);
   // Full-Screen Image Lightbox Preview State (for church logo or user profile photos)
@@ -141,6 +143,75 @@ export default function App() {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [showNotifications]);
+
+  // Load read & deleted notifications for current user from localStorage
+  useEffect(() => {
+    if (currentUser?.id) {
+      try {
+        const savedRead = JSON.parse(localStorage.getItem(`read_notifs_${currentUser.id}`) || '[]');
+        const savedDeleted = JSON.parse(localStorage.getItem(`deleted_notifs_${currentUser.id}`) || '[]');
+        setReadNotificationIds(Array.isArray(savedRead) ? savedRead : []);
+        setDeletedNotificationIds(Array.isArray(savedDeleted) ? savedDeleted : []);
+      } catch (e) {
+        setReadNotificationIds([]);
+        setDeletedNotificationIds([]);
+      }
+    } else {
+      setReadNotificationIds([]);
+      setDeletedNotificationIds([]);
+    }
+  }, [currentUser?.id]);
+
+  const markAsRead = (id) => {
+    if (!id) return;
+    setReadNotificationIds(prev => {
+      if (prev.includes(id)) return prev;
+      const updated = [...prev, id];
+      if (currentUser?.id) {
+        localStorage.setItem(`read_notifs_${currentUser.id}`, JSON.stringify(updated));
+      }
+      return updated;
+    });
+  };
+
+  const markAllAsRead = () => {
+    const visibleIds = visibleNotifications.map(n => n.id);
+    setReadNotificationIds(prev => {
+      const updated = Array.from(new Set([...prev, ...visibleIds]));
+      if (currentUser?.id) {
+        localStorage.setItem(`read_notifs_${currentUser.id}`, JSON.stringify(updated));
+      }
+      return updated;
+    });
+  };
+
+  const deleteNotification = (id, e) => {
+    if (e) e.stopPropagation();
+    if (!id) return;
+    setDeletedNotificationIds(prev => {
+      if (prev.includes(id)) return prev;
+      const updated = [...prev, id];
+      if (currentUser?.id) {
+        localStorage.setItem(`deleted_notifs_${currentUser.id}`, JSON.stringify(updated));
+      }
+      return updated;
+    });
+  };
+
+  const deleteAllNotifications = () => {
+    const visibleIds = visibleNotifications.map(n => n.id);
+    setDeletedNotificationIds(prev => {
+      const updated = Array.from(new Set([...prev, ...visibleIds]));
+      if (currentUser?.id) {
+        localStorage.setItem(`deleted_notifs_${currentUser.id}`, JSON.stringify(updated));
+      }
+      return updated;
+    });
+  };
+
+  const visibleNotifications = notifications.filter(n => !deletedNotificationIds.includes(n.id));
+  const unreadCount = visibleNotifications.filter(n => !readNotificationIds.includes(n.id)).length;
+
 
 
   useEffect(() => {
@@ -329,53 +400,127 @@ export default function App() {
             {/* Notification Bell */}
             <div className="relative" ref={notificationRef}>
               <button
+                type="button"
                 onClick={() => setShowNotifications(prev => !prev)}
-                className="p-1.5 sm:p-2 text-slate-600 hover:text-maroon-900 hover:bg-slate-100 rounded-xl transition-colors relative"
+                className="p-1.5 sm:p-2 text-slate-600 hover:text-maroon-900 hover:bg-slate-100 rounded-xl transition-colors relative cursor-pointer"
                 title="التنبيهات"
               >
                 <Bell className="w-4 h-4 sm:w-5 sm:h-5" />
-                {notifications.length > 0 && (
+                {unreadCount > 0 && (
                   <span className="min-w-3.5 h-3.5 sm:min-w-4 sm:h-4 px-1 bg-amber-500 text-maroon-950 font-black text-[9px] sm:text-[10px] rounded-full absolute -top-1 -right-1 ring-2 ring-white flex items-center justify-center">
-                    {notifications.length}
+                    {unreadCount > 99 ? '99+' : unreadCount}
                   </span>
                 )}
               </button>
 
               {showNotifications && (
-                <div className="absolute right-0 sm:right-auto sm:left-0 mt-2 w-72 bg-white border border-slate-200 rounded-2xl shadow-xl p-4 z-50 text-right space-y-2.5">
-                  <div className="font-bold text-xs text-maroon-900 border-b border-slate-100 pb-2">
-                    التنبيهات والإشعارات
+                <div className="absolute right-0 sm:right-auto sm:left-0 mt-2 w-[calc(100vw-2rem)] max-w-xs sm:w-80 bg-white border border-slate-200 rounded-2xl shadow-xl p-3 sm:p-4 z-50 text-right space-y-2.5">
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                    <div className="flex items-center gap-1.5 font-bold text-xs text-maroon-900">
+                      <span>التنبيهات والإشعارات</span>
+                      {unreadCount > 0 && (
+                        <span className="bg-amber-100 text-amber-800 text-[10px] px-1.5 py-0.2 rounded-full font-black">
+                          {unreadCount}
+                        </span>
+                      )}
+                    </div>
+                    {visibleNotifications.length > 0 && (
+                      <div className="flex items-center gap-1 text-[11px]">
+                        {unreadCount > 0 && (
+                          <button
+                            type="button"
+                            onClick={markAllAsRead}
+                            className="px-2 py-0.5 text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg font-bold transition-colors flex items-center gap-1 cursor-pointer"
+                            title="تحديد الكل كمقروء"
+                          >
+                            <CheckCheck className="w-3.5 h-3.5" />
+                            <span>قراءة الكل</span>
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={deleteAllNotifications}
+                          className="p-1 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                          title="مسح كافة الإشعارات"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    )}
                   </div>
-                  {notifications.length === 0 ? (
+
+                  {visibleNotifications.length === 0 ? (
                     <div className="py-6 text-center text-slate-400 text-xs font-bold">
-                      لا توجد إشعارات جديدة حالياً
+                      لا توجد إشعارات حالياً
                     </div>
                   ) : (
-                    notifications.map((n) => (
-                      <div 
-                        key={n.id} 
-                        onClick={() => {
-                          if (n.type === 'pending_registration') {
-                            setAdminNavTarget({ mainTab: 'users_hub', subTab: 'pending_approvals', ts: Date.now() });
-                            setShowNotifications(false);
-                          }
-                        }}
-                        className={`p-2.5 rounded-xl border text-xs transition-colors ${
-                          n.type === 'pending_registration' 
-                            ? 'bg-amber-50/80 border-amber-200 cursor-pointer hover:bg-amber-100/90' 
-                            : 'bg-slate-50 border-slate-100'
-                        }`}
-                      >
-                        <div className="font-bold text-slate-800 flex items-center justify-between">
-                          <span>{n.title}</span>
-                          {n.type === 'pending_registration' && (
-                            <span className="text-[10px] bg-amber-600 text-white px-1.5 py-0.2 rounded font-bold">مراجعة 👈</span>
-                          )}
-                        </div>
-                        <div className="text-[11px] text-slate-500 mt-0.5">{n.desc}</div>
-                        <div className="text-[10px] text-slate-400 mt-1">{n.time}</div>
-                      </div>
-                    ))
+                    <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-0.5">
+                      {visibleNotifications.map((n) => {
+                        const isRead = readNotificationIds.includes(n.id);
+                        return (
+                          <div 
+                            key={n.id} 
+                            onClick={() => {
+                              markAsRead(n.id);
+                              if (n.type === 'pending_registration') {
+                                setAdminNavTarget({ mainTab: 'users_hub', subTab: 'pending_approvals', ts: Date.now() });
+                                setShowNotifications(false);
+                              }
+                            }}
+                            className={`p-2.5 rounded-xl border text-xs transition-colors relative cursor-pointer ${
+                              !isRead
+                                ? 'bg-amber-50/70 border-amber-200/90 shadow-2xs'
+                                : 'bg-slate-50/80 border-slate-100 text-slate-500 hover:bg-slate-100/70'
+                            }`}
+                          >
+                            <div className="flex items-start justify-between gap-1.5">
+                              <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                                {!isRead && (
+                                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
+                                )}
+                                <span className={`font-bold truncate ${!isRead ? 'text-slate-900' : 'text-slate-600'}`}>
+                                  {n.title}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-0.5 shrink-0">
+                                {!isRead && (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      markAsRead(n.id);
+                                    }}
+                                    className="p-1 text-amber-600 hover:bg-amber-100 rounded-md transition-colors cursor-pointer"
+                                    title="تحديد كمقروء"
+                                  >
+                                    <Check className="w-3.5 h-3.5" />
+                                  </button>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={(e) => deleteNotification(n.id, e)}
+                                  className="p-1 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors cursor-pointer"
+                                  title="حذف هذا التنبيه"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </div>
+                            <div className={`text-[11px] mt-1 ${!isRead ? 'text-slate-700' : 'text-slate-400'}`}>
+                              {n.desc}
+                            </div>
+                            <div className="flex items-center justify-between mt-1.5 pt-1 border-t border-slate-100 text-[10px] text-slate-400">
+                              <span>{n.time}</span>
+                              {n.type === 'pending_registration' && (
+                                <span className="text-[10px] bg-amber-600 text-white px-1.5 py-0.2 rounded font-bold">
+                                  مراجعة 👈
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
                   )}
                 </div>
               )}
