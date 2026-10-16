@@ -255,7 +255,7 @@ export default function ServantAttendanceTotals({
                 كشف الحضور الإجمالي الشامل (Totals)
               </h2>
               <p className="text-xs text-slate-500 font-bold">
-                متابعة دقيقة لنسب الحضور لجميع جمعات إعداد الخدام من الجمعة الأولى (2 أكتوبر 2026).
+                متابعة دقيقة لنسب الحضور لجميع جمعات إعداد المخدومين من الجمعة الأولى (2 أكتوبر 2026).
               </p>
             </div>
           </div>
@@ -283,7 +283,7 @@ export default function ServantAttendanceTotals({
                 متوسط الحضور العام للقاعة المشتركة
               </span>
               <h3 className="text-xl font-black mt-1 text-white">
-                إعداد الخدام (الكل)
+                إعداد المخدومين (الكل)
               </h3>
             </div>
             <span className="p-2.5 bg-white/10 rounded-2xl backdrop-blur-xs text-gold-300">
