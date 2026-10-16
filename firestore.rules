@@ -51,90 +51,56 @@ service cloud.firestore {
       allow delete: if false;
     }
 
-    // 5. الإشعارات والتنبيهات
+    // 5. الإشعارات والتنبيهات (الخدام يضيفون ويعدلون ويحذفون التنبيهات من لوحة الإشعارات)
     match /notifications/{notificationId} {
-      allow read: if true;
-      allow create: if
-        request.resource.data.title is string &&
-        request.resource.data.targetUserId is string;
-      allow update: if false;
-      allow delete: if false;
+      allow read, write: if true;
     }
 
-    // 6. سجل الدخول والأمان (audit trail — لا تعديل ولا حذف أبداً)
+    // 6. سجل الدخول والأمان (audit trail — مسموح فقط بالإضافة والقراءة، وممنوع التعديل أو الحذف)
     match /login_logs/{logId} {
       allow read: if true;
-      allow create: if
-        request.resource.data.userId is string &&
-        request.resource.data.action is string;
-      allow update: if false;
-      allow delete: if false;
+      allow create: if true;
+      allow update, delete: if false;
     }
 
     // 7. المناهج والمحاضرات والمراجع
     match /service_curriculum/{subjectId} {
-      allow read: if true;
-      allow create: if
-        request.resource.data.name is string &&
-        request.resource.data.grade is string;
-      allow update: if true;
-      allow delete: if true; // الخادم قد يحذف مادة كاملة
+      allow read, write: if true;
     }
 
     // 8. بنك الأسئلة
     match /service_questions/{questionId} {
-      allow read: if true;
-      allow create: if
-        request.resource.data.questionText is string &&
-        request.resource.data.grade is string;
-      allow update: if true;
-      allow delete: if true; // الخادم قد يحذف سؤالاً
+      allow read, write: if true;
     }
 
     // 9. النوتة الروحية
     match /spiritual_diaries/{diaryId} {
-      allow read: if true;
-      allow create: if
-        request.resource.data.userId is string &&
-        request.resource.data.date is string;
-      allow update: if true; // المستخدم يعدل تدويناته اليومية
-      allow delete: if false;
+      allow read, write: if true;
     }
 
     // 10. الامتحانات الرسمية
     match /service_exams/{examId} {
-      allow read: if true;
-      allow create: if
-        request.resource.data.title is string &&
-        request.resource.data.grade is string;
-      allow update: if true;
-      allow delete: if true; // الخادم قد يحذف امتحاناً
+      allow read, write: if true;
     }
 
-    // 11. إجابات وتسليمات الامتحانات
+    // 11. إجابات وتسليمات الامتحانات الورقية والإلكترونية
     match /exam_submissions/{submissionId} {
-      allow read: if true;
-      allow create: if
-        request.resource.data.userId is string &&
-        request.resource.data.examId is string;
-      allow update: if false;
-      allow delete: if false;
+      allow read, write: if true;
     }
 
-    // 12. اقتراحات الميزات من المستخدمين
+    // 12. اقتراحات الميزات (المستخدم يرسل، والخادم يعدل الحالة أو يحذف)
     match /feature_suggestions/{suggestionId} {
-      allow read: if true;
-      allow create: if true;
-      allow update: if false;
-      allow delete: if false;
+      allow read, write: if true;
     }
 
-    // 13. بلاغات الأعطال والمشاكل
+    // 13. بلاغات الأعطال والمشاكل (المستخدم يبلغ، والخادم يحدث الحالة أو يحذف)
     match /app_errors/{errorId} {
-      allow read: if true;
-      allow create: if true;
-      allow update: if false;
-      allow delete: if false;
+      allow read, write: if true;
+    }
+
+    // 14. التقييمات والشهادات الرسمية للطلبة (الخدام يرصدون ويحفظون التقييمات)
+    match /official_evaluations/{studentId} {
+      allow read, write: if true;
     }
 
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
