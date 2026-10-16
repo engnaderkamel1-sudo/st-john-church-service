@@ -96,10 +96,16 @@ export default function UpdatesChangelogModal({ isOpen, onClose }) {
     }
   ];
 
+  // Live Vercel build info injected at compile-time
+  const liveBuildTime = typeof __APP_BUILD_TIME__ !== 'undefined' ? __APP_BUILD_TIME__ : null;
+  const liveCommitSha = typeof __APP_COMMIT_SHA__ !== 'undefined' ? __APP_COMMIT_SHA__ : null;
+  const liveCommitMsg = typeof __APP_COMMIT_MSG__ !== 'undefined' ? __APP_COMMIT_MSG__ : '';
+
   // Calculate relative time
   const formatRelativeTime = (dateStr) => {
     try {
-      const d = new Date(dateStr.replace(' ', 'T'));
+      if (!dateStr) return '';
+      const d = typeof dateStr === 'string' && !dateStr.includes('T') ? new Date(dateStr.replace(' ', 'T')) : new Date(dateStr);
       if (isNaN(d.getTime())) return dateStr;
       const now = new Date();
       const diffSec = Math.floor((now.getTime() - d.getTime()) / 1000);
@@ -190,6 +196,38 @@ export default function UpdatesChangelogModal({ isOpen, onClose }) {
           >
             <X className="w-4 h-4" />
           </button>
+        </div>
+
+        {/* Live Active Deployment Banner (Direct from Vercel & Vite Build) */}
+        <div className="mt-3 p-3 bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-50 border border-emerald-200/90 rounded-2xl flex items-center justify-between gap-3 shrink-0">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs font-black text-emerald-950">
+                  النسخة السحابية النشطة حالياً (Live Deployment)
+                </span>
+                {liveCommitSha && (
+                  <span className="text-[10px] font-mono font-bold bg-white/90 border border-emerald-300 text-emerald-900 px-2 py-0.5 rounded-md">
+                    Commit: {liveCommitSha}
+                  </span>
+                )}
+              </div>
+              <p className="text-[11px] text-emerald-800 font-medium truncate mt-0.5">
+                {liveBuildTime ? (
+                  <>
+                    بناء السيرفر: <strong className="font-bold text-emerald-950">{formatRelativeTime(liveBuildTime)}</strong> ({new Date(liveBuildTime).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })})
+                    {liveCommitMsg ? ` • "${liveCommitMsg}"` : ''}
+                  </>
+                ) : (
+                  'اتصال سحابي مباشر ونشط'
+                )}
+              </p>
+            </div>
+          </div>
+          <span className="text-[10px] bg-emerald-600 text-white font-black px-2.5 py-1 rounded-xl shadow-xs shrink-0 font-mono">
+            Ready ●
+          </span>
         </div>
 
         {/* Server Actions Bar */}
