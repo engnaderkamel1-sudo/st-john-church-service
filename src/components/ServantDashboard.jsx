@@ -1047,7 +1047,7 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
 
   // Detect file type from filename or MIME type
   const detectFileType = (file) => {
-    if (!file) return 'file';
+    if (!file || !file.name) return 'file';
     const ext = file.name.split('.').pop().toLowerCase();
     if (ext === 'pdf') return 'pdf';
     if (['doc', 'docx', 'rtf', 'txt', 'odt'].includes(ext)) return 'doc';

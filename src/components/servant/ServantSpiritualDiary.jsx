@@ -250,11 +250,14 @@ export default function ServantSpiritualDiary({
 
           {/* Sub-view 2: History & Analytics */}
           {myDiarySubTab === 'history' && (() => {
-            const curMonthDays = Object.keys(servantDiary).filter(d => d.startsWith(selectedDiaryMonth));
-            const [curY, curM] = selectedDiaryMonth.split('-').map(Number);
+            const safeMonth = (typeof selectedDiaryMonth === 'string' && selectedDiaryMonth.includes('-'))
+              ? selectedDiaryMonth
+              : new Date().toISOString().substring(0, 7);
+            const curMonthDays = Object.keys(servantDiary || {}).filter(d => d.startsWith(safeMonth));
+            const [curY, curM] = safeMonth.split('-').map(Number);
             const prevD = new Date(curY, curM - 2, 1);
             const prevMonthStr = prevD.toISOString().substring(0, 7);
-            const prevMonthDays = Object.keys(servantDiary).filter(d => d.startsWith(prevMonthStr));
+            const prevMonthDays = Object.keys(servantDiary || {}).filter(d => d.startsWith(prevMonthStr));
 
             let curBaker = 0, curGhoroub = 0, curNowm = 0, curBible = 0, curComm = 0, curConf = 0, curPrep = 0, curVisit = 0;
             curMonthDays.forEach(d => {

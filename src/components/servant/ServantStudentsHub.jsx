@@ -12,6 +12,7 @@ export default function ServantStudentsHub({
 }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilterGrade, setActiveFilterGrade] = useState(selectedGrade || 'all');
+  const safeGradeTitle = (g) => (getGradeTitle ? getGradeTitle(g) : (g || 'المرحلة'));
 
   // Helper: Get enrolled curriculum title for student
   const getEnrolledCurriculumBadge = (grade) => {
@@ -95,7 +96,7 @@ export default function ServantStudentsHub({
                   : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
               }`}
             >
-              <span>{getGradeTitle(g)}</span>
+              <span>{safeGradeTitle(g)}</span>
               <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
                 activeFilterGrade === g ? 'bg-gold-400 text-maroon-950' : 'bg-slate-200 text-slate-700'
               }`}>
@@ -116,10 +117,10 @@ export default function ServantStudentsHub({
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
           {filteredStudents.map((st) => {
-            const gradeName = getGradeTitle(st.grade || 'first');
-            const points = st.points || 0;
-            const attendRate = typeof st.attendanceRate === 'number' ? st.attendanceRate : 85;
-            const currBadge = getEnrolledCurriculumBadge(st.grade || 'first');
+            const gradeName = safeGradeTitle(st?.grade || 'first');
+            const points = st?.points || 0;
+            const attendRate = typeof st?.attendanceRate === 'number' ? st.attendanceRate : 0;
+            const currBadge = getEnrolledCurriculumBadge(st?.grade || 'first');
 
             return (
               <div 

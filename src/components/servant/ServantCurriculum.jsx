@@ -1197,7 +1197,7 @@ export default function ServantCurriculum({
         </div>
 
         <div className="text-[11px] font-bold text-slate-500 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl">
-          المنهج المعروض: <strong className="text-maroon-900">{getGradeTitle(selectedGrade)}</strong>
+          المنهج المعروض: <strong className="text-maroon-900">{getGradeTitle ? getGradeTitle(selectedGrade) : (selectedGrade || 'المرحلة')}</strong>
         </div>
       </div>
 
@@ -1225,7 +1225,7 @@ export default function ServantCurriculum({
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
             <div>
               <h3 className="font-extrabold text-slate-900 text-base">
-                {curriculumTarget === 'students' ? 'مواد ومناهج المخدومين' : 'مواد ومراجع الخدام'}: {getGradeTitle(selectedGrade)}
+                {curriculumTarget === 'students' ? 'مواد ومناهج المخدومين' : 'مواد ومراجع الخدام'}: {getGradeTitle ? getGradeTitle(selectedGrade) : (selectedGrade || 'المرحلة')}
               </h3>
               <p className="text-xs text-slate-500 mt-0.5">
                 إدارة المواد ورفع الملفات (PDF، Word، Excel، صور، تسجيلات) إلى Google Drive مباشرة.
@@ -1246,7 +1246,7 @@ export default function ServantCurriculum({
           {showAddSubjectModal && (
             <form onSubmit={handleAddSubject} className="bg-slate-50 border border-slate-200 p-4.5 rounded-2xl space-y-3">
               <h4 className="font-extrabold text-xs text-maroon-900">
-                إضافة مادة جديدة ({curriculumTarget === 'students' ? 'للمخدومين' : 'للخدام فقط'}) - {getGradeTitle(selectedGrade)}
+                إضافة مادة جديدة ({curriculumTarget === 'students' ? 'للمخدومين' : 'للخدام فقط'}) - {getGradeTitle ? getGradeTitle(selectedGrade) : (selectedGrade || 'المرحلة')}
               </h4>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
@@ -1373,7 +1373,7 @@ export default function ServantCurriculum({
                   <div className="flex items-center gap-2 text-xs text-slate-400 font-bold mb-0.5">
                     <span>{curriculumTarget === 'students' ? 'مناهج المخدومين' : 'مناهج الخدام 🔒'}</span>
                     <span>•</span>
-                    <span className="text-maroon-800">{getGradeTitle(selectedGrade)}</span>
+                    <span className="text-maroon-800">{getGradeTitle ? getGradeTitle(selectedGrade) : (selectedGrade || 'المرحلة')}</span>
                   </div>
                   <div className="flex items-center gap-2 flex-wrap">
                     <h4 className="font-extrabold text-slate-900 text-lg flex items-center gap-2">

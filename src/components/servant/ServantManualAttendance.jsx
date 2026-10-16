@@ -71,11 +71,17 @@ export default function ServantManualAttendance({
   const formatFridayArabic = (dateStr) => {
     if (!dateStr) return '';
     try {
-      const [year, month, day] = dateStr.split('-');
-      const d = new Date(parseInt(year, 10), parseInt(month, 10) - 1, parseInt(day, 10));
-      return d.toLocaleDateString('ar-EG', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+      if (typeof dateStr === 'object' && dateStr.seconds) {
+        return new Date(dateStr.seconds * 1000).toLocaleDateString('ar-EG', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+      }
+      if (typeof dateStr === 'string' && dateStr.includes('-')) {
+        const [year, month, day] = dateStr.split('-');
+        const d = new Date(parseInt(year, 10), parseInt(month, 10) - 1, parseInt(day, 10));
+        return d.toLocaleDateString('ar-EG', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+      }
+      return String(dateStr);
     } catch {
-      return dateStr;
+      return '';
     }
   };
 
@@ -421,7 +427,7 @@ export default function ServantManualAttendance({
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
           {filteredStudents.map((st) => {
-            const gradeName = getGradeTitle(st.grade || 'first');
+            const gradeName = getGradeTitle ? getGradeTitle(st.grade || 'first') : (st.grade || 'سنة أولى');
             const isAttending = manualAttendLoadingId === st.id;
             const isAttendSuccess = manualAttendSuccessId === st.id;
             const isAbsenting = manualAbsenceLoadingId === st.id;

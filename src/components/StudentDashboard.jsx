@@ -355,6 +355,7 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser, externa
       const now = new Date();
       const hours = now.getHours();
       const minutes = now.getMinutes();
+      const totalMinutes = hours * 60 + minutes;
       const [startH, startM] = (serviceStartTime || '10:30').split(':').map(Number);
       const startMinutes = (startH || 10) * 60 + (startM || 30);
       const endMinutes = 14 * 60; // 02:00 PM
@@ -394,18 +395,21 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser, externa
       }
     });
 
-    const unsubSpecific = onSnapshot(doc(db, 'remote_access', user.id), (docSnap) => {
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        if (data.activePin) {
-          setActiveServerPin(data.activePin.toString());
+    let unsubSpecific = () => {};
+    if (user?.id) {
+      unsubSpecific = onSnapshot(doc(db, 'remote_access', user.id), (docSnap) => {
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          if (data.activePin) {
+            setActiveServerPin(data.activePin.toString());
+          }
+          if (data.isOpen && new Date(data.validUntil) > new Date()) {
+            setBypassTime(true);
+            setServantOpenedAccess({ openedBy: data.openedBy, type: 'specific' });
+          }
         }
-        if (data.isOpen && new Date(data.validUntil) > new Date()) {
-          setBypassTime(true);
-          setServantOpenedAccess({ openedBy: data.openedBy, type: 'specific' });
-        }
-      }
-    });
+      });
+    }
 
     return () => {
       clearInterval(interval);
@@ -413,7 +417,7 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser, externa
       unsubRegs();
       unsubSpecific();
     };
-  }, [user.id]);
+  }, [user?.id]);
 
   // Handle Attendance by Numeric PIN Code (Offline-First + Deterministic Validation)
   const handlePinAttendance = async (e) => {
@@ -761,7 +765,7 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser, externa
     setAnnouncements(prev => prev.filter(item => item.id !== notifId));
   };
 
-  const currentDayDiary = diaryRecords[selectedDiaryDate] || { baker: false, ghoroub: false, nowm: false, bible: false, communion: false, confession: false };
+  const currentDayDiary = (diaryRecords || {})[selectedDiaryDate] || { baker: false, ghoroub: false, nowm: false, bible: false, communion: false, confession: false };
 
   const getGradeTitle = (g) => {
     const titles = { first: 'سنة أولى إعدادي خدام', second: 'سنة ثانية إعدادي خدام', third: 'سنة ثالثة إعدادي خدام', elisha: 'فصل أليشع' };
@@ -779,24 +783,24 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser, externa
         >
           <div 
             onClick={(e) => {
-              if (user.photoUrl) {
+              if (user?.photoUrl) {
                 e.stopPropagation();
-                setPreviewPhotoModal({ url: user.photoUrl, title: user.fullName });
+                setPreviewPhotoModal({ url: user.photoUrl, title: user.fullName || 'مخدوم' });
               }
             }}
             className="w-10 h-10 sm:w-14 sm:h-14 rounded-2xl bg-maroon-50 border border-maroon-200 text-maroon-900 flex items-center justify-center font-bold text-lg sm:text-xl shrink-0 shadow-xs group-hover:scale-105 transition-transform overflow-hidden relative"
-            title={user.photoUrl ? "عرض الصورة الشخصية" : ""}
+            title={user?.photoUrl ? "عرض الصورة الشخصية" : ""}
           >
-            {user.photoUrl ? (
-              <img src={user.photoUrl} alt={user.fullName} className="w-full h-full object-cover" />
+            {user?.photoUrl ? (
+              <img src={user.photoUrl} alt={user?.fullName || 'صورة'} className="w-full h-full object-cover" />
             ) : (
-              <span>{user.fullName ? user.fullName[0] : 'م'}</span>
+              <span>{user?.fullName ? user.fullName[0] : 'م'}</span>
             )}
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-1.5">
               <h2 className="text-sm sm:text-base font-extrabold text-slate-900 truncate group-hover:text-maroon-800 transition-colors">
-                أهلاً يا {user.fullName || 'مخدوم'}
+                أهلاً يا {user?.fullName || 'مخدوم'}
               </h2>
               <span className="text-[9px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded-full font-bold">
                 ⚙️
@@ -804,9 +808,9 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser, externa
             </div>
             <div className="flex items-center gap-1.5 text-xs text-slate-500 mt-0.5">
               <span className="bg-maroon-800 text-white px-2 py-0.5 rounded-full font-bold text-[9px] sm:text-[10px]">
-                {getGradeTitle(user.grade)}
+                {getGradeTitle(user?.grade)}
               </span>
-              <span className="font-mono text-[11px] truncate" dir="ltr">{user.phone}</span>
+              <span className="font-mono text-[11px] truncate" dir="ltr">{user?.phone || ''}</span>
             </div>
           </div>
         </div>

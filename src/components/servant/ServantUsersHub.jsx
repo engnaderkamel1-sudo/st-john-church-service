@@ -849,7 +849,7 @@ https://st-john-church-service-rust.vercel.app/
                               ? <span className="text-purple-800 font-bold">أمين خدمة (متابعة نوتة الخدام)</span>
                               : item.role === 'servant'
                               ? <span className="text-maroon-800 font-bold">خادم عام (جميع المراحل)</span>
-                              : getGradeTitle(item.grade || 'first')}
+                              : (getGradeTitle ? getGradeTitle(item.grade || 'first') : (item.grade || 'الأولى'))}
                           </td>
                           <td className="py-3.5 px-3">
                             <select

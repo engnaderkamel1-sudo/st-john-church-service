@@ -35,7 +35,7 @@ const normalizeLectures = (subject) => {
 export default function StudentCurriculum({
   user,
   getGradeTitle,
-  subjectsData,
+  subjectsData = [],
   selectedSubject,
   setSelectedSubject,
   activePreviewPdf,
@@ -75,7 +75,7 @@ export default function StudentCurriculum({
       <div>
         <h3 className="font-extrabold text-slate-900 text-base flex items-center gap-2">
           <BookOpen className="w-5 h-5 text-maroon-800" />
-          المنهج والمواد الدراسية ({getGradeTitle(user.grade)})
+          المنهج والمواد الدراسية ({getGradeTitle ? getGradeTitle(user?.grade) : (user?.grade || 'المرحلة الدراسية')})
         </h3>
         <p className="text-xs text-slate-500 mt-0.5">اختر المادة لتصفح المذكرات والمحاضرات الصوتية والمرئية المرفوعة من الخدام.</p>
       </div>

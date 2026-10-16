@@ -21,6 +21,7 @@ export default function ServantExamsBank({
   fetchAllUsers,
   onSelectStudent
 }) {
+  const safeGradeTitle = (g) => (getGradeTitle ? getGradeTitle(g) : (g || 'المرحلة'));
   const [examSubSection, setExamSubSection] = useState('assign'); // 'assign' | 'totals' | 'bank' | 'paper'
   const [showQuickQuizModal, setShowQuickQuizModal] = useState(false);
   const [editingQuiz, setEditingQuiz] = useState(null);
@@ -245,7 +246,7 @@ export default function ServantExamsBank({
         <div className="space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
-              <h4 className="font-extrabold text-slate-900 text-base">بنك الأسئلة: {getGradeTitle(selectedGrade)}</h4>
+              <h4 className="font-extrabold text-slate-900 text-base">بنك الأسئلة: {safeGradeTitle(selectedGrade)}</h4>
               <p className="text-xs text-slate-500 mt-0.5">يضيف خدام المواد الأسئلة مصنفة حسب الصعوبة والنوع لتوليد التاسكات والمسابقات منها.</p>
             </div>
             <div className="flex items-center gap-2">
@@ -272,7 +273,7 @@ export default function ServantExamsBank({
 
           {showAddQuestionModal && (
             <form onSubmit={handleAddQuestionSubmit} className="bg-slate-50 border border-slate-200 p-5 rounded-2xl space-y-3">
-              <h5 className="font-extrabold text-xs text-maroon-900">إضافة سؤال جديد لبنك الأسئلة ({getGradeTitle(selectedGrade)})</h5>
+              <h5 className="font-extrabold text-xs text-maroon-900">إضافة سؤال جديد لبنك الأسئلة ({safeGradeTitle(selectedGrade)})</h5>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="block text-[11px] font-bold text-slate-700 mb-1">المادة</label>
@@ -367,7 +368,7 @@ export default function ServantExamsBank({
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <h4 className="font-extrabold text-slate-900 text-base">تكليف ونشر امتحان (Assign Exam)</h4>
-              <p className="text-xs text-slate-500 mt-0.5">نشر امتحان لمخدومي {getGradeTitle(selectedGrade)}.</p>
+              <p className="text-xs text-slate-500 mt-0.5">نشر امتحان لمخدومي {safeGradeTitle(selectedGrade)}.</p>
             </div>
             <button
               onClick={() => setShowCreateExamModal(true)}
@@ -380,7 +381,7 @@ export default function ServantExamsBank({
 
           {showCreateExamModal && (
             <form onSubmit={handleCreateExamSubmit} className="bg-slate-50 border border-slate-200 p-5 rounded-2xl space-y-3">
-              <h5 className="font-extrabold text-xs text-maroon-900">نشر امتحان جديد لـ ({getGradeTitle(selectedGrade)})</h5>
+              <h5 className="font-extrabold text-xs text-maroon-900">نشر امتحان جديد لـ ({safeGradeTitle(selectedGrade)})</h5>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="block text-[11px] font-bold text-slate-700 mb-1">المادة</label>
@@ -539,7 +540,7 @@ export default function ServantExamsBank({
             <div>
               <h4 className="font-extrabold text-slate-900 text-base flex items-center gap-2">
                 <PenTool className="w-5 h-5 text-amber-700" />
-                <span>رصد درجات امتحان ورقي / تحريري ({getGradeTitle(selectedGrade)})</span>
+                <span>رصد درجات امتحان ورقي / تحريري ({safeGradeTitle(selectedGrade)})</span>
               </h4>
               <p className="text-xs text-slate-600 mt-1">
                 حدد بيانات الامتحان، ثم ادخل درجات الطلاب يدوياً. تُضاف الدرجات مباشرة إلى البند (11: المواد والامتحانات) في لائحة الطالب.
@@ -591,10 +592,10 @@ export default function ServantExamsBank({
             <div className="flex items-center justify-between">
               <h5 className="font-extrabold text-sm text-slate-900 flex items-center gap-1.5">
                 <UserCheck className="w-4 h-4 text-emerald-700" />
-                <span>قائمة مخدومي {getGradeTitle(selectedGrade)} لرصد الدرجة:</span>
+                <span>قائمة مخدومي {safeGradeTitle(selectedGrade)} لرصد الدرجة:</span>
               </h5>
               <span className="text-xs text-slate-500">
-                {allUsers.filter(u => u.role === 'student' && (u.grade || 'first') === selectedGrade).length} مخدوم
+                {(allUsers || []).filter(u => u && u.role === 'student' && (u.grade || 'first') === selectedGrade).length} مخدوم
               </span>
             </div>
 

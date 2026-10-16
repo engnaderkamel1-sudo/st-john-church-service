@@ -155,7 +155,7 @@ export default function ServantNotificationsHub({ currentUser, allStudents = [] 
           targetUserId: finalTargetUserId,
           targetLabel: targetLabel,
           updatedAt: serverTimestamp(),
-          updatedBy: currentUser.fullName || 'الخادم'
+          updatedBy: currentUser?.fullName || 'الخادم'
         });
         setSuccessMsg('تم تعديل التنبيه بنجاح وتحديثه لدى المخدومين ✓');
       } else {
@@ -166,8 +166,8 @@ export default function ServantNotificationsHub({ currentUser, allStudents = [] 
           targetUserId: finalTargetUserId,
           targetLabel: targetLabel,
           time: nowFormatted,
-          senderName: currentUser.fullName || 'أمين الخدمة',
-          senderId: currentUser.id || 'admin',
+          senderName: currentUser?.fullName || 'أمين الخدمة',
+          senderId: currentUser?.id || 'admin',
           createdAt: serverTimestamp()
         });
         setSuccessMsg('تم إرسال التنبيه فوراً بنجاح لجميع المعنيين 🚀');
@@ -328,9 +328,9 @@ export default function ServantNotificationsHub({ currentUser, allStudents = [] 
                 required
               >
                 <option value="">-- اضغط لاختيار المخدوم --</option>
-                {allStudents.map((st) => (
-                  <option key={st.id} value={st.id}>
-                    {st.fullName} ({st.grade === 'elisha' ? 'فصل أليشع' : 'المرحلة الأولى'}) - {st.phone}
+                {(allStudents || []).map((st) => (
+                  <option key={st?.id} value={st?.id}>
+                    {st?.fullName} ({st?.grade === 'elisha' ? 'فصل أليشع' : 'المرحلة الأولى'}) - {st?.phone}
                   </option>
                 ))}
               </select>
@@ -391,9 +391,9 @@ export default function ServantNotificationsHub({ currentUser, allStudents = [] 
           </div>
         ) : (
           <div className="space-y-3">
-            {notifications.map((notif) => (
+            {(notifications || []).map((notif) => (
               <div 
-                key={notif.id}
+                key={notif?.id}
                 className="p-4 rounded-2xl bg-slate-50 border border-slate-200 hover:border-slate-300 transition-all space-y-2.5"
               >
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">

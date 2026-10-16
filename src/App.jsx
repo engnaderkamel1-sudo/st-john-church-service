@@ -96,7 +96,7 @@ export default function App() {
               const timeDesc = daysRemaining === 0 
                 ? 'اليوم! 🎂🎉' 
                 : daysRemaining === 1 
-                ? 'غداً إن شاء الله' 
+                ? 'غداً بمشيئة ربنا' 
                 : daysRemaining === 2 
                 ? 'بعد يومين' 
                 : 'بعد ٣ أيام';

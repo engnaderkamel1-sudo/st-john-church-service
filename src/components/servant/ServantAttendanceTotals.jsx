@@ -74,11 +74,17 @@ export default function ServantAttendanceTotals({
   const formatShortDate = (dateStr) => {
     if (!dateStr) return '';
     try {
-      const [year, month, day] = dateStr.split('-');
-      const d = new Date(parseInt(year, 10), parseInt(month, 10) - 1, parseInt(day, 10));
-      return d.toLocaleDateString('ar-EG', { day: 'numeric', month: 'short' });
+      if (typeof dateStr === 'object' && dateStr.seconds) {
+        return new Date(dateStr.seconds * 1000).toLocaleDateString('ar-EG', { day: 'numeric', month: 'short' });
+      }
+      if (typeof dateStr === 'string' && dateStr.includes('-')) {
+        const [year, month, day] = dateStr.split('-');
+        const d = new Date(parseInt(year, 10), parseInt(month, 10) - 1, parseInt(day, 10));
+        return d.toLocaleDateString('ar-EG', { day: 'numeric', month: 'short' });
+      }
+      return String(dateStr);
     } catch {
-      return dateStr;
+      return '';
     }
   };
 

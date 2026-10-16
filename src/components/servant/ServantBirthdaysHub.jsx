@@ -184,7 +184,7 @@ export default function ServantBirthdaysHub({ allUsers = [], getGradeTitle, onSe
                     : 'bg-slate-50 text-slate-600 hover:bg-slate-100'
                 }`}
               >
-                {stg === 'all' ? 'جميع المراحل' : getGradeTitle(stg)}
+                {stg === 'all' ? 'جميع المراحل' : (getGradeTitle ? getGradeTitle(stg) : stg)}
               </button>
             ))}
           </div>
