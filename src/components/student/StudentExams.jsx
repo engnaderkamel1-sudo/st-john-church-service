@@ -52,7 +52,7 @@ export default function StudentExams({
                         {exam.subject || 'عام'}
                       </span>
                       <span className="text-xs text-slate-500">
-                        {examQuestionsCount > 0 ? `${examQuestionsCount} أسئلة` : ''} • {exam.durationMinutes ? `${exam.durationMinutes} دقيقة` : 'وقت مفتوح'} • {totalScore} نقطة
+                        {examQuestionsCount > 0 ? `${examQuestionsCount} أسئلة` : ''} • {exam.durationMinutes ? `${exam.durationMinutes} دقيقة` : 'وقت مفتوح'}
                       </span>
                       {exam.deadline && (
                         <span className="bg-amber-50 text-amber-900 border border-amber-200 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
@@ -67,7 +67,7 @@ export default function StudentExams({
                   {isCompleted ? (
                     <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs px-4 py-2.5 rounded-xl font-black shrink-0 flex items-center gap-1.5">
                       <CheckCircle className="w-4 h-4 text-emerald-600" />
-                      <span>تم التسليم بنجاح (درجتك: {isCompleted.autoScore} / {isCompleted.totalScore || totalScore})</span>
+                      <span>تم التسليم بنجاح ✓</span>
                     </div>
                   ) : (
                     <button
@@ -96,7 +96,7 @@ export default function StudentExams({
                   {activeExam.subject || 'عام'}
                 </span>
                 <span className="text-xs text-slate-500">
-                  {activeQuestions.length} أسئلة • الدرجة الكلية: {activeTotalScore} نقطة
+                  {activeQuestions.length} أسئلة
                 </span>
               </div>
               <h4 className="font-black text-slate-900 text-base sm:text-lg">{activeExam.title}</h4>
@@ -115,10 +115,10 @@ export default function StudentExams({
               <CheckCircle className="w-12 h-12 text-emerald-600 mx-auto" />
               <h4 className="text-lg font-black text-slate-900">تم تسليم إجاباتك بنجاح! 🎉</h4>
               <div className="text-sm text-slate-700 font-bold">
-                حصلت على: <strong className="text-maroon-800 text-base font-black">{examResult.autoScore} / {examResult.totalScore} نقطة</strong>
+                تم حفظ وتسليم الامتحان بنجاح ✓
               </div>
               <p className="text-xs text-emerald-800 font-bold">
-                تمت إضافة درجاتك تلقائياً إلى رصيدك وترتيبك في لوحة الشرف! 🌟
+                تم رصد تسليمك في سجلات الخدمة المباركة.
               </p>
               <button 
                 onClick={() => setActiveExam(null)} 
@@ -133,7 +133,7 @@ export default function StudentExams({
                 <div key={q.id} className="bg-slate-50 border border-slate-200 p-4 sm:p-5 rounded-2xl space-y-3 text-xs">
                   <div className="flex items-center justify-between text-slate-500 font-bold">
                     <span className="font-extrabold text-slate-900 text-xs">
-                      السؤال {idx + 1} ({q.points || 1} درجات)
+                      السؤال {idx + 1}
                     </span>
                     <span className="text-[10px] bg-slate-200 text-slate-700 px-2 py-0.5 rounded-full">
                       {q.type === 'true_false' ? 'صح أو خطأ' : q.type === 'essay' ? 'سؤال مقالي' : 'اختيار متعدد'}

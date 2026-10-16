@@ -19,13 +19,13 @@ export default function StudentOfficialReportCard({
 
   // Custom servant manually evaluated fields state
   const [reportData, setReportData] = useState({
-    confessionsCount: 6, // 15 pts * 6 = 90
-    researchesScore: 80, // 40 * 2 = 80
-    metropoliaDayScore: 30, // 30
-    metropoliaCourseScore: 80, // 80
-    stageMeetingScore: 47, // 47
-    activityScore: isSecondYear ? 90 : 60, // 10 pts per subject
-    gradProjectScore: isSecondYear ? 50 : 0 // year 2 only
+    confessionsCount: 0,
+    researchesScore: 0,
+    metropoliaDayScore: 0,
+    metropoliaCourseScore: 0,
+    stageMeetingScore: 0,
+    activityScore: 0,
+    gradProjectScore: 0
   });
 
   const [saving, setSaving] = useState(false);
@@ -131,7 +131,7 @@ export default function StudentOfficialReportCard({
   // 11. Academic Curriculum Subjects (المواد الدراسية): 6 subjects * 40 = 240 (Year 1) | 9 subjects * 40 = 360 (Year 2)
   const maxSubjectsScore = isSecondYear ? 360 : 240;
   const examTotalEarned = examSubmissions.reduce((acc, sub) => acc + (sub.score || 0), 0);
-  const subjectsScore = Math.min(maxSubjectsScore, examTotalEarned || (isSecondYear ? 310 : 210));
+  const subjectsScore = Math.min(maxSubjectsScore, examTotalEarned || 0);
 
   // 12. Activity & Engagement (الإيجابية): 10 pts per subject (60 for Year 1 / 90 for Year 2)
   const activityScore = Number(reportData.activityScore || 0);

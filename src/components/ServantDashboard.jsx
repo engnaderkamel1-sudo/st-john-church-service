@@ -1637,20 +1637,7 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
                   <span>مناهج ومراجع الخدام</span>
                 </button>
 
-                {/* 8. Regulations */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowRegulationsModal(true);
-                    setMobileSidebarOpen(false);
-                  }}
-                  className="w-full text-right py-2 px-3 rounded-xl flex items-center justify-between text-xs font-bold transition-all text-slate-700 hover:bg-slate-100 hover:text-maroon-900 cursor-pointer"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <Award className="w-4 h-4 text-amber-600 shrink-0" />
-                    <span>لائحة درجات المرحلة 📋</span>
-                  </div>
-                </button>
+                {/* 8. Regulations (Placed on hold until unified scoring launch) */}
 
                 {/* 9. Analytics */}
                 <button

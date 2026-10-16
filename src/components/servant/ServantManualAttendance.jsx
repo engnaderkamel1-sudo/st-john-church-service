@@ -486,9 +486,6 @@ export default function ServantManualAttendance({
                         </>
                       )}
                     </div>
-                    <span className="text-[11px] font-black text-slate-700">
-                      {existingRecord.status === 'حاضر' ? `+${existingRecord.pointsAwarded || 10}⭐` : '0⭐'}
-                    </span>
                   </div>
                 ) : (
                   <div className="p-2 rounded-xl text-[11px] text-amber-900 bg-amber-50 border border-amber-200 text-center font-extrabold">
@@ -527,7 +524,7 @@ export default function ServantManualAttendance({
                         ) : (
                           <>
                             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                            <span>تغيير الحالة إلى حاضر (+10⭐)</span>
+                            <span>تغيير الحالة إلى حاضر</span>
                           </>
                         )}
                       </button>
@@ -546,7 +543,7 @@ export default function ServantManualAttendance({
                       ) : (
                         <>
                           <CheckCircle2 className="w-4 h-4 text-gold-300" />
-                          <span>تسجيل حاضر (+10⭐)</span>
+                          <span>تسجيل حاضر</span>
                         </>
                       )}
                     </button>

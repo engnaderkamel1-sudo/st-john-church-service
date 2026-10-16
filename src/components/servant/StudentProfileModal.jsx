@@ -9,7 +9,7 @@ import { collection, query, where, onSnapshot, doc, updateDoc, serverTimestamp }
 import StudentOfficialReportCard from './StudentOfficialReportCard';
 
 export default function StudentProfileModal({ student, onClose, getGradeTitle }) {
-  const [activeTab, setActiveTab] = useState('official_report'); // 'official_report' | 'overview' | 'attendance' | 'exams' | 'diary' | 'notes'
+  const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'attendance' | 'exams' | 'diary' | 'notes'
   const [attendanceRecords, setAttendanceRecords] = useState([]);
   const [examSubmissions, setExamSubmissions] = useState([]);
   const [diaries, setDiaries] = useState([]);
@@ -156,8 +156,6 @@ export default function StudentProfileModal({ student, onClose, getGradeTitle })
                 ) : (
                   <span className="text-slate-400">بدون هاتف مسجل</span>
                 )}
-                <span>•</span>
-                <span className="text-gold-300 font-bold shrink-0">{student.points || 0} نقطة روحية ⭐</span>
               </div>
             </div>
           </div>
@@ -174,15 +172,7 @@ export default function StudentProfileModal({ student, onClose, getGradeTitle })
 
         {/* Tab Switcher (Horizontally scrollable with smooth touch) */}
         <div className="flex items-center gap-1 border-b border-slate-200 bg-slate-50 p-1.5 text-xs font-bold overflow-x-auto shrink-0 scrollbar-none">
-          <button
-            onClick={() => setActiveTab('official_report')}
-            className={`py-2 px-3 rounded-xl transition-all cursor-pointer whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
-              activeTab === 'official_report' ? 'bg-gradient-to-r from-maroon-900 to-maroon-800 text-white shadow-xs ring-1 ring-gold-400/40' : 'text-slate-700 hover:text-slate-900 hover:bg-slate-200/50'
-            }`}
-          >
-            <Award className="w-3.5 h-3.5 text-gold-300" />
-            <span>شيت اللائحة والدرجات 📜</span>
-          </button>
+          {/* Note: Official Report Tab is placed on hold until centralized scoring is finalized */}
           <button
             onClick={() => setActiveTab('overview')}
             className={`py-2 px-3 rounded-xl transition-all cursor-pointer whitespace-nowrap shrink-0 ${
@@ -241,26 +231,16 @@ export default function StudentProfileModal({ student, onClose, getGradeTitle })
           {activeTab === 'overview' && (
             <div className="space-y-4">
               {/* Key Indicators */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+              <div className="grid grid-cols-2 gap-2.5">
                 <div className="bg-emerald-50 border border-emerald-200 p-3 rounded-2xl text-center">
                   <span className="text-[10px] font-bold text-emerald-800 block">نسبة الحضور</span>
                   <span className="text-lg font-extrabold text-emerald-700">{attendancePercent}%</span>
                   <span className="text-[9px] text-emerald-600 block mt-0.5">{totalDaysPresent} يوم حضور</span>
                 </div>
-                <div className="bg-amber-50 border border-amber-200 p-3 rounded-2xl text-center">
-                  <span className="text-[10px] font-bold text-amber-800 block">متوسط الامتحانات</span>
-                  <span className="text-lg font-extrabold text-amber-700">{avgExamScore} / 30</span>
-                  <span className="text-[9px] text-amber-600 block mt-0.5">{totalExamsSolved} اختبار محلول</span>
-                </div>
                 <div className="bg-purple-50 border border-purple-200 p-3 rounded-2xl text-center">
                   <span className="text-[10px] font-bold text-purple-800 block">تسجيلات النوتة</span>
                   <span className="text-lg font-extrabold text-purple-700">{totalDiariesLogged} يوم</span>
                   <span className="text-[9px] text-purple-600 block mt-0.5">{totalPrayers} صلاة مسجلة</span>
-                </div>
-                <div className="bg-maroon-50 border border-maroon-200 p-3 rounded-2xl text-center">
-                  <span className="text-[10px] font-bold text-maroon-800 block">إجمالي النقاط</span>
-                  <span className="text-lg font-extrabold text-maroon-900">{student.points || 0} ⭐</span>
-                  <span className="text-[9px] text-maroon-700 block mt-0.5">رصيد تشجيعي</span>
                 </div>
               </div>
 
@@ -395,7 +375,7 @@ export default function StudentProfileModal({ student, onClose, getGradeTitle })
                   <div className="p-3 flex items-center justify-between">
                     <span className="text-slate-700">آخر اختبار قام بحله:</span>
                     <span className="font-bold text-amber-800">
-                      {examSubmissions[0] ? `${examSubmissions[0].examTitle} - (${examSubmissions[0].autoScore}/${examSubmissions[0].totalScore})` : 'لا توجد اختبارات مسلّمة'}
+                      {examSubmissions[0] ? `${examSubmissions[0].examTitle} (تم التسليم بنجاح ✓)` : 'لا توجد اختبارات مسلّمة'}
                     </span>
                   </div>
                   <div className="p-3 flex items-center justify-between">
@@ -440,11 +420,6 @@ export default function StudentProfileModal({ student, onClose, getGradeTitle })
                           }`}>
                             {isAttended ? 'حاضر ✓' : 'غائب ✗'}
                           </span>
-                          {isAttended && rec.pointsAwarded !== undefined && (
-                            <span className="text-[10px] bg-amber-50 text-amber-900 border border-amber-200 px-1.5 py-0.5 rounded-md font-bold">
-                              +{rec.pointsAwarded} ⭐
-                            </span>
-                          )}
                           {(rec.method || rec.type) && (
                             <span className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md">
                               {rec.type === 'manual_by_servant' || rec.method === 'manual_servant'
@@ -489,10 +464,9 @@ export default function StudentProfileModal({ student, onClose, getGradeTitle })
                         <span className="text-[10px] text-slate-400 block mt-1">تاريخ التسليم: {ex.date} - {ex.submittedAt}</span>
                       </div>
                       <div className="text-left">
-                        <span className="text-sm font-extrabold text-emerald-700 block">
-                          {ex.autoScore} / {ex.totalScore || 30}
+                        <span className="text-xs font-bold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full inline-block">
+                          تم التسليم ✓
                         </span>
-                        <span className="text-[10px] text-slate-500 font-medium">الدرجة المحصلة</span>
                       </div>
                     </div>
                   ))}

@@ -146,7 +146,7 @@ export default function StudentTasks({
                           {task.subject || 'عام'}
                         </span>
                         <span className="text-xs text-slate-500 font-bold">
-                          {task.questions?.length || 0} أسئلة • {task.totalScore || 20} نقطة
+                          {task.questions?.length || 0} أسئلة
                         </span>
                         {task.deadline && (
                           <span className="bg-amber-50 text-amber-900 border border-amber-200 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
@@ -207,7 +207,7 @@ export default function StudentTasks({
                           <div className="flex items-center gap-2">
                             <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs px-3.5 py-1.5 rounded-xl font-black flex items-center gap-1.5">
                               <CheckCircle className="w-4 h-4 text-emerald-600" />
-                              <span>تم التسليم في الموعد ({completed.autoScore} / {completed.totalScore || totalScore} نقطة)</span>
+                              <span>تم التسليم بنجاح ✓</span>
                             </div>
                             {completed.answers && (
                               <button
@@ -224,7 +224,7 @@ export default function StudentTasks({
                           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
                             <span className="bg-amber-50 text-amber-900 border border-amber-200 text-xs px-3 py-1.5 rounded-xl font-bold flex items-center gap-1">
                               <Clock className="w-3.5 h-3.5 text-amber-700" />
-                              <span>انتهى الموعد الرسمي (0 نقطة مسابقة)</span>
+                              <span>انتهى الموعد الرسمي (متاح للتدريب)</span>
                             </span>
                             <button
                               type="button"
@@ -303,15 +303,15 @@ export default function StudentTasks({
                 {isPracticeMode ? 'أحسنت! أتممت المراجعة الذاتية بنجاح 👏' : 'تم تسليم التاسك الرسمي بنجاح! 🎉'}
               </h4>
               <div className="text-sm text-slate-700 font-bold">
-                درجتك المحصلة: <strong className="text-maroon-800 text-base font-black">{taskResult.autoScore} / {taskResult.totalScore} نقطة</strong>
+                تم حفظ وتسليم إجاباتك بنجاح ✓
               </div>
               {isPracticeMode ? (
                 <p className="text-xs text-indigo-800 font-bold bg-indigo-50 border border-indigo-200 p-2.5 rounded-xl max-w-md mx-auto">
-                  💡 تم التقييم لأغراض المراجعة والتعلم الذاتي فقط، ولم تُضف إلى نقاط المسابقة الرسمية لانتهاء موعد التسليم.
+                  💡 تم حفظ إجاباتك لأغراض المراجعة والتعلم الذاتي.
                 </p>
               ) : (
                 <p className="text-xs text-emerald-800 font-bold bg-emerald-50 border border-emerald-200 p-2.5 rounded-xl max-w-md mx-auto">
-                  🌟 تمت إضافة درجاتك تلقائياً إلى رصيدك وترتيبك في لوحة الشرف!
+                  تم رصد وحفظ تسليمك بنجاح في سجلات الخدمة المباركة.
                 </p>
               )}
               <button 
@@ -328,7 +328,7 @@ export default function StudentTasks({
                 <div key={q.id} className="bg-slate-50 border border-slate-200 p-4 sm:p-5 rounded-2xl space-y-3 text-xs">
                   <div className="flex items-center justify-between text-slate-500 font-bold">
                     <span className="font-extrabold text-slate-900 text-xs">
-                      السؤال {idx + 1} ({q.points || 1} درجات)
+                      السؤال {idx + 1}
                     </span>
                     <span className="text-[10px] bg-slate-200 text-slate-700 px-2 py-0.5 rounded-full">
                       {q.type === 'true_false' ? 'صح أو خطأ' : q.type === 'essay' ? 'سؤال مقالي' : 'اختيار متعدد'}

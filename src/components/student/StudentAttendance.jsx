@@ -168,7 +168,7 @@ export default function StudentAttendance({
                     <span className="text-[10px] text-slate-400">{item.time}</span>
                   </div>
                 </div>
-                <span className="text-maroon-800 font-bold text-[11px]">+{item.points} نقاط</span>
+                <span className="text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full font-bold text-[10px]">حاضر ✓</span>
               </div>
             ))
           )}

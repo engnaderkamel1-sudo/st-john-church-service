@@ -630,7 +630,7 @@ export default function ServantAttendanceTotals({
         <div className="flex flex-wrap items-center gap-4 text-[11px] text-slate-600 pt-1">
           <div className="flex items-center gap-1.5">
             <span className="w-5 h-5 rounded-md bg-emerald-100 text-emerald-700 font-black flex items-center justify-center text-xs">✓</span>
-            <span>حاضر (+10⭐)</span>
+            <span>حاضر</span>
           </div>
           <div className="flex items-center gap-1.5">
             <span className="w-5 h-5 rounded-md bg-rose-100 text-rose-700 font-black flex items-center justify-center text-xs">✕</span>

@@ -100,9 +100,6 @@ export default function StudentHomeOverview({
               <span className="bg-gold-400/20 text-gold-300 border border-gold-400/30 text-[10px] font-black px-2.5 py-0.5 rounded-full">
                 {getGradeTitle ? getGradeTitle(user.grade) : 'المخدوم'}
               </span>
-              <span className="text-xs font-bold text-amber-200/90">
-                {spiritualRank.title}
-              </span>
             </div>
             <h2 className="text-base sm:text-lg font-black text-white truncate">
               سلام ونعمة يا {user.fullName || 'مخدوم'} 👋
@@ -111,34 +108,19 @@ export default function StudentHomeOverview({
               «لَيْسَ أَنْتُمُ اخْتَرْتُمُونِي بَلْ أَنَا اخْتَرْتُكُمْ وَأَقَمْتُكُمْ لِتَذْهَبُوا وَتَأْتُوا بِثَمَرٍ» (يوحنا ١٥: ١٦)
             </p>
           </div>
-
-          <div className="bg-white/10 backdrop-blur-xs border border-white/15 rounded-2xl p-3 sm:p-3.5 text-center shrink-0 min-w-[110px]">
-            <span className="text-[10px] text-amber-200 font-bold block mb-0.5">رصيد نقاط التميز</span>
-            <div className="flex items-center justify-center gap-1">
-              <span className="text-xl sm:text-2xl font-black text-amber-300">{points}</span>
-              <Sparkles className="w-4 h-4 text-amber-300" />
-            </div>
-          </div>
         </div>
       </div>
 
-      {/* 3. Live Analytics Snapshot (2x2 Mobile Grid) */}
+      {/* 3. Live Analytics Snapshot (3 Core Cards) */}
       <div>
         <div className="flex items-center justify-between mb-2.5 px-1">
           <h3 className="text-xs sm:text-sm font-black text-slate-800 flex items-center gap-1.5">
             <TrendingUp className="w-4 h-4 text-maroon-800" />
             <span>مؤشرات التزامي ونموي الروحي</span>
           </h3>
-          <button
-            type="button"
-            onClick={onOpenRegulations}
-            className="text-[11px] text-maroon-800 hover:text-maroon-900 font-extrabold flex items-center gap-1 cursor-pointer"
-          >
-            <span>لائحة الدرجات 📜</span>
-          </button>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-3">
           
           {/* A. Attendance Card */}
           <button
@@ -200,21 +182,6 @@ export default function StudentHomeOverview({
             </span>
           </button>
 
-          {/* D. Total Points & Rank */}
-          <div className="p-3.5 rounded-2xl bg-white border border-slate-200/90 shadow-2xs text-right">
-            <div className="flex items-center justify-between mb-2">
-              <div className="w-8 h-8 rounded-xl bg-rose-50 text-rose-700 flex items-center justify-center">
-                <Flame className="w-4 h-4" />
-              </div>
-              <span className="text-[10px] font-bold text-slate-400 font-mono">التقييم العام</span>
-            </div>
-            <div className="text-lg sm:text-xl font-black text-slate-900">
-              {points} <span className="text-xs font-bold text-slate-500">نقطة</span>
-            </div>
-            <span className="text-[10px] text-maroon-800 font-extrabold block mt-0.5 truncate">
-              {spiritualRank.title}
-            </span>
-          </div>
 
         </div>
       </div>

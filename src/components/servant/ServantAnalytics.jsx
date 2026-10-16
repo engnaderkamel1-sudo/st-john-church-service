@@ -22,15 +22,15 @@ export default function ServantAnalytics({
       {/* Header */}
       <div className="border-b border-slate-100 pb-3">
         <h3 className="font-extrabold text-slate-900 text-base">
-          الإحصائيات ولوحة الشرف والتقييم الرعوي: {getGradeTitle(selectedGrade)}
+          الإحصائيات والمتابعة الرعوية: {getGradeTitle(selectedGrade)}
         </h3>
         <p className="text-xs text-slate-500 mt-0.5">
-          متابعة نسب الحضور، تكريم الأوائل، كشف العلامات الحمراء (المتغيبين والمقصرين)، وكتابة تقييم وملاحظات الخدام.
+          متابعة نسب الحضور، كشف العلامات الحمراء (المتغيبين والمقصرين)، وكتابة تقييم وملاحظات الخدام.
         </p>
       </div>
 
-      {/* Quick Metrics KPI Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      {/* Quick Metrics KPI Cards (3 Core Metrics) */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div className="bg-slate-50 border border-slate-200 p-4 rounded-2xl text-center">
           <span className="text-[11px] text-slate-500 font-bold block">إجمالي المخدومين</span>
           <span className="text-xl font-extrabold text-slate-900">{totalStudents}</span>
@@ -39,11 +39,6 @@ export default function ServantAnalytics({
         <div className="bg-slate-50 border border-slate-200 p-4 rounded-2xl text-center">
           <span className="text-[11px] text-slate-500 font-bold block">متوسط الحضور</span>
           <span className="text-xl font-extrabold text-emerald-600">{avgAttendance}%</span>
-        </div>
-
-        <div className="bg-slate-50 border border-slate-200 p-4 rounded-2xl text-center">
-          <span className="text-[11px] text-slate-500 font-bold block">متوسط الامتحانات</span>
-          <span className="text-xl font-extrabold text-amber-600">{avgScore} / 30</span>
         </div>
 
         <div className="bg-red-50 border border-red-200 p-4 rounded-2xl text-center">
@@ -55,32 +50,7 @@ export default function ServantAnalytics({
         </div>
       </div>
 
-      {/* Honor Roll (Top 3 Students) */}
-      <div className="bg-gradient-to-r from-amber-50 to-amber-100/50 border border-amber-200 p-5 rounded-2xl space-y-3">
-        <h4 className="font-extrabold text-amber-950 text-sm flex items-center gap-2">
-          <Trophy className="w-5 h-5 text-amber-600" />
-          لوحة الشرف والأوائل ({getGradeTitle(selectedGrade)}) 🏆
-        </h4>
-        {topStudents.length === 0 ? (
-          <p className="text-xs text-amber-800/80 font-bold">لا توجد سجلات مخدومين مسجلة حتى الآن لحساب لوحة الشرف.</p>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            {topStudents.map((st, rank) => (
-              <div key={st.id} className="bg-white border border-amber-200/80 p-3.5 rounded-xl flex items-center justify-between text-xs shadow-2xs">
-                <div>
-                  <span className="font-extrabold text-slate-900 block text-xs">
-                    {rank === 0 ? '🥇' : rank === 1 ? '🥈' : '🥉'} {st.fullName}
-                  </span>
-                  <span className="text-[10px] text-slate-500 mt-0.5 block">
-                    حضور: {st.attendanceRate}% • امتحان: {st.examScore}/30
-                  </span>
-                </div>
-                <span className="text-amber-700 font-extrabold text-xs">{st.points} نقطة</span>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+      {/* Honor Roll (Placed on hold until unified scoring launch) */}
 
       {/* Student Evaluation Table with Servant Comments & Red Flags */}
       <div className="space-y-3">
@@ -134,7 +104,6 @@ export default function ServantAnalytics({
                     <th className="py-3 px-3">المخدوم</th>
                     <th className="py-3 px-2 text-center">الملف الشامل</th>
                     <th className="py-3 px-2">الحضور</th>
-                    <th className="py-3 px-2">الدرجة</th>
                     <th className="py-3 px-2">الحالة</th>
                     <th className="py-3 px-4">ملاحظات وتقييم الخادم</th>
                     <th className="py-3 px-3">حفظ</th>
@@ -159,7 +128,6 @@ export default function ServantAnalytics({
                         </button>
                       </td>
                       <td className="py-3 px-2 font-bold text-slate-800">{st.attendanceRate}%</td>
-                      <td className="py-3 px-2 font-bold text-slate-800">{st.examScore}/30</td>
                       <td className="py-3 px-2">
                         {st.isRedFlag ? (
                           <span className="inline-flex items-center gap-1 bg-red-100 text-red-700 text-[10px] font-extrabold px-2 py-0.5 rounded-full border border-red-200">

@@ -158,15 +158,9 @@ export default function ServantStudentsHub({
                 </div>
 
                 {/* Quick Indicators Bar */}
-                <div className="grid grid-cols-2 gap-2 text-center text-xs bg-slate-50 p-2.5 rounded-2xl border border-slate-100">
-                  <div>
-                    <span className="text-[10px] text-slate-400 block font-medium">النقاط الروحية</span>
-                    <span className="font-extrabold text-maroon-900">{points} ⭐</span>
-                  </div>
-                  <div>
-                    <span className="text-[10px] text-slate-400 block font-medium">نسبة الحضور</span>
-                    <span className="font-extrabold text-emerald-700">{attendRate}%</span>
-                  </div>
+                <div className="flex items-center justify-between text-xs bg-slate-50 px-3.5 py-2 rounded-2xl border border-slate-100">
+                  <span className="text-xs text-slate-500 font-medium">نسبة الحضور بالخدمة:</span>
+                  <span className="font-extrabold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">{attendRate}%</span>
                 </div>
 
                 {/* Quick Action Buttons: WhatsApp & Call & 360 Profile */}
