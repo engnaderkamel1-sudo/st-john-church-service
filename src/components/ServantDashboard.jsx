@@ -1366,7 +1366,7 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
                 setPreviewPhotoModal({ url: user.photoUrl, title: user.fullName });
               }
             }}
-            className="w-11 h-11 sm:w-13 sm:h-13 rounded-2xl bg-maroon-800 text-white flex items-center justify-center font-bold text-lg sm:text-xl shrink-0 shadow-xs group-hover:scale-105 transition-transform overflow-hidden relative"
+            className="w-11 h-11 sm:w-14 sm:h-14 rounded-2xl bg-maroon-800 text-white flex items-center justify-center font-bold text-lg sm:text-xl shrink-0 shadow-xs group-hover:scale-105 transition-transform overflow-hidden relative"
             title={user.photoUrl ? "اضغط لتكبير الصورة الشخصية" : ""}
           >
             {user.photoUrl ? (

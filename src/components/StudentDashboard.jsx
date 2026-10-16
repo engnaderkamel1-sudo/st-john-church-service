@@ -708,7 +708,7 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser, externa
                 setPreviewPhotoModal({ url: user.photoUrl, title: user.fullName });
               }
             }}
-            className="w-10 h-10 sm:w-13 sm:h-13 rounded-2xl bg-maroon-50 border border-maroon-200 text-maroon-900 flex items-center justify-center font-bold text-lg sm:text-xl shrink-0 shadow-xs group-hover:scale-105 transition-transform overflow-hidden relative"
+            className="w-10 h-10 sm:w-14 sm:h-14 rounded-2xl bg-maroon-50 border border-maroon-200 text-maroon-900 flex items-center justify-center font-bold text-lg sm:text-xl shrink-0 shadow-xs group-hover:scale-105 transition-transform overflow-hidden relative"
             title={user.photoUrl ? "اضغط لتكبير الصورة الشخصية" : ""}
           >
             {user.photoUrl ? (

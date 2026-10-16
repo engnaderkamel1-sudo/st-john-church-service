@@ -110,30 +110,30 @@ export default function StudentProfileModal({ student, onClose, getGradeTitle })
       />
 
       {/* Modal Dialog */}
-      <div className="relative bg-white rounded-3xl max-w-2xl w-full max-h-[90vh] flex flex-col shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 duration-200 z-10 overflow-hidden">
+      <div className="relative bg-white rounded-3xl max-w-2xl w-full max-h-[92vh] sm:max-h-[90vh] flex flex-col shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 duration-200 z-10 overflow-hidden mx-2 sm:mx-auto">
         {/* Header */}
-        <div className="p-4 sm:p-5 border-b border-slate-100 bg-gradient-to-r from-maroon-900 to-maroon-950 text-white flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-13 h-13 rounded-2xl bg-white/10 border border-gold-400/40 text-gold-300 flex items-center justify-center font-bold text-xl shadow-xs overflow-hidden shrink-0">
+        <div className="p-3.5 sm:p-5 border-b border-slate-100 bg-gradient-to-r from-maroon-900 to-maroon-950 text-white flex items-center justify-between gap-3 shrink-0">
+          <div className="flex items-center gap-3 min-w-0 flex-1">
+            <div className="w-14 h-14 sm:w-16 sm:h-16 min-w-[56px] min-h-[56px] max-w-[56px] max-h-[56px] sm:min-w-[64px] sm:min-h-[64px] sm:max-w-[64px] sm:max-h-[64px] rounded-2xl bg-white/10 border-2 border-gold-400/40 text-gold-300 flex items-center justify-center font-bold text-xl shadow-xs overflow-hidden shrink-0">
               {student.photoUrl ? (
-                <img src={student.photoUrl} alt={student.fullName} className="w-full h-full object-cover" />
+                <img src={student.photoUrl} alt={student.fullName} className="w-full h-full object-cover object-top" />
               ) : (
                 <span>{student.fullName ? student.fullName[0] : 'م'}</span>
               )}
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-base sm:text-lg font-extrabold text-white">{student.fullName}</h3>
-                <span className="text-[10px] bg-gold-400 text-maroon-950 px-2 py-0.5 rounded-full font-bold">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="text-base sm:text-lg font-extrabold text-white truncate max-w-[200px] sm:max-w-none">{student.fullName}</h3>
+                <span className="text-[10px] bg-gold-400 text-maroon-950 px-2 py-0.5 rounded-full font-bold shrink-0">
                   {getGradeTitle ? getGradeTitle(student.grade || 'first') : student.grade}
                 </span>
               </div>
               <div className="flex flex-wrap items-center gap-2 text-xs text-slate-300 mt-1">
                 {student.phone ? (
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1.5 flex-wrap">
                     <a
                       href={`tel:${student.phone}`}
-                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-white/10 hover:bg-blue-600 text-white font-mono transition-colors"
+                      className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-white/10 hover:bg-blue-600 text-white font-mono transition-colors text-[11px]"
                       title="اتصال هاتفي مباشر 📞"
                     >
                       <Phone className="w-3 h-3 text-gold-300" />
@@ -143,7 +143,7 @@ export default function StudentProfileModal({ student, onClose, getGradeTitle })
                       href={`https://wa.me/20${student.phone.replace(/^0+/, '')}?text=${encodeURIComponent(`سلام ونعمة يا ${student.fullName}، أسرة خدمة القديس يوحنا المعمدان بتطمن عليك 🌹`)}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-emerald-600/80 hover:bg-emerald-600 text-white font-bold transition-colors shadow-2xs"
+                      className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-emerald-600/90 hover:bg-emerald-600 text-white font-bold transition-colors shadow-2xs text-[11px]"
                       title="محادثة واتساب مباشرة 💬"
                     >
                       <MessageCircle className="w-3 h-3" />
@@ -154,7 +154,7 @@ export default function StudentProfileModal({ student, onClose, getGradeTitle })
                   <span className="text-slate-400">بدون هاتف مسجل</span>
                 )}
                 <span>•</span>
-                <span className="text-gold-300 font-bold">{student.points || 0} نقطة روحية ⭐</span>
+                <span className="text-gold-300 font-bold shrink-0">{student.points || 0} نقطة روحية ⭐</span>
               </div>
             </div>
           </div>
@@ -162,7 +162,7 @@ export default function StudentProfileModal({ student, onClose, getGradeTitle })
           <button
             type="button"
             onClick={onClose}
-            className="w-9 h-9 rounded-xl text-white/70 hover:text-white hover:bg-white/10 flex items-center justify-center transition-colors cursor-pointer"
+            className="w-10 h-10 min-w-[40px] min-h-[40px] rounded-xl text-white/80 hover:text-white hover:bg-white/10 flex items-center justify-center transition-colors cursor-pointer shrink-0 active:scale-95"
             title="إغلاق"
           >
             <X className="w-5 h-5" />
