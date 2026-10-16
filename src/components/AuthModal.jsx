@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { 
   X, User, Phone, Lock, BookOpen, GraduationCap, ShieldAlert, Mail, KeyRound, 
-  ArrowRight, ArrowLeft, CheckCircle2, Camera, Heart, MapPin, Briefcase, Calendar, Users
+  ArrowRight, ArrowLeft, CheckCircle2, Camera, Heart, MapPin, Briefcase, Calendar, Users, Church
 } from 'lucide-react';
 import { db, auth } from '../firebase';
-import { collection, addDoc, getDocs, query, where, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, getDocs, query, where, limit, serverTimestamp } from 'firebase/firestore';
 import { sendPasswordResetEmail } from 'firebase/auth';
 import { compressImage } from '../utils/imageCompressor';
 
@@ -30,14 +30,14 @@ export default function AuthModal({ isOpen, onClose, initialRole = 'student', in
   const [education, setEducation] = useState(''); // e.g. كلية التجارة - جامعة عين شمس
   const [job, setJob] = useState(''); // طالب / مهندس / إلخ
   const [maritalStatus, setMaritalStatus] = useState('single'); // 'single' | 'engaged' | 'married'
-  const [spouseName, setSpouseName] = useState('');
-  const [hasChildren, setHasChildren] = useState(false);
-  const [childrenDetails, setChildrenDetails] = useState('');
+  const [childrenCount, setChildrenCount] = useState(0);
   const [address, setAddress] = useState('');
   const [confessionFather, setConfessionFather] = useState('');
+  const [confessionChurch, setConfessionChurch] = useState('');
   const [currentStep, setCurrentStep] = useState(1); // 1: Account, 2: Personal & Church, 3: Social & Work
 
   const [loading, setLoading] = useState(false);
+  const [checkingStep1, setCheckingStep1] = useState(false);
   const [error, setError] = useState('');
 
   React.useEffect(() => {
@@ -125,7 +125,7 @@ export default function AuthModal({ isOpen, onClose, initialRole = 'student', in
     }
   };
 
-  const handleNextStep = (e) => {
+  const handleNextStep = async (e) => {
     e?.preventDefault?.();
     setError('');
 
@@ -146,14 +146,52 @@ export default function AuthModal({ isOpen, onClose, initialRole = 'student', in
         setError('كلمة المرور يجب ألا تقل عن 6 أحرف أو أرقام');
         return;
       }
-      setCurrentStep(2);
+
+      setCheckingStep1(true);
+      try {
+        const usersRef = collection(db, 'users');
+        const phoneClean = phone.trim();
+        const emailClean = email.trim().toLowerCase();
+
+        const [phoneSnap, emailSnap] = await Promise.all([
+          getDocs(query(usersRef, where('phone', '==', phoneClean), limit(1))),
+          getDocs(query(usersRef, where('email', '==', emailClean), limit(1)))
+        ]);
+
+        if (!phoneSnap.empty) {
+          setError('رقم الهاتف مسجل بالفعل مسبقاً، يمكنك تسجيل الدخول به');
+          setCheckingStep1(false);
+          return;
+        }
+
+        if (!emailSnap.empty) {
+          setError('البريد الإلكتروني مسجل بالفعل لمستخدم آخر');
+          setCheckingStep1(false);
+          return;
+        }
+
+        setCurrentStep(2);
+      } catch (err) {
+        console.error('Error checking duplicate user in step 1:', err);
+        setError('حدث خطأ أثناء التحقق من البيانات، يرجى المحاولة لاحقاً');
+      } finally {
+        setCheckingStep1(false);
+      }
     } else if (currentStep === 2) {
+      if (!photoUrl) {
+        setError('الصورة الشخصية إلزامية للتعرف عليك في الخدمة');
+        return;
+      }
       if (!birthDate) {
         setError('يرجى تحديد تاريخ الميلاد');
         return;
       }
       if (!confessionFather.trim()) {
-        setError('يرجى إدخال اسم أب الاعتراف أو الكنيسة');
+        setError('يرجى إدخال اسم أب الاعتراف');
+        return;
+      }
+      if (!confessionChurch.trim()) {
+        setError('يرجى إدخال كنيسة أب الاعتراف');
         return;
       }
       if (!address.trim()) {
@@ -187,10 +225,6 @@ export default function AuthModal({ isOpen, onClose, initialRole = 'student', in
       }
       if (!job.trim()) {
         setError('يرجى إدخال الوظيفة أو مجال العمل (أو اكتب طالب)');
-        return;
-      }
-      if (maritalStatus === 'married' && !spouseName.trim()) {
-        setError('يرجى إدخال اسم الزوج / الزوجة');
         return;
       }
     }
@@ -258,8 +292,12 @@ export default function AuthModal({ isOpen, onClose, initialRole = 'student', in
         onLoginSuccess(userData);
         onClose();
       } else {
-        const checkQ = query(usersRef, where('phone', '==', phone.trim()));
-        const checkSnap = await getDocs(checkQ);
+        const [checkSnap, emailSnap] = await Promise.all([
+          getDocs(query(usersRef, where('phone', '==', phone.trim()), limit(1))),
+          email.trim() 
+            ? getDocs(query(usersRef, where('email', '==', email.trim().toLowerCase()), limit(1)))
+            : Promise.resolve({ empty: true })
+        ]);
 
         if (!checkSnap.empty) {
           setError('رقم الهاتف مسجل بالفعل مسبقاً');
@@ -267,14 +305,10 @@ export default function AuthModal({ isOpen, onClose, initialRole = 'student', in
           return;
         }
 
-        if (email.trim()) {
-          const emailQ = query(usersRef, where('email', '==', email.trim().toLowerCase()));
-          const emailSnap = await getDocs(emailQ);
-          if (!emailSnap.empty) {
-            setError('البريد الإلكتروني مسجل بالفعل لمستخدم آخر');
-            setLoading(false);
-            return;
-          }
+        if (!emailSnap.empty) {
+          setError('البريد الإلكتروني مسجل بالفعل لمستخدم آخر');
+          setLoading(false);
+          return;
         }
 
         const newUser = {
@@ -294,19 +328,19 @@ export default function AuthModal({ isOpen, onClose, initialRole = 'student', in
           education: education.trim(),
           job: job.trim(),
           maritalStatus: maritalStatus || 'single',
-          spouseName: maritalStatus === 'married' ? spouseName.trim() : '',
-          hasChildren: maritalStatus === 'married' ? hasChildren : false,
-          childrenDetails: (maritalStatus === 'married' && hasChildren) ? childrenDetails.trim() : '',
+          childrenCount: maritalStatus === 'married' ? (Number(childrenCount) || 0) : 0,
+          hasChildren: maritalStatus === 'married' && Number(childrenCount) > 0,
           address: address.trim(),
           confessionFather: confessionFather.trim(),
+          confessionChurch: confessionChurch.trim(),
           createdAt: serverTimestamp()
         };
 
         const docRef = await addDoc(usersRef, newUser);
 
-        // Record New Registration in login_logs
-        try {
-          await addDoc(collection(db, 'login_logs'), {
+        // Run non-blocking background tasks in parallel for blazing-fast submission
+        Promise.allSettled([
+          addDoc(collection(db, 'login_logs'), {
             userId: docRef.id,
             userName: newUser.fullName,
             phone: newUser.phone,
@@ -317,14 +351,8 @@ export default function AuthModal({ isOpen, onClose, initialRole = 'student', in
             timestamp: serverTimestamp(),
             timeStr: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }),
             dateStr: new Date().toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
-          });
-        } catch (logErr) {
-          console.error('Failed to log registration:', logErr);
-        }
-
-        // Send real-time in-app notification to Admin & Servant Leaders
-        try {
-          await addDoc(collection(db, 'notifications'), {
+          }),
+          addDoc(collection(db, 'notifications'), {
             targetUserId: 'ADMIN',
             targetRole: 'admin',
             title: `طلب انضمام جديد ⏳: ${newUser.fullName}`,
@@ -336,10 +364,8 @@ export default function AuthModal({ isOpen, onClose, initialRole = 'student', in
             applicantPhone: newUser.phone,
             time: 'الآن',
             createdAt: serverTimestamp()
-          });
-        } catch (notifErr) {
-          console.error('Failed to notify admins of registration:', notifErr);
-        }
+          })
+        ]).catch((bgErr) => console.error('Background log/notification error:', bgErr));
 
         setRegistrationPendingSuccess({
           fullName: newUser.fullName,
@@ -721,9 +747,12 @@ export default function AuthModal({ isOpen, onClose, initialRole = 'student', in
               <div className="space-y-3.5 animate-in fade-in duration-200">
                 {/* 1. Profile Picture Upload */}
                 <div className="bg-slate-50 border border-slate-200/90 rounded-2xl p-3">
-                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                    الصورة الشخصية
-                  </label>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-xs font-bold text-slate-700">
+                      الصورة الشخصية <span className="text-red-500">*</span>
+                    </label>
+                    <span className="text-[10px] text-maroon-700 font-bold">إلزامية للتعرف في الخدمة</span>
+                  </div>
                   <div className="flex items-center gap-3">
                     <div className="w-14 h-14 rounded-2xl bg-white border border-slate-200 flex items-center justify-center overflow-hidden shrink-0 shadow-2xs">
                       {photoUrl ? (
@@ -796,19 +825,37 @@ export default function AuthModal({ isOpen, onClose, initialRole = 'student', in
                 </div>
 
                 {/* 3. Confession Father & Church */}
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
-                    أب الاعتراف والكنيسة <span className="text-red-500">*</span>
-                  </label>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      required
-                      value={confessionFather}
-                      onChange={(e) => setConfessionFather(e.target.value)}
-                      placeholder="مثال: أبونا يوحنا / كنيسة مارمرقس"
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:border-maroon-700 focus:bg-white"
-                    />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      اسم أب الاعتراف <span className="text-red-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        required
+                        value={confessionFather}
+                        onChange={(e) => setConfessionFather(e.target.value)}
+                        placeholder="مثال: أبونا يوحنا"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:border-maroon-700 focus:bg-white"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      كنيسة أب الاعتراف <span className="text-red-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        required
+                        value={confessionChurch}
+                        onChange={(e) => setConfessionChurch(e.target.value)}
+                        placeholder="مثال: ماريوحنا المعراج"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 pl-8 text-xs focus:outline-none focus:border-maroon-700 focus:bg-white"
+                      />
+                      <Church className="w-3.5 h-3.5 absolute left-2.5 top-3 text-slate-400" />
+                    </div>
                   </div>
                 </div>
 
@@ -915,48 +962,21 @@ export default function AuthModal({ isOpen, onClose, initialRole = 'student', in
 
                 {/* 4. Married specifics */}
                 {maritalStatus === 'married' && (
-                  <div className="bg-slate-50 border border-slate-200/90 rounded-2xl p-3 space-y-3">
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1">
-                        اسم شريك الحياة <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={spouseName}
-                        onChange={(e) => setSpouseName(e.target.value)}
-                        placeholder="اسم الزوج / الزوجة"
-                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-maroon-700"
-                      />
-                    </div>
-
+                  <div className="bg-slate-50 border border-slate-200/90 rounded-2xl p-3">
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      عدد الأولاد
+                    </label>
                     <div className="flex items-center gap-2">
                       <input
-                        type="checkbox"
-                        id="hasChildrenReg"
-                        checked={hasChildren}
-                        onChange={(e) => setHasChildren(e.target.checked)}
-                        className="w-4 h-4 text-maroon-800 rounded-sm focus:ring-maroon-700 accent-maroon-800"
+                        type="number"
+                        min="0"
+                        max="20"
+                        value={childrenCount}
+                        onChange={(e) => setChildrenCount(Math.max(0, parseInt(e.target.value) || 0))}
+                        className="w-20 bg-white border border-slate-200 rounded-xl px-3 py-2 text-center text-xs font-bold focus:outline-none focus:border-maroon-700"
                       />
-                      <label htmlFor="hasChildrenReg" className="text-xs font-bold text-slate-700 cursor-pointer">
-                        هل يوجد أولاد؟
-                      </label>
+                      <span className="text-xs text-slate-500">أولاد (اتركه 0 إذا لم يوجد أولاد)</span>
                     </div>
-
-                    {hasChildren && (
-                      <div>
-                        <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                          بيانات وأعمار الأبناء
-                        </label>
-                        <input
-                          type="text"
-                          value={childrenDetails}
-                          onChange={(e) => setChildrenDetails(e.target.value)}
-                          placeholder="مثال: كيرلس (٤ سنوات)، دميانة (سنتين)"
-                          className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-maroon-700"
-                        />
-                      </div>
-                    )}
                   </div>
                 )}
 
@@ -985,8 +1005,9 @@ export default function AuthModal({ isOpen, onClose, initialRole = 'student', in
                   {currentStep > 1 && (
                     <button
                       type="button"
+                      disabled={checkingStep1}
                       onClick={handlePrevStep}
-                      className="w-1/3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-3 px-3 rounded-xl transition-all flex items-center justify-center gap-1.5 text-xs"
+                      className="w-1/3 bg-slate-100 hover:bg-slate-200 disabled:opacity-50 text-slate-700 font-bold py-3 px-3 rounded-xl transition-all flex items-center justify-center gap-1.5 text-xs"
                     >
                       <ArrowRight className="w-3.5 h-3.5" />
                       <span>السابق</span>
@@ -994,11 +1015,18 @@ export default function AuthModal({ isOpen, onClose, initialRole = 'student', in
                   )}
                   <button
                     type="button"
+                    disabled={checkingStep1}
                     onClick={handleNextStep}
-                    className={`flex-1 bg-maroon-800 hover:bg-maroon-700 text-white font-bold py-3 px-4 rounded-xl shadow-md transition-all flex items-center justify-center gap-2 text-xs`}
+                    className={`flex-1 bg-maroon-800 hover:bg-maroon-700 disabled:opacity-60 text-white font-bold py-3 px-4 rounded-xl shadow-md transition-all flex items-center justify-center gap-2 text-xs`}
                   >
-                    <span>{currentStep === 1 ? 'متابعة: البيانات الشخصية' : 'متابعة: الدراسة والعمل'}</span>
-                    <ArrowLeft className="w-3.5 h-3.5" />
+                    {checkingStep1 ? (
+                      <span>جاري التحقق من البيانات... ⏳</span>
+                    ) : (
+                      <>
+                        <span>{currentStep === 1 ? 'متابعة: البيانات الشخصية' : 'متابعة: الدراسة والعمل'}</span>
+                        <ArrowLeft className="w-3.5 h-3.5" />
+                      </>
+                    )}
                   </button>
                 </div>
               ) : (

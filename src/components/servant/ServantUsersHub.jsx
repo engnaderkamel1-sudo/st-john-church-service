@@ -250,10 +250,13 @@ export default function ServantUsersHub({
                         <span className="font-bold">{item.job}</span>
                       </div>
                     )}
-                    {item.confessionFather && (
+                    {(item.confessionFather || item.confessionChurch) && (
                       <div className="flex items-center justify-between text-slate-600">
                         <span className="text-slate-400">أب الاعتراف:</span>
-                        <span className="font-bold">{item.confessionFather}</span>
+                        <span className="font-bold">
+                          {item.confessionFather || ''}
+                          {item.confessionChurch ? ` (${item.confessionChurch})` : ''}
+                        </span>
                       </div>
                     )}
                   </div>

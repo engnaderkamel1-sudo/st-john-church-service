@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { 
   X, User, Phone, Mail, ShieldCheck, KeyRound, 
   LogOut, Save, CheckCircle2, AlertCircle, Edit2,
-  Camera, Heart, MapPin, Briefcase, GraduationCap, Users, Calendar
+  Camera, Heart, MapPin, Briefcase, GraduationCap, Users, Calendar, Church
 } from 'lucide-react';
 import { db } from '../../firebase';
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
@@ -26,11 +26,10 @@ export default function UserProfileModal({
   const [education, setEducation] = useState(user?.education || '');
   const [job, setJob] = useState(user?.job || '');
   const [maritalStatus, setMaritalStatus] = useState(user?.maritalStatus || 'single');
-  const [spouseName, setSpouseName] = useState(user?.spouseName || '');
-  const [hasChildren, setHasChildren] = useState(Boolean(user?.hasChildren));
-  const [childrenDetails, setChildrenDetails] = useState(user?.childrenDetails || '');
+  const [childrenCount, setChildrenCount] = useState(user?.childrenCount || 0);
   const [address, setAddress] = useState(user?.address || '');
   const [confessionFather, setConfessionFather] = useState(user?.confessionFather || '');
+  const [confessionChurch, setConfessionChurch] = useState(user?.confessionChurch || '');
 
   const [saving, setSaving] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
@@ -47,11 +46,10 @@ export default function UserProfileModal({
       setEducation(user.education || '');
       setJob(user.job || '');
       setMaritalStatus(user.maritalStatus || 'single');
-      setSpouseName(user.spouseName || '');
-      setHasChildren(Boolean(user.hasChildren));
-      setChildrenDetails(user.childrenDetails || '');
+      setChildrenCount(user.childrenCount ?? (user.childrenDetails ? 1 : 0));
       setAddress(user.address || '');
       setConfessionFather(user.confessionFather || '');
+      setConfessionChurch(user.confessionChurch || '');
     }
   }, [user]);
 
@@ -92,11 +90,11 @@ export default function UserProfileModal({
         education: education.trim(),
         job: job.trim(),
         maritalStatus: maritalStatus || 'single',
-        spouseName: maritalStatus === 'married' ? spouseName.trim() : '',
-        hasChildren: maritalStatus === 'married' ? hasChildren : false,
-        childrenDetails: (maritalStatus === 'married' && hasChildren) ? childrenDetails.trim() : '',
+        childrenCount: maritalStatus === 'married' ? (Number(childrenCount) || 0) : 0,
+        hasChildren: maritalStatus === 'married' && Number(childrenCount) > 0,
         address: address.trim(),
         confessionFather: confessionFather.trim(),
+        confessionChurch: confessionChurch.trim(),
         updatedAt: serverTimestamp()
       };
       if (password.trim()) {
@@ -362,45 +360,19 @@ export default function UserProfileModal({
               </div>
 
               {maritalStatus === 'married' && (
-                <div className="bg-white border border-amber-200 rounded-xl p-3 space-y-2.5 mt-2">
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-700 mb-1">اسم شريك الحياة</label>
-                    <input
-                      type="text"
-                      value={spouseName}
-                      onChange={(e) => setSpouseName(e.target.value)}
-                      placeholder="اسم الزوج / الزوجة"
-                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-maroon-700"
-                    />
-                  </div>
-
+                <div className="bg-white border border-amber-200 rounded-xl p-3 space-y-2 mt-2">
+                  <label className="block text-[11px] font-bold text-slate-700">عدد الأولاد</label>
                   <div className="flex items-center gap-2">
                     <input
-                      type="checkbox"
-                      id="hasChildrenProfile"
-                      checked={hasChildren}
-                      onChange={(e) => setHasChildren(e.target.checked)}
-                      className="w-4 h-4 text-maroon-800 rounded-sm focus:ring-maroon-700 accent-maroon-800"
+                      type="number"
+                      min="0"
+                      max="20"
+                      value={childrenCount}
+                      onChange={(e) => setChildrenCount(Math.max(0, parseInt(e.target.value) || 0))}
+                      className="w-20 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-center text-xs font-bold focus:outline-none focus:border-maroon-700"
                     />
-                    <label htmlFor="hasChildrenProfile" className="text-xs font-bold text-slate-700 cursor-pointer">
-                      هل يوجد أولاد؟
-                    </label>
+                    <span className="text-xs text-slate-500">أولاد</span>
                   </div>
-
-                  {hasChildren && (
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                        بيانات وأعمار الأبناء
-                      </label>
-                      <input
-                        type="text"
-                        value={childrenDetails}
-                        onChange={(e) => setChildrenDetails(e.target.value)}
-                        placeholder="مثال: فيلوباتير (٤ سنين)، ميرنا (سنة)"
-                        className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-maroon-700"
-                      />
-                    </div>
-                  )}
                 </div>
               )}
             </div>
@@ -421,15 +393,30 @@ export default function UserProfileModal({
                   <MapPin className="w-4 h-4 text-slate-400 absolute right-2.5 top-2.5" />
                 </div>
               </div>
-              <div>
-                <label className="block text-[11px] font-bold text-slate-700 mb-1">أب الاعتراف والكنيسة</label>
-                <input
-                  type="text"
-                  value={confessionFather}
-                  onChange={(e) => setConfessionFather(e.target.value)}
-                  placeholder="اسم أبونا وكنيسته..."
-                  className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:outline-none focus:border-maroon-700"
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">اسم أب الاعتراف</label>
+                  <input
+                    type="text"
+                    value={confessionFather}
+                    onChange={(e) => setConfessionFather(e.target.value)}
+                    placeholder="مثال: أبونا يوحنا"
+                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:outline-none focus:border-maroon-700"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">كنيسة أب الاعتراف</label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={confessionChurch}
+                      onChange={(e) => setConfessionChurch(e.target.value)}
+                      placeholder="مثال: ماريوحنا بالمعراج"
+                      className="w-full pl-3 pr-8 py-2 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:outline-none focus:border-maroon-700"
+                    />
+                    <Church className="w-4 h-4 text-slate-400 absolute right-2.5 top-2.5" />
+                  </div>
+                </div>
               </div>
             </div>
 

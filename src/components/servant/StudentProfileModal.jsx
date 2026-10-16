@@ -494,9 +494,9 @@ export default function StudentProfileModal({ student, onClose, getGradeTitle })
                       {student.maritalStatus === 'married' && student.spouseName && (
                         <span className="text-slate-500 text-[11px] block">شريك الحياة: {student.spouseName}</span>
                       )}
-                      {student.maritalStatus === 'married' && student.hasChildren && (
+                      {student.maritalStatus === 'married' && (student.childrenCount > 0 || student.hasChildren) && (
                         <span className="text-amber-800 text-[11px] font-bold block">
-                          الأولاد: {student.childrenDetails || 'يوجد أولاد'}
+                          الأولاد: {student.childrenCount ? `${student.childrenCount} أولاد` : (student.childrenDetails || 'يوجد أولاد')}
                         </span>
                       )}
                     </div>
@@ -513,11 +513,14 @@ export default function StudentProfileModal({ student, onClose, getGradeTitle })
                     </div>
                   )}
 
-                  {/* Confession Father */}
-                  {student.confessionFather && (
+                  {/* Confession Father & Church */}
+                  {(student.confessionFather || student.confessionChurch) && (
                     <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 flex items-center justify-between col-span-1 sm:col-span-2">
                       <span className="text-slate-500 font-medium">أب الاعتراف والكنيسة:</span>
-                      <strong className="text-maroon-900 font-bold">{student.confessionFather}</strong>
+                      <strong className="text-maroon-900 font-bold text-left">
+                        {student.confessionFather || ''}
+                        {student.confessionChurch ? ` (${student.confessionChurch})` : ''}
+                      </strong>
                     </div>
                   )}
 
