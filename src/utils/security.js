@@ -96,3 +96,47 @@ export function isValidServicePin(enteredPin, activeServerPin, dateStr) {
 
   return false;
 }
+
+/**
+ * Normalizes an Egyptian phone number to standard '01xxxxxxxxx' format.
+ * Strips out country codes (+20, 0020), spaces, and dashes.
+ * @param {string} phone
+ * @returns {string}
+ */
+export function normalizePhone(phone) {
+  if (!phone) return '';
+  let digits = String(phone).replace(/\D/g, '');
+  if (digits.startsWith('20') && digits.length === 12) {
+    digits = '0' + digits.slice(2);
+  } else if (digits.startsWith('0020') && digits.length === 14) {
+    digits = '0' + digits.slice(4);
+  }
+  return digits;
+}
+
+/**
+ * Verifies if the given user is an authorized App Administrator.
+ * Strictly verifies the exact registered phone number and/or confirmed admin role.
+ * Prevents partial matching or spoofing via endsWith/includes.
+ * @param {Object} user
+ * @returns {boolean}
+ */
+export function checkIsAppAdmin(user) {
+  if (!user || user.isPreviewMode) return false;
+
+  const cleanPhone = normalizePhone(user.phone);
+  // Exact match to the primary administrator's phone
+  const isPrimaryPhone = cleanPhone === '01275571569';
+
+  const cleanEmail = String(user.email || '').trim().toLowerCase();
+  const isPrimaryEmail = cleanEmail === 'nader.reda@church.stjohn' || 
+                         cleanEmail === 'st.johnmaadiservantsprep@gmail.com' ||
+                         cleanEmail === 'engnaderkamel1@gmail.com';
+
+  if (isPrimaryPhone || isPrimaryEmail) {
+    return true;
+  }
+
+  // Also allow verified 'admin' role if set in Firestore
+  return user.role === 'admin';
+}

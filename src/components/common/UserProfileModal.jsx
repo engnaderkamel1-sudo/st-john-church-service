@@ -7,7 +7,7 @@ import {
 import { db } from '../../firebase';
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { compressImage } from '../../utils/imageCompressor';
-import { hashPassword } from '../../utils/security';
+import { hashPassword, checkIsAppAdmin } from '../../utils/security';
 
 export default function UserProfileModal({
   isOpen,
@@ -56,19 +56,7 @@ export default function UserProfileModal({
 
   if (!isOpen || !user) return null;
 
-  const isAppAdmin = Boolean(
-    user && 
-    !user.isPreviewMode &&
-    (
-      user.role === 'admin' || 
-      (user.phone && user.phone.replace(/\D/g, '').endsWith('1275571569')) || 
-      (user.email && (
-        user.email.toLowerCase().includes('nader.reda') || 
-        user.email.toLowerCase().includes('nader.kamel') || 
-        user.email.toLowerCase().includes('st.johnmaadiservantsprep')
-      ))
-    )
-  );
+  const isAppAdmin = checkIsAppAdmin(user);
 
   const handleSaveProfile = async (e) => {
     e.preventDefault();

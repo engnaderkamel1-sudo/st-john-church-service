@@ -6,6 +6,7 @@ import InstallPromptModal from './InstallPromptModal';
 import FeatureRequestModal from './FeatureRequestModal';
 import ErrorReportModal from './ErrorReportModal';
 import UpdatesChangelogModal from './UpdatesChangelogModal';
+import { checkIsAppAdmin } from '../../utils/security';
 
 export default function AppSupportToolsDrawerSection({ user, onCloseDrawer }) {
   const [showInstallModal, setShowInstallModal] = useState(false);
@@ -32,19 +33,7 @@ export default function AppSupportToolsDrawerSection({ user, onCloseDrawer }) {
     }
   }, []);
 
-  const isAppAdmin = Boolean(
-    user && 
-    !user.isPreviewMode &&
-    (
-      user.role === 'admin' || 
-      (user.phone && user.phone.replace(/\D/g, '').endsWith('1275571569')) || 
-      (user.email && (
-        user.email.toLowerCase().includes('nader.reda') || 
-        user.email.toLowerCase().includes('nader.kamel') || 
-        user.email.toLowerCase().includes('st.johnmaadiservantsprep')
-      ))
-    )
-  );
+  const isAppAdmin = checkIsAppAdmin(user);
 
   const handleToggleNotification = async () => {
     if (typeof window === 'undefined' || !('Notification' in window)) {

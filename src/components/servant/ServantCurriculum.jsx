@@ -81,7 +81,7 @@ export default function ServantCurriculum({
   academicYear = '2026-2027',
   handleUpdateAcademicCycle
 }) {
-  const canManageCycle = isAppAdmin || user?.role === 'admin' || user?.role === 'servant_leader' || (user?.phone && user.phone.replace(/\D/g, '').endsWith('1275571569'));
+  const canManageCycle = isAppAdmin || user?.role === 'admin' || user?.role === 'servant_leader';
   const [showAddSubjectModal, setShowAddSubjectModal] = useState(false);
   const [newSubjectName, setNewSubjectName] = useState('');
   const [newSubjectTeacher, setNewSubjectTeacher] = useState('');

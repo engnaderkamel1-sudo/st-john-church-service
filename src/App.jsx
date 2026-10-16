@@ -8,6 +8,7 @@ import AutoUpdateWatcher from './components/common/AutoUpdateWatcher';
 import ErrorBoundary from './components/common/ErrorBoundary';
 
 import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore';
+import { checkIsAppAdmin } from './utils/security';
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState(null);
@@ -43,13 +44,7 @@ export default function App() {
         targetIds.push('cycle_1');
       }
     }
-    const isUserAdminRole = currentUser.role === 'admin' || 
-      (currentUser.phone && currentUser.phone.replace(/\D/g, '').endsWith('1275571569')) || 
-      (currentUser.email && (
-        currentUser.email.toLowerCase().includes('nader.reda') || 
-        currentUser.email.toLowerCase().includes('nader.kamel') || 
-        currentUser.email.toLowerCase().includes('st.johnmaadiservantsprep')
-      ));
+    const isUserAdminRole = checkIsAppAdmin(currentUser);
 
     if (isUserAdminRole || currentUser.role === 'servant_leader') {
       targetIds.push('ADMIN');
@@ -564,13 +559,7 @@ export default function App() {
 
       {/* Sub-Header Bar: Multi-Role Preview Switcher */}
       {currentUser && currentUser.role !== 'student' && (() => {
-        const isAppAdmin = currentUser.role === 'admin' || 
-          (currentUser.phone && currentUser.phone.replace(/\D/g, '').endsWith('1275571569')) || 
-          (currentUser.email && (
-            currentUser.email.toLowerCase().includes('nader.reda') || 
-            currentUser.email.toLowerCase().includes('nader.kamel') || 
-            currentUser.email.toLowerCase().includes('st.johnmaadiservantsprep')
-          ));
+        const isAppAdmin = checkIsAppAdmin(currentUser);
         const activeEffectiveRole = previewRole || currentUser.role;
 
         return (
@@ -673,14 +662,7 @@ export default function App() {
       <main className="flex-1 max-w-5xl mx-auto px-4 py-6 w-full flex flex-col justify-center">
         <ErrorBoundary currentUser={currentUser}>
           {currentUser ? (() => {
-            const isUserAdminRole = currentUser.role === 'admin' || 
-              (currentUser.phone && currentUser.phone.replace(/\D/g, '').endsWith('1275571569')) || 
-              (currentUser.email && (
-                currentUser.email.toLowerCase().includes('nader.reda') || 
-                currentUser.email.toLowerCase().includes('nader.kamel') || 
-                currentUser.email.toLowerCase().includes('st.johnmaadiservantsprep')
-              ));
-
+            const isUserAdminRole = checkIsAppAdmin(currentUser);
             const baseRole = isUserAdminRole ? 'admin' : currentUser.role;
             const effectiveRole = previewRole || baseRole;
             const isPreviewing = Boolean(previewRole && previewRole !== baseRole);

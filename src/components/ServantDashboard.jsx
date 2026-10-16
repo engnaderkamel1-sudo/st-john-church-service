@@ -34,23 +34,12 @@ import StageRegulationsModal from './common/StageRegulationsModal';
 import UserProfileModal from './common/UserProfileModal';
 import AppSupportToolsDrawerSection from './common/AppSupportToolsDrawerSection';
 import { calculateAttendancePoints, DEFAULT_STAGE_REGULATIONS } from '../utils/regulationsService';
+import { checkIsAppAdmin } from '../utils/security';
 import { collection, getDocs, doc, updateDoc, setDoc, addDoc, deleteDoc, query, where, orderBy, serverTimestamp, limit, onSnapshot } from 'firebase/firestore';
 
 export default function ServantDashboard({ user, onLogout, onUpdateUser, externalMenuTrigger, navTarget }) {
-  // Check if current user is App Administrator (Nader Reda or church prep account)
-  const isAppAdmin = Boolean(
-    user && 
-    !user.isPreviewMode &&
-    (
-      user.role === 'admin' || 
-      (user.phone && user.phone.replace(/\D/g, '').endsWith('1275571569')) || 
-      (user.email && (
-        user.email.toLowerCase().includes('nader.reda') || 
-        user.email.toLowerCase().includes('nader.kamel') || 
-        user.email.toLowerCase().includes('st.johnmaadiservantsprep')
-      ))
-    )
-  );
+  // Check if current user is App Administrator
+  const isAppAdmin = checkIsAppAdmin(user);
   // Check if current user is Servant Leader (أمين خدمة) or Admin
   const isServantLeader = isAppAdmin || (user && user.role === 'servant_leader');
 

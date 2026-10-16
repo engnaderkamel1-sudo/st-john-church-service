@@ -1,5 +1,6 @@
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '../firebase';
+import { checkIsAppAdmin } from '../utils/security';
 
 // Coptic Orthodox Church Educational Persona & Strict Grounding Guidelines
 const CHURCH_SYSTEM_INSTRUCTION = `أنت مساعد تعليمي وتحليلي ذكي ودقيق جداً.
@@ -10,7 +11,10 @@ const CHURCH_SYSTEM_INSTRUCTION = `أنت مساعد تعليمي وتحليلي
 - يجب إخراج النتيجة بتنسيق JSON نظيف وصحيح 100% بدون أي كود Markdown خارجي أو نصوص استهلالية.`;
 
 // Get API Key from Firestore or env fallback
-export async function getGeminiApiKey() {
+export async function getGeminiApiKey(requesterRole = 'servant') {
+  if (requesterRole === 'student') {
+    return '';
+  }
   try {
     const docRef = doc(db, 'service_settings', 'ai_config');
     const docSnap = await getDoc(docRef);
@@ -24,7 +28,10 @@ export async function getGeminiApiKey() {
 }
 
 // Save API Key to Firestore (Admin only)
-export async function saveGeminiApiKey(apiKey) {
+export async function saveGeminiApiKey(apiKey, user) {
+  if (!checkIsAppAdmin(user)) {
+    throw new Error('غير مصرح لك بتعديل مفتاح الذكاء الاصطناعي، هذه العملية مخصصة للمشرف العام فقط.');
+  }
   const docRef = doc(db, 'service_settings', 'ai_config');
   await setDoc(docRef, { geminiApiKey: apiKey.trim(), updatedAt: new Date().toISOString() }, { merge: true });
 }

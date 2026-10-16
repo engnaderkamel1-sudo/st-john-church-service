@@ -3,7 +3,7 @@ import { Users, History, RefreshCw, Activity, UserPlus, UserX, Check, Sparkles, 
 import { getGeminiApiKey, saveGeminiApiKey } from '../../services/geminiService';
 import { db } from '../../firebase';
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
-import { hashPassword } from '../../utils/security';
+import { hashPassword, checkIsAppAdmin } from '../../utils/security';
 
 export default function ServantUsersHub({
   user,
@@ -45,21 +45,22 @@ export default function ServantUsersHub({
   const [resetPassSuccess, setResetPassSuccess] = useState(false);
 
   useEffect(() => {
-    getGeminiApiKey().then(k => {
+    getGeminiApiKey(user?.role).then(k => {
       if (k) setApiKeyInput(k);
     });
-  }, []);
+  }, [user]);
 
   const handleSaveApiKey = async (e) => {
     e?.preventDefault();
     if (!apiKeyInput.trim()) return;
     setApiKeyLoading(true);
     try {
-      await saveGeminiApiKey(apiKeyInput);
+      await saveGeminiApiKey(apiKeyInput, user);
       setApiKeySaved(true);
       setTimeout(() => setApiKeySaved(false), 3000);
     } catch (err) {
       console.error('Error saving API Key:', err);
+      alert(err.message || 'حدث خطأ أثناء حفظ المفتاح');
     } finally {
       setApiKeyLoading(false);
     }
@@ -467,7 +468,7 @@ export default function ServantUsersHub({
 
                         {/* Role Badge */}
                         <span className={`inline-flex items-center gap-1 text-[11px] font-extrabold px-2.5 py-1 rounded-full shrink-0 ${
-                          item.role === 'admin' || item.phone === '01275571569'
+                          checkIsAppAdmin(item)
                             ? 'bg-amber-100 text-amber-900 border border-amber-300'
                             : item.role === 'servant_leader'
                             ? 'bg-purple-100 text-purple-900 border border-purple-200'
@@ -475,7 +476,7 @@ export default function ServantUsersHub({
                             ? 'bg-maroon-100 text-maroon-900 border border-maroon-200'
                             : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
                         }`}>
-                          {item.role === 'admin' || item.phone === '01275571569'
+                          {checkIsAppAdmin(item)
                             ? 'مشرف النظام 👑'
                             : item.role === 'servant_leader'
                             ? 'أمين خدمة 🛡️'
@@ -521,14 +522,14 @@ export default function ServantUsersHub({
                             <span className="text-[11px] font-bold text-slate-600">تغيير الرتبة:</span>
                             <select
                               value={item.role || 'student'}
-                              disabled={roleUpdatingId === item.id || item.phone === '01275571569'}
+                              disabled={roleUpdatingId === item.id || checkIsAppAdmin(item)}
                               onChange={(e) => handleUpdateUserRole(item.id, e.target.value, item.grade || 'first')}
                               className="bg-white border border-slate-300 rounded-lg px-2 py-1 text-xs font-bold text-slate-800 focus:outline-none focus:border-maroon-800"
                             >
                               <option value="student">مخدوم 🎓</option>
                               <option value="servant">خادم ✝️</option>
                               <option value="servant_leader">أمين خدمة 🛡️</option>
-                              {item.phone === '01275571569' && <option value="admin">مشرف النظام 👑</option>}
+                              {checkIsAppAdmin(item) && <option value="admin">مشرف النظام 👑</option>}
                             </select>
                           </div>
 
@@ -547,7 +548,7 @@ export default function ServantUsersHub({
                         </div>
 
                         {/* Status Management Actions (اعتماد / تعليق / تعطيل / تنشيط) */}
-                        {item.phone !== '01275571569' && item.id !== user.id && (
+                        {!checkIsAppAdmin(item) && item.id !== user.id && (
                           <div className="pt-2 border-t border-slate-100">
                             {item.status === 'pending_approval' ? (
                               <div className="grid grid-cols-2 gap-2">
@@ -742,7 +743,7 @@ export default function ServantUsersHub({
                           <td className="py-3.5 px-3 font-mono text-slate-600" dir="ltr">{item.phone}</td>
                           <td className="py-3.5 px-3">
                             <span className={`inline-flex items-center gap-1 text-[11px] font-extrabold px-2.5 py-1 rounded-full ${
-                              item.role === 'admin' || item.phone === '01275571569'
+                              checkIsAppAdmin(item)
                                 ? 'bg-amber-100 text-amber-900 border border-amber-300'
                                 : item.role === 'servant_leader'
                                 ? 'bg-purple-100 text-purple-900 border border-purple-200'
@@ -750,7 +751,7 @@ export default function ServantUsersHub({
                                 ? 'bg-maroon-100 text-maroon-900 border border-maroon-200'
                                 : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
                             }`}>
-                              {item.role === 'admin' || item.phone === '01275571569'
+                              {checkIsAppAdmin(item)
                                 ? 'مشرف النظام 👑'
                                 : item.role === 'servant_leader'
                                 ? 'أمين خدمة 🛡️'
@@ -760,7 +761,7 @@ export default function ServantUsersHub({
                             </span>
                           </td>
                           <td className="py-3.5 px-3 font-bold text-slate-700">
-                            {(item.role === 'admin' || item.phone === '01275571569' || (item.email && item.email.includes('nader.kamel')))
+                            {checkIsAppAdmin(item)
                               ? <span className="text-amber-700 font-extrabold">مشرف التطبيق 👑</span>
                               : item.role === 'servant_leader'
                               ? <span className="text-purple-800 font-bold">أمين خدمة (متابعة نوتة الخدام)</span>
@@ -771,14 +772,14 @@ export default function ServantUsersHub({
                           <td className="py-3.5 px-3">
                             <select
                               value={item.role || 'student'}
-                              disabled={roleUpdatingId === item.id || item.phone === '01275571569'}
+                              disabled={roleUpdatingId === item.id || checkIsAppAdmin(item)}
                               onChange={(e) => handleUpdateUserRole(item.id, e.target.value, item.grade || 'first')}
                               className="bg-white border border-slate-300 rounded-xl px-2.5 py-1.5 text-xs font-bold text-slate-800 focus:outline-none focus:border-maroon-800 cursor-pointer shadow-2xs"
                             >
                               <option value="student">مخدوم 🎓</option>
                               <option value="servant">خادم ✝️</option>
                               <option value="servant_leader">أمين خدمة 🛡️</option>
-                              {item.phone === '01275571569' && <option value="admin">مشرف النظام 👑</option>}
+                              {checkIsAppAdmin(item) && <option value="admin">مشرف النظام 👑</option>}
                             </select>
                           </td>
                           <td className="py-3.5 px-3">
@@ -819,7 +820,7 @@ export default function ServantUsersHub({
                             </button>
                           </td>
                           <td className="py-3.5 px-3 text-center">
-                            {item.phone === '01275571569' || item.id === user.id ? (
+                            {checkIsAppAdmin(item) || item.id === user.id ? (
                               <span className="text-[11px] font-bold text-slate-400">حساب محمي 🛡️</span>
                             ) : item.status === 'pending_approval' ? (
                               <div className="flex items-center justify-center gap-1.5">
@@ -1022,7 +1023,7 @@ export default function ServantUsersHub({
       )}
 
       {/* 3. AI Studio Configuration View (إعدادات مفتاح الذكاء الاصطناعي للمنظومة) */}
-      {userHubSubTab === 'ai_settings' && (
+      {isAppAdmin && userHubSubTab === 'ai_settings' && (
         <div className="space-y-6">
           <div className="border-b border-slate-100 pb-4">
             <div className="flex items-center gap-2">
