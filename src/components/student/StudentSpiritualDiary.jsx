@@ -51,7 +51,7 @@ export default function StudentSpiritualDiary({
                 : 'bg-slate-100 text-slate-600 hover:text-slate-900'
             }`}
           >
-            تسجيل اليوم والأمس ✍️
+            {isGracePeriodActive ? 'تسجيل النوتة الروحية ✍️' : 'تسجيل اليوم والأمس ✍️'}
           </button>
           <button
             type="button"
@@ -77,7 +77,7 @@ export default function StudentSpiritualDiary({
               <div className="flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-amber-600 shrink-0" />
                 <span className="font-bold">
-                  فترة سماح لتسجيل النوتة الروحية رجوعاً حتى بداية الخدمة (متاحة حتى الجمعة 23 أكتوبر).
+                  فترة سماح لتسجيل النوتة الروحية رجوعاً حتى بداية الخدمة (متاحة حتى الجمعة 23 أكتوبر). بعد انتهاء المهلة يتاح التسجيل لليوم وأمس فقط.
                 </span>
               </div>
             </div>
