@@ -198,7 +198,7 @@ export default function ServantExamsBank({
               examSubSection === 'assign' ? 'bg-maroon-800 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:text-slate-900'
             }`}
           >
-            المسابقات والامتحانات المنشورة ({currentGradeExams.length})
+            التاسكات والمسابقات المنشورة ({currentGradeExams.length})
           </button>
           <button
             onClick={() => setExamSubSection('totals')}
@@ -246,7 +246,7 @@ export default function ServantExamsBank({
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <h4 className="font-extrabold text-slate-900 text-base">بنك الأسئلة: {getGradeTitle(selectedGrade)}</h4>
-              <p className="text-xs text-slate-500 mt-0.5">يضيف خدام المواد الأسئلة مصنفة حسب الصعوبة والنوع ليتم توليد الامتحانات منها.</p>
+              <p className="text-xs text-slate-500 mt-0.5">يضيف خدام المواد الأسئلة مصنفة حسب الصعوبة والنوع لتوليد التاسكات والمسابقات منها.</p>
             </div>
             <div className="flex items-center gap-2">
               <button
@@ -429,7 +429,7 @@ export default function ServantExamsBank({
           {currentGradeExams.length === 0 ? (
             <div className="text-center py-12 bg-slate-50 border border-dashed border-slate-200 rounded-2xl p-6">
               <FileText className="w-10 h-10 text-slate-300 mx-auto mb-2" />
-              <p className="text-xs font-bold text-slate-700">لا توجد مسابقات أو امتحانات منشورة لهذه المرحلة حتى الآن.</p>
+              <p className="text-xs font-bold text-slate-700">لا توجد تاسكات أو مسابقات منشورة لهذه المرحلة حتى الآن.</p>
               <p className="text-[11px] text-slate-400 mt-1">اضغط على زر "إنشاء مسابقة سريعة (Google Forms)" أو التقط صورة كشكول بالذكاء الاصطناعي.</p>
             </div>
           ) : (

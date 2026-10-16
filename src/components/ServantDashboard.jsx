@@ -17,6 +17,7 @@ import { db } from '../firebase';
 import ServantSpiritualDiary from './servant/ServantSpiritualDiary';
 import ServantCurriculum from './servant/ServantCurriculum';
 import ServantExamsBank from './servant/ServantExamsBank';
+import ServantSubjectExams from './servant/ServantSubjectExams';
 import ServantAnalytics from './servant/ServantAnalytics';
 import ServantAttendanceQR from './servant/ServantAttendanceQR';
 import ServantUsersHub from './servant/ServantUsersHub';
@@ -1589,7 +1590,7 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
                 {/* Divider */}
                 <div className="my-1 border-t border-slate-100" />
 
-                {/* 5. Question Bank & Exams */}
+                {/* 5. Tasks & Competitions Hub */}
                 <button
                   type="button"
                   onClick={() => {
@@ -1604,7 +1605,25 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
                   }`}
                 >
                   <FileText className={`w-4 h-4 ${mainTab === 'exams_bank_hub' ? 'text-gold-300' : 'text-slate-500'}`} />
-                  <span>بنك الأسئلة والامتحانات</span>
+                  <span>تاسكات ومسابقات المخدومين</span>
+                </button>
+
+                {/* 5.1 Subject Exams Hub */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMainTab('subject_exams_hub');
+                    setActiveSubject(null);
+                    setMobileSidebarOpen(false);
+                  }}
+                  className={`w-full text-right py-2 px-3 rounded-xl flex items-center gap-2.5 text-xs font-bold transition-all cursor-pointer ${
+                    mainTab === 'subject_exams_hub'
+                      ? 'bg-maroon-800 text-white shadow-xs'
+                      : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
+                  }`}
+                >
+                  <FileCheck className={`w-4 h-4 ${mainTab === 'subject_exams_hub' ? 'text-gold-300' : 'text-slate-500'}`} />
+                  <span>امتحانات المواد</span>
                 </button>
 
                 {/* 6. Subjects & Curriculum for Students */}
@@ -1967,7 +1986,7 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
         />
       )}
 
-      {/* 2. Question Bank & Exams Hub */}
+      {/* 2. Tasks & Competitions Hub */}
       {mainTab === 'exams_bank_hub' && (
         <ServantExamsBank
           user={user}
@@ -1981,6 +2000,15 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
           allUsers={allUsers}
           fetchAllUsers={fetchAllUsers}
           onSelectStudent={(st) => setStudent360Profile(st)}
+        />
+      )}
+
+      {/* 2.1 Subject Exams Hub */}
+      {mainTab === 'subject_exams_hub' && (
+        <ServantSubjectExams
+          selectedGrade={selectedGrade}
+          getGradeTitle={getGradeTitle}
+          currentGradeSubjects={allCurrentGradeSubjects.filter(sub => (sub.targetAudience || 'students') === 'students')}
         />
       )}
 
