@@ -129,9 +129,9 @@ export default function FeatureRequestModal({ isOpen, onClose, currentUser }) {
         createdAt: serverTimestamp()
       });
 
-      // Send in-app notification to Admin
+      // Send in-app notification to Super Admin exclusively
       addDoc(collection(db, 'notifications'), {
-        targetUserId: 'ADMIN',
+        targetUserId: 'SUPER_ADMIN',
         title: `💡 اقتراح فكرة جديدة: ${title.trim() || category}`,
         desc: `اقترح (${currentUser?.fullName || 'مستخدم'} - ${currentUser?.phone || ''}) فكرة جديدة في قسم (${category}): ${description.trim().substring(0, 80) || 'فكرة مقترحة'}.`,
         time: 'الآن',

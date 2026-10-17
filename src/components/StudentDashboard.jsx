@@ -772,15 +772,27 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser, externa
         createdAt: serverTimestamp()
       }).catch(() => {});
 
-      // Alert notification for servants
+      // Alert notification for Leadership (المشرف العام وأمين الخدمة معاً)
       addDoc(collection(db, 'notifications'), {
-        targetUserId: 'SERVANTS',
+        targetUserId: 'LEADERSHIP',
         title: `📝 تسليم مسابقة: ${user.fullName || 'مخدوم'}`,
         desc: `قام ${user.fullName || 'مخدوم'} بتسليم (${task.title || 'مسابقة'}) بنتيجة ${autoScore}/${totalScore || task.totalScore || 20}.`,
         time: 'الآن',
         type: 'task_submission_servant',
         createdAt: serverTimestamp()
       }).catch(() => {});
+
+      // Alert notification for the specific servant who created the quiz
+      if (task.createdById) {
+        addDoc(collection(db, 'notifications'), {
+          targetUserId: task.createdById,
+          title: `📝 تسليم لمسابقتك: ${user.fullName || 'مخدوم'}`,
+          desc: `قام ${user.fullName || 'مخدوم'} بتسليم إجابات مسابقتك (${task.title || 'مسابقة'}) بنتيجة ${autoScore}/${totalScore || task.totalScore || 20}.`,
+          time: 'الآن',
+          type: 'task_submission_author',
+          createdAt: serverTimestamp()
+        }).catch(() => {});
+      }
     } catch (err) {
       console.log('Error saving task submission:', err);
     }

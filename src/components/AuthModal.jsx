@@ -365,8 +365,8 @@ export default function AuthModal({ isOpen, onClose, initialRole = 'student', in
             dateStr: new Date().toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
           }),
           addDoc(collection(db, 'notifications'), {
-            targetUserId: 'ADMIN',
-            targetRole: 'admin',
+            targetUserId: 'SUPER_ADMIN',
+            targetRole: 'super_admin',
             title: `طلب انضمام جديد ⏳: ${newUser.fullName}`,
             desc: `قام ${newUser.role === 'servant' ? 'الخادم' : 'المخدوم'} ${newUser.fullName} (${newUser.phone}) بالتسجيل وينتظر الاعتماد.`,
             type: 'pending_registration',

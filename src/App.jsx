@@ -67,9 +67,20 @@ export default function App() {
     if (currentUser.role === 'student') {
       targetIds.push('STUDENTS');
     } else {
-      // Servants, Servant Leaders, and Admins
+      // General Servants
       targetIds.push('SERVANTS');
-      targetIds.push('ADMIN');
+
+      // Servant Leadership (أمين الخدمة والمشرف العام معاً)
+      if (currentUser.role === 'servant_leader' || isUserAdminRole) {
+        targetIds.push('SERVANT_LEADER');
+        targetIds.push('LEADERSHIP');
+      }
+
+      // Exclusive Super Admin (المشرف العام حصراً)
+      if (isUserAdminRole) {
+        targetIds.push('SUPER_ADMIN');
+        targetIds.push('ADMIN'); // for backwards compatibility
+      }
     }
 
     const q = query(

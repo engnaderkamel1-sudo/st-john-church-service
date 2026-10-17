@@ -177,6 +177,7 @@ export default function ServantQuickQuizBuilderModal({
       type: 'online_quiz',
       status: targetStatus, // 'active' (متاحة للطلبة) | 'draft' (مسودة مغلقة)
       createdBy: user?.fullName || 'الخادم المسؤول',
+      createdById: user?.id || null,
       createdAt: serverTimestamp()
     };
 
