@@ -7,6 +7,7 @@ import FeatureRequestModal from './FeatureRequestModal';
 import ErrorReportModal from './ErrorReportModal';
 import UpdatesChangelogModal from './UpdatesChangelogModal';
 import { checkIsAppAdmin } from '../../utils/security';
+import { playNotificationChime, triggerBrowserNotification } from '../../utils/notificationSystem';
 
 export default function AppSupportToolsDrawerSection({ user, onCloseDrawer }) {
   const [showInstallModal, setShowInstallModal] = useState(false);
@@ -42,11 +43,22 @@ export default function AppSupportToolsDrawerSection({ user, onCloseDrawer }) {
     }
     if (Notification.permission === 'granted') {
       setHasNotificationPermission(true);
+      playNotificationChime();
+      triggerBrowserNotification('الإشعارات مفعلة بالفعل 🔔', {
+        body: 'ستصلك كافة تنبيهات الخدمة والمهام الجديدة فوراً.'
+      });
       return;
     }
     try {
       const perm = await Notification.requestPermission();
-      setHasNotificationPermission(perm === 'granted');
+      const isGranted = perm === 'granted';
+      setHasNotificationPermission(isGranted);
+      if (isGranted) {
+        playNotificationChime();
+        triggerBrowserNotification('تم تفعيل إشعارات الخدمة بنجاح 🔔', {
+          body: 'ستصلك كافة التنبيهات والطلبات الجديدة أولاً بأول.'
+        });
+      }
     } catch {
       // quiet fail
     }

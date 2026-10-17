@@ -196,6 +196,23 @@ export default function ServantQuickQuizBuilderModal({
         if (onQuizPublished) {
           onQuizPublished({ id: docRef.id, ...quizData });
         }
+
+        // Send in-app notification to students if published
+        if (targetStatus === 'published') {
+          try {
+            await addDoc(collection(db, 'notifications'), {
+              targetUserId: targetGrade || 'ALL',
+              title: `🏆 مسابقة جديدة: ${quizTitle.trim()}`,
+              desc: `تم نشر مسابقة جديدة لمرحلتكم بواسطة الخادم (${user?.fullName || 'المسؤول'}). سارع بالمشاركة وإرسال إجاباتك وحصد النقاط!`,
+              time: 'الآن',
+              type: 'new_task',
+              examId: docRef.id,
+              createdAt: serverTimestamp()
+            });
+          } catch (notifErr) {
+            console.warn('Failed to send quiz notification:', notifErr);
+          }
+        }
       }
       onClose();
     } catch (err) {

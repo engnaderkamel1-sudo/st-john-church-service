@@ -129,6 +129,16 @@ export default function FeatureRequestModal({ isOpen, onClose, currentUser }) {
         createdAt: serverTimestamp()
       });
 
+      // Send in-app notification to Admin
+      addDoc(collection(db, 'notifications'), {
+        targetUserId: 'ADMIN',
+        title: `💡 اقتراح فكرة جديدة: ${title.trim() || category}`,
+        desc: `اقترح (${currentUser?.fullName || 'مستخدم'} - ${currentUser?.phone || ''}) فكرة جديدة في قسم (${category}): ${description.trim().substring(0, 80) || 'فكرة مقترحة'}.`,
+        time: 'الآن',
+        type: 'feature_suggestion',
+        createdAt: serverTimestamp()
+      }).catch(() => {});
+
       setSuccess(true);
       setTimeout(() => {
         setSuccess(false);

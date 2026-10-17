@@ -9,6 +9,7 @@ import ErrorBoundary from './components/common/ErrorBoundary';
 
 import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore';
 import { checkIsAppAdmin } from './utils/security';
+import { playNotificationChime, triggerBrowserNotification } from './utils/notificationSystem';
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState(null);
@@ -22,11 +23,28 @@ export default function App() {
   const [notifications, setNotifications] = useState([]);
   const [readNotificationIds, setReadNotificationIds] = useState([]);
   const [deletedNotificationIds, setDeletedNotificationIds] = useState([]);
+  const [incomingToast, setIncomingToast] = useState(null);
+  const knownNotifIdsRef = useRef(null);
+
   // Multi-Role Live Preview State (null = original role, or 'student' | 'servant' | 'servant_leader' | 'admin')
   const [previewRole, setPreviewRole] = useState(null);
   // Full-Screen Image Lightbox Preview State (for church logo or user profile photos)
   const [previewModalImage, setPreviewModalImage] = useState(null);
   const [adminNavTarget, setAdminNavTarget] = useState(null);
+
+  // Reset known notifications when user switches
+  useEffect(() => {
+    knownNotifIdsRef.current = null;
+  }, [currentUser?.id]);
+
+  // Auto-dismiss incoming toast after 6 seconds
+  useEffect(() => {
+    if (!incomingToast) return;
+    const timer = setTimeout(() => {
+      setIncomingToast(null);
+    }, 6000);
+    return () => clearTimeout(timer);
+  }, [incomingToast]);
 
   // Real-time Firestore Notifications for Current User
   useEffect(() => {
@@ -46,7 +64,11 @@ export default function App() {
     }
     const isUserAdminRole = checkIsAppAdmin(currentUser);
 
-    if (isUserAdminRole || currentUser.role === 'servant_leader') {
+    if (currentUser.role === 'student') {
+      targetIds.push('STUDENTS');
+    } else {
+      // Servants, Servant Leaders, and Admins
+      targetIds.push('SERVANTS');
       targetIds.push('ADMIN');
     }
 
@@ -58,7 +80,26 @@ export default function App() {
     let usersUnsub = () => {};
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const list = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+      const rawList = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+
+      // Detect newly arrived notifications to trigger audio & visual alerts
+      if (knownNotifIdsRef.current === null) {
+        // Initial load: record existing IDs without chiming
+        knownNotifIdsRef.current = new Set(rawList.map(item => item.id));
+      } else {
+        const newlyAdded = rawList.filter(item => !knownNotifIdsRef.current.has(item.id));
+        if (newlyAdded.length > 0) {
+          playNotificationChime();
+          const latest = newlyAdded[0];
+          triggerBrowserNotification(latest.title, {
+            body: latest.desc || 'لديك إشعار جديد في الخدمة'
+          });
+          setIncomingToast(latest);
+          newlyAdded.forEach(item => knownNotifIdsRef.current.add(item.id));
+        }
+      }
+
+      const list = rawList;
 
       // If current user is a servant or admin, compute 3-day advance birthday alerts
       const isServantOrAdmin = currentUser.role !== 'student';
@@ -118,7 +159,26 @@ export default function App() {
           setNotifications(list);
         });
       } else {
-        setNotifications(list);
+        // For students: check if today is their birthday
+        let studentList = list;
+        if (currentUser.birthDate && typeof currentUser.birthDate === 'string' && currentUser.birthDate.includes('-')) {
+          const today = new Date();
+          const todayMonth = today.getMonth();
+          const todayDate = today.getDate();
+          const parts = currentUser.birthDate.split('-');
+          const bMonth = parseInt(parts[1], 10) - 1;
+          const bDay = parseInt(parts[2], 10);
+          if (bMonth === todayMonth && bDay === todayDate) {
+            studentList = [{
+              id: `student_bday_${currentUser.id}_${today.getFullYear()}`,
+              title: `كل سنة وأنت طيب يا ${currentUser.fullName?.split(' ')[0] || ''}! 🎉🎂`,
+              desc: `أسرة إعداد الخدام تهنئك بعيد ميلادك، وتتمنى لك عاماً مباركاً ومثمراً في النعمة والقامة والبركة ✝️`,
+              time: 'اليوم',
+              isBirthday: true
+            }, ...list];
+          }
+        }
+        setNotifications(studentList);
       }
     }, (err) => {
       console.log('Notifications listen error:', err);
@@ -381,6 +441,50 @@ export default function App() {
       )}
 
       <div className="min-h-screen bg-slate-50 text-slate-800 flex flex-col justify-between selection:bg-gold-500 selection:text-maroon-950 font-cairo">
+      {/* Real-time In-App Notification Toast */}
+      {incomingToast && (
+        <div className="fixed top-3 inset-x-0 z-[100] flex justify-center px-3 pointer-events-none animate-in slide-in-from-top-4 duration-300">
+          <div 
+            onClick={() => {
+              markAsRead(incomingToast.id);
+              if (incomingToast.type === 'pending_registration') {
+                setAdminNavTarget({ mainTab: 'users_hub', subTab: 'pending_approvals', ts: Date.now() });
+              } else {
+                setShowNotifications(true);
+              }
+              setIncomingToast(null);
+            }}
+            className="pointer-events-auto w-full max-w-md bg-slate-900/95 text-white backdrop-blur-md border border-amber-500/50 rounded-2xl p-3.5 shadow-2xl flex items-start gap-3 cursor-pointer hover:bg-slate-900 transition-all active:scale-[0.99]"
+          >
+            <div className="p-2 bg-amber-500/20 text-amber-400 rounded-xl shrink-0 mt-0.5">
+              <Bell className="w-5 h-5 animate-bounce" />
+            </div>
+            <div className="flex-1 min-w-0 text-right">
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-extrabold text-xs text-amber-400 truncate">
+                  {incomingToast.title}
+                </span>
+                <span className="text-[10px] text-slate-400 shrink-0">الآن</span>
+              </div>
+              <p className="text-[11px] text-slate-200 mt-1 line-clamp-2 leading-relaxed">
+                {(incomingToast.desc || '').replace(/،?\s*وتمت إضافة.*نقطة لرصيدك\.?/g, '').trim()}
+              </p>
+            </div>
+            <button 
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setIncomingToast(null);
+              }}
+              className="text-slate-400 hover:text-white p-1 rounded-lg shrink-0 transition-colors"
+              title="إغلاق"
+            >
+              <span className="text-sm font-bold">✕</span>
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Light Mode Royal Header */}
       <header className="py-2.5 sm:py-3.5 px-3 sm:px-4 border-b border-slate-200/80 bg-white shadow-sm sticky top-0 z-40 backdrop-blur-md">
         <div className="max-w-5xl mx-auto flex items-center justify-between gap-2.5">

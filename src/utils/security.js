@@ -131,7 +131,9 @@ export function checkIsAppAdmin(user) {
   const cleanEmail = String(user.email || '').trim().toLowerCase();
   const isPrimaryEmail = cleanEmail === 'nader.reda@church.stjohn' || 
                          cleanEmail === 'st.johnmaadiservantsprep@gmail.com' ||
-                         cleanEmail === 'engnaderkamel1@gmail.com';
+                         cleanEmail === 'engnaderkamel1@gmail.com' ||
+                         cleanEmail === 'eng.nader.reda@gmail.com' ||
+                         cleanEmail.includes('nader.kamel');
 
   if (isPrimaryPhone || isPrimaryEmail) {
     return true;

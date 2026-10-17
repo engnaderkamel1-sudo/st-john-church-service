@@ -459,6 +459,22 @@ export default function ServantCurriculum({
         return { ...prev, [selectedGrade]: updatedList };
       });
 
+      // Send in-app notification to students if published
+      if (curriculumTarget === 'students' && newRef.isPublishedForStudents !== false) {
+        try {
+          await addDoc(collection(db, 'notifications'), {
+            targetUserId: selectedGrade || 'first',
+            title: `📚 محتوى جديد: ${activeSubject.name}`,
+            desc: `تمت إضافة (${newRef.title}) بمادة ${activeSubject.name} بواسطة (${user?.fullName || 'خادم المادة'}). تفضل بتحميلها والاطلاع عليها الآن.`,
+            time: 'الآن',
+            type: 'curriculum_update',
+            createdAt: serverTimestamp()
+          });
+        } catch (notifErr) {
+          console.warn('Failed to send curriculum notification:', notifErr);
+        }
+      }
+
       if (autoGenerateAiAfterUpload && uploadedBase64) {
         setTargetRefForAi(newRef);
         setAiStudioMode('study_guide');

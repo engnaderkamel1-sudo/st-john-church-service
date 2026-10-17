@@ -143,6 +143,16 @@ export default function ErrorReportModal({ isOpen, onClose, currentUser }) {
         createdAt: serverTimestamp()
       });
 
+      // Send in-app notification to Admin
+      addDoc(collection(db, 'notifications'), {
+        targetUserId: 'ADMIN',
+        title: `⚠️ بلاغ عطل فني: ${screenName || 'شاشة غير محددة'}`,
+        desc: `أرسل (${currentUser?.fullName || 'مستخدم'} - ${currentUser?.phone || ''}) بلاغاً عن عطل: ${description.trim().substring(0, 80) || 'تسجيل صوتي مرفق'}.`,
+        time: 'الآن',
+        type: 'app_error_report',
+        createdAt: serverTimestamp()
+      }).catch(() => {});
+
       setSuccess(true);
       setTimeout(() => {
         setSuccess(false);

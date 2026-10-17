@@ -509,6 +509,16 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser, externa
           const currentPoints = userSnap.exists() ? (userSnap.data().points || 0) : 0;
           await updateDoc(userRef, { points: currentPoints + pointsAwarded });
           recordedOnline = true;
+
+          // In-app confirmation notification for student
+          addDoc(collection(db, 'notifications'), {
+            targetUserId: user.id,
+            title: '✓ تم تسجيل حضورك في الخدمة بنجاح',
+            desc: `حضور مبارك! تم تسجيل حضورك بتاريخ اليوم وإضافة (${pointsAwarded}) نقطة تميز لرصيدك 🌟`,
+            time: 'الآن',
+            type: 'attendance_self_confirmed',
+            createdAt: serverTimestamp()
+          }).catch(() => {});
         } catch (netErr) {
           console.warn('Could not save to Firestore online, saving to offline queue:', netErr);
         }
@@ -605,6 +615,16 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser, externa
 
     try {
       await addDoc(collection(db, 'attendance'), recordPayload);
+
+      // In-app confirmation notification for student
+      addDoc(collection(db, 'notifications'), {
+        targetUserId: user.id,
+        title: '✓ تم تسجيل حضورك بالكاميرا بنجاح',
+        desc: `حضور مبارك! تم مسح كود الـ QR بنجاح وإضافة (${pointsAwarded}) نقطة تميز لرصيدك 🌟`,
+        time: 'الآن',
+        type: 'attendance_self_confirmed',
+        createdAt: serverTimestamp()
+      }).catch(() => {});
     } catch (e) {
       console.warn('QR scan saved offline:', e);
       try {
@@ -741,6 +761,26 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser, externa
         ...result,
         createdAt: serverTimestamp()
       });
+
+      // Confirmation notification for the student
+      addDoc(collection(db, 'notifications'), {
+        targetUserId: user.id,
+        title: `✅ تم تسليم: ${task.title || 'المسابقة'}`,
+        desc: `تم استلام إجاباتك بنجاح وحصولك على ${autoScore} من ${totalScore || task.totalScore || 20} درجة. عاش يا بطل! 👏`,
+        time: 'الآن',
+        type: 'task_submitted',
+        createdAt: serverTimestamp()
+      }).catch(() => {});
+
+      // Alert notification for servants
+      addDoc(collection(db, 'notifications'), {
+        targetUserId: 'SERVANTS',
+        title: `📝 تسليم مسابقة: ${user.fullName || 'مخدوم'}`,
+        desc: `قام ${user.fullName || 'مخدوم'} بتسليم (${task.title || 'مسابقة'}) بنتيجة ${autoScore}/${totalScore || task.totalScore || 20}.`,
+        time: 'الآن',
+        type: 'task_submission_servant',
+        createdAt: serverTimestamp()
+      }).catch(() => {});
     } catch (err) {
       console.log('Error saving task submission:', err);
     }

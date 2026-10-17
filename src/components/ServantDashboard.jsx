@@ -315,6 +315,20 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
 
       await updateDoc(userRef, updateData);
       setAllUsers(prev => prev.map(u => u.id === userId ? { ...u, ...updateData } : u));
+
+      // Send in-app notification to the approved user
+      try {
+        await addDoc(collection(db, 'notifications'), {
+          targetUserId: userId,
+          title: '🎉 تم اعتماد وتفعيل حسابك بنجاح!',
+          desc: `تم اعتماد حسابك في أسرة إعداد الخدام بواسطة (${user.fullName || 'أمين الخدمة'}). مرحباً بك، يمكنك الآن الوصول للمناهج وتسجيل الحضور والنوتة الروحية.`,
+          time: 'الآن',
+          type: 'account_approved',
+          createdAt: serverTimestamp()
+        });
+      } catch (notifErr) {
+        console.warn('Failed to send approval notification:', notifErr);
+      }
     } catch (err) {
       console.error('Error approving user:', err);
       alert('حدث خطأ أثناء اعتماد الحساب.');
@@ -376,6 +390,21 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
 
       await updateDoc(userRef, updateData);
       setAllUsers(prev => prev.map(u => u.id === userId ? { ...u, ...updateData } : u));
+
+      if (newStatus === 'active') {
+        try {
+          await addDoc(collection(db, 'notifications'), {
+            targetUserId: userId,
+            title: '✨ تم إعادة تفعيل وتنشيط حسابك',
+            desc: `تم تنشيط حسابك بالخدمة بواسطة (${user.fullName || 'أمين الخدمة'}). مرحباً بعودتك!`,
+            time: 'الآن',
+            type: 'account_activated',
+            createdAt: serverTimestamp()
+          });
+        } catch (notifErr) {
+          console.warn('Failed to send activation notification:', notifErr);
+        }
+      }
     } catch (err) {
       console.error('Error updating user status:', err);
       alert('حدث خطأ أثناء تعديل حالة الحساب.');
