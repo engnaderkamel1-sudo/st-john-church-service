@@ -13,6 +13,7 @@ import StudentTasks from './student/StudentTasks';
 import StageRegulationsModal from './common/StageRegulationsModal';
 import UserProfileModal from './common/UserProfileModal';
 import AppSupportToolsDrawerSection from './common/AppSupportToolsDrawerSection';
+import { triggerServerPush } from '../services/webPushService';
 import { calculateAttendancePoints, DEFAULT_STAGE_REGULATIONS, getDiaryPointsConfig } from '../utils/regulationsService';
 import { getDailyServicePin, isValidServicePin } from '../utils/security';
 
@@ -793,6 +794,15 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser, externa
           createdAt: serverTimestamp()
         }).catch(() => {});
       }
+
+      // Background Web Push to Leadership & Authoring Servant
+      triggerServerPush({
+        targetRole: 'leadership',
+        targetUserId: task.createdById,
+        title: `📝 تسليم مسابقة: ${user.fullName || 'مخدوم'}`,
+        body: `قام ${user.fullName || 'مخدوم'} بتسليم (${task.title || 'مسابقة'}) بنتيجة ${autoScore}/${totalScore || task.totalScore || 20}.`,
+        url: '/'
+      }).catch(() => {});
     } catch (err) {
       console.log('Error saving task submission:', err);
     }

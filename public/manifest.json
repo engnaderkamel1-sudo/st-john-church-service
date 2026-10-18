@@ -3,6 +3,7 @@
   "short_name": "إعداد خدام",
   "description": "منظومة أسرة إعداد خدام بولس الرسول وأليشع النبي - كنيسة القديس ماريوحنا المعمدان بالمعراج",
   "start_url": "/",
+  "gcm_sender_id": "103953800507",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#581c24",

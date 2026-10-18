@@ -9,6 +9,7 @@ import { db } from '../../firebase';
 import { collection, doc, addDoc, updateDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import ServantAiStudioModal from './ServantAiStudioModal';
 import AiPresentationViewer from './AiPresentationViewer';
+import { triggerServerPush } from '../../services/webPushService';
 
 export const normalizeLectures = (subject) => {
   if (!subject) return [];
@@ -459,17 +460,48 @@ export default function ServantCurriculum({
         return { ...prev, [selectedGrade]: updatedList };
       });
 
-      // Send in-app notification to students if published
+      // Send in-app and background push notification to students and servants
       if (curriculumTarget === 'students' && newRef.isPublishedForStudents !== false) {
+        const notifTitle = `📚 محتوى جديد: ${activeSubject.name}`;
+        const notifDesc = `تمت إضافة (${newRef.title}) بمادة ${activeSubject.name} بواسطة (${user?.fullName || 'خادم المادة'}). تفضل بتحميلها والاطلاع عليها الآن.`;
+
         try {
+          // 1. In-App notification for students of this grade
           await addDoc(collection(db, 'notifications'), {
             targetUserId: selectedGrade || 'first',
-            title: `📚 محتوى جديد: ${activeSubject.name}`,
-            desc: `تمت إضافة (${newRef.title}) بمادة ${activeSubject.name} بواسطة (${user?.fullName || 'خادم المادة'}). تفضل بتحميلها والاطلاع عليها الآن.`,
+            title: notifTitle,
+            desc: notifDesc,
             time: 'الآن',
             type: 'curriculum_update',
             createdAt: serverTimestamp()
           });
+
+          // 2. In-App notification for all servants & leadership
+          await addDoc(collection(db, 'notifications'), {
+            targetUserId: 'SERVANTS',
+            title: notifTitle,
+            desc: notifDesc,
+            time: 'الآن',
+            type: 'curriculum_update_servants',
+            createdAt: serverTimestamp()
+          });
+
+          // 3. Background Web Push to students (even if app is closed)
+          triggerServerPush({
+            targetRole: 'students',
+            targetGrade: selectedGrade,
+            title: notifTitle,
+            body: notifDesc,
+            url: '/'
+          }).catch(() => {});
+
+          // 4. Background Web Push to all servants
+          triggerServerPush({
+            targetRole: 'servants',
+            title: notifTitle,
+            body: notifDesc,
+            url: '/'
+          }).catch(() => {});
         } catch (notifErr) {
           console.warn('Failed to send curriculum notification:', notifErr);
         }

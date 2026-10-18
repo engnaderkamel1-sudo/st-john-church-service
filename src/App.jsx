@@ -10,6 +10,7 @@ import ErrorBoundary from './components/common/ErrorBoundary';
 import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore';
 import { checkIsAppAdmin } from './utils/security';
 import { playNotificationChime, triggerBrowserNotification } from './utils/notificationSystem';
+import { registerServiceWorkerAndSubscribe } from './services/webPushService';
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState(null);
@@ -31,6 +32,13 @@ export default function App() {
   // Full-Screen Image Lightbox Preview State (for church logo or user profile photos)
   const [previewModalImage, setPreviewModalImage] = useState(null);
   const [adminNavTarget, setAdminNavTarget] = useState(null);
+
+  // Auto-sync Push Subscription when user is logged in & notification permission granted
+  useEffect(() => {
+    if (currentUser?.id && typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+      registerServiceWorkerAndSubscribe(currentUser).catch(() => {});
+    }
+  }, [currentUser?.id]);
 
   // Reset known notifications when user switches
   useEffect(() => {
@@ -95,8 +103,18 @@ export default function App() {
 
       // Detect newly arrived notifications to trigger audio & visual alerts
       if (knownNotifIdsRef.current === null) {
-        // Initial load: record existing IDs without chiming
+        // Initial load: record existing IDs and alert admin if there are pending registrations waiting
         knownNotifIdsRef.current = new Set(rawList.map(item => item.id));
+        if (isUserAdminRole) {
+          try {
+            const savedRead = JSON.parse(localStorage.getItem(`read_notifs_${currentUser.id}`) || '[]');
+            const unreadPending = rawList.find(item => item.type === 'pending_registration' && !savedRead.includes(item.id));
+            if (unreadPending) {
+              playNotificationChime();
+              setIncomingToast(unreadPending);
+            }
+          } catch (e) {}
+        }
       } else {
         const newlyAdded = rawList.filter(item => !knownNotifIdsRef.current.has(item.id));
         if (newlyAdded.length > 0) {

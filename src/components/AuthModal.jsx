@@ -8,6 +8,7 @@ import LoginForm from './auth/LoginForm';
 import RegisterForm from './auth/RegisterForm';
 import ForgotPassForm from './auth/ForgotPassForm';
 import RegistrationPendingSuccess from './auth/RegistrationPendingSuccess';
+import { triggerServerPush } from '../services/webPushService';
 
 export default function AuthModal({ isOpen, onClose, initialRole = 'student', initialMode = 'login', onLoginSuccess }) {
   const [isLogin, setIsLogin] = useState(initialMode !== 'register');
@@ -376,6 +377,12 @@ export default function AuthModal({ isOpen, onClose, initialRole = 'student', in
             applicantPhone: newUser.phone,
             time: 'الآن',
             createdAt: serverTimestamp()
+          }),
+          triggerServerPush({
+            targetRole: 'super_admin',
+            title: `طلب انضمام جديد ⏳: ${newUser.fullName}`,
+            body: `قام ${newUser.role === 'servant' ? 'الخادم' : 'المخدوم'} ${newUser.fullName} (${newUser.phone}) بالتسجيل وينتظر الاعتماد.`,
+            url: '/'
           })
         ]).catch((bgErr) => console.error('Background log/notification error:', bgErr));
 

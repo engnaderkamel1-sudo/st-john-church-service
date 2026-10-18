@@ -33,6 +33,7 @@ import ServantNotificationsHub from './servant/ServantNotificationsHub';
 import StageRegulationsModal from './common/StageRegulationsModal';
 import UserProfileModal from './common/UserProfileModal';
 import AppSupportToolsDrawerSection from './common/AppSupportToolsDrawerSection';
+import { triggerServerPush } from '../services/webPushService';
 import { calculateAttendancePoints, DEFAULT_STAGE_REGULATIONS } from '../utils/regulationsService';
 import { checkIsAppAdmin } from '../utils/security';
 import { collection, getDocs, doc, updateDoc, setDoc, addDoc, deleteDoc, query, where, orderBy, serverTimestamp, limit, onSnapshot } from 'firebase/firestore';
@@ -326,6 +327,13 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
           type: 'account_approved',
           createdAt: serverTimestamp()
         });
+
+        triggerServerPush({
+          targetUserId: userId,
+          title: '🎉 تم اعتماد وتفعيل حسابك بنجاح!',
+          body: 'مرحباً بك في أسرة إعداد الخدام، يمكنك الآن الدخول وتصفح كافة المحاضرات وتسجيل الحضور.',
+          url: '/'
+        }).catch(() => {});
       } catch (notifErr) {
         console.warn('Failed to send approval notification:', notifErr);
       }
@@ -1893,6 +1901,34 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
 
       {/* Main Content Area (100% Full Width Real Estate) */}
       <main className="w-full space-y-6">
+
+      {/* Prominent Pending Approvals Alert Banner for Super Admin */}
+      {isAppAdmin && allUsers.filter(u => u.status === 'pending_approval').length > 0 && mainTab !== 'users_hub' && (
+        <div 
+          onClick={() => {
+            setMainTab('users_hub');
+            setUserHubSubTab('pending_approvals');
+          }}
+          className="bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 text-maroon-950 p-3.5 sm:p-4 rounded-2xl shadow-lg border border-amber-300 flex items-center justify-between gap-3 cursor-pointer hover:shadow-xl hover:scale-[1.005] transition-all font-cairo animate-in fade-in duration-300"
+        >
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-8 h-8 rounded-xl bg-maroon-900 text-amber-300 flex items-center justify-center font-black text-xs shrink-0 shadow-xs animate-bounce">
+              {allUsers.filter(u => u.status === 'pending_approval').length}
+            </div>
+            <div className="min-w-0">
+              <p className="font-black text-xs sm:text-sm text-maroon-950 truncate">
+                تنبيه عاجل: يوجد ({allUsers.filter(u => u.status === 'pending_approval').length}) طلبات تسجيل جديدة بانتظار مراجعتك واعتمادك!
+              </p>
+              <p className="text-[11px] text-maroon-900 font-bold hidden sm:block truncate">
+                اضغط هنا لفتح قسم الاعتمادات ومراجعة بيانات المخدومين الجدد وتفعيل حساباتهم.
+              </p>
+            </div>
+          </div>
+          <span className="px-3 py-1.5 bg-maroon-900 text-amber-300 font-black text-xs rounded-xl shrink-0 shadow-xs hover:bg-maroon-800 transition-colors">
+            مراجعة واعتماد الآن 👈
+          </span>
+        </div>
+      )}
 
       {/* Direct Students Data Hub & 360° Profile */}
       {mainTab === 'students_hub' && (
