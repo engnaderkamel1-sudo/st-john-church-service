@@ -191,9 +191,9 @@ async function callGemini({ prompt, fileBase64, mimeType, systemInstruction = CH
 // 1. Generate Church Exam Questions
 export async function generateChurchQuestions({ fileBase64, mimeType, textContent = '', grade = 'first', count = 5, questionTypes = ['mcq', 'true_false'], customInstructions = '' }) {
   const gradeLabel = {
-    first: 'سنة أولى إعدادي خدام',
-    second: 'سنة ثانية إعدادي خدام',
-    third: 'سنة ثالثة إعدادي خدام',
+    first: 'سنة أولى إعداد خدام',
+    second: 'سنة ثانية إعداد خدام',
+    third: 'سنة ثالثة إعداد خدام',
     elisha: 'فصل أليشع'
   }[grade] || 'إعداد خدام';
 
@@ -234,9 +234,9 @@ ${customInstructions ? `\nتوجيهات وملاحظات إضافية هامة 
 // 2. Generate Church Interactive Presentation Slides
 export async function generateChurchPresentation({ fileBase64, mimeType, textContent = '', grade = 'first', slideCount = 6, customInstructions = '' }) {
   const gradeLabel = {
-    first: 'سنة أولى إعدادي خدام',
-    second: 'سنة ثانية إعدادي خدام',
-    third: 'سنة ثالثة إعدادي خدام',
+    first: 'سنة أولى إعداد خدام',
+    second: 'سنة ثانية إعداد خدام',
+    third: 'سنة ثالثة إعداد خدام',
     elisha: 'فصل أليشع'
   }[grade] || 'إعداد خدام';
 
@@ -276,9 +276,9 @@ ${customInstructions ? `\nتوجيهات وملاحظات إضافية هامة 
 // 3. Generate Church Study Guide & Capsule
 export async function generateChurchStudyGuide({ fileBase64, mimeType, textContent = '', grade = 'first', customInstructions = '' }) {
   const gradeLabel = {
-    first: 'سنة أولى إعدادي خدام',
-    second: 'سنة ثانية إعدادي خدام',
-    third: 'سنة ثالثة إعدادي خدام',
+    first: 'سنة أولى إعداد خدام',
+    second: 'سنة ثانية إعداد خدام',
+    third: 'سنة ثالثة إعداد خدام',
     elisha: 'فصل أليشع'
   }[grade] || 'إعداد خدام';
 

@@ -310,9 +310,9 @@ https://st-john-church-service-rust.vercel.app/
                         id={`grade-select-${item.id}`}
                         className="bg-white border border-slate-300 rounded-lg px-2 py-1 text-xs font-bold text-slate-800 focus:outline-none focus:border-maroon-800"
                       >
-                        <option value="first">سنة أولى إعدادي خدام</option>
-                        <option value="second">سنة ثانية إعدادي خدام</option>
-                        <option value="third">سنة ثالثة إعدادي خدام</option>
+                        <option value="first">سنة أولى إعداد خدام</option>
+                        <option value="second">سنة ثانية إعداد خدام</option>
+                        <option value="third">سنة ثالثة إعداد خدام</option>
                         <option value="elisha">فصل أليشع</option>
                       </select>
                     </div>
@@ -586,9 +586,9 @@ https://st-john-church-service-rust.vercel.app/
                               disabled={roleUpdatingId === item.id}
                               className="bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-bold focus:outline-none focus:border-maroon-800"
                             >
-                              <option value="first">سنة أولى إعدادي خدام</option>
-                              <option value="second">سنة ثانية إعدادي خدام</option>
-                              <option value="third">سنة ثالثة إعدادي خدام</option>
+                              <option value="first">سنة أولى إعداد خدام</option>
+                              <option value="second">سنة ثانية إعداد خدام</option>
+                              <option value="third">سنة ثالثة إعداد خدام</option>
                               <option value="elisha">فصل أليشع</option>
                             </select>
                           )}
@@ -879,9 +879,9 @@ https://st-john-church-service-rust.vercel.app/
                                 disabled={roleUpdatingId === item.id}
                                 className="bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs focus:outline-none focus:border-maroon-800"
                               >
-                                <option value="first">سنة أولى إعدادي خدام</option>
-                                <option value="second">سنة ثانية إعدادي خدام</option>
-                                <option value="third">سنة ثالثة إعدادي خدام</option>
+                                <option value="first">سنة أولى إعداد خدام</option>
+                                <option value="second">سنة ثانية إعداد خدام</option>
+                                <option value="third">سنة ثالثة إعداد خدام</option>
                                 <option value="elisha">فصل أليشع</option>
                               </select>
                             )}
