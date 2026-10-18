@@ -33,6 +33,12 @@ import {
   QrCode
 } from 'lucide-react';
 
+// Force English/Western numerals (0123456789) strictly throughout the interface
+export const toEnglishDigits = (val) => {
+  if (val === null || val === undefined) return '';
+  return String(val).replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d));
+};
+
 export default function ServantAttendanceTotals({ 
   allUsers = [], 
   todayStr,
@@ -48,6 +54,13 @@ export default function ServantAttendanceTotals({
   const [selectedRetroFriday, setSelectedRetroFriday] = useState(SERVICE_START_FRIDAY);
   const [bulkLoading, setBulkLoading] = useState(false);
   const [bulkSuccessMsg, setBulkSuccessMsg] = useState('');
+
+  // 2 Modes: 'quick' (حضور وغياب سريع بنقرة واحدة) | 'detailed' (بالوقت والدقائق مع نافذة تعديل)
+  const [attendanceEntryMode, setAttendanceEntryMode] = useState('quick');
+  const [editingCell, setEditingCell] = useState(null);
+  const [modalStatus, setModalStatus] = useState('حاضر');
+  const [modalTime, setModalTime] = useState('');
+  const [modalSubmitting, setModalSubmitting] = useState(false);
 
   // Generate dynamic list of service Fridays from 2026-10-02 up to today / upcoming Friday
   const fridaysList = useMemo(() => {
@@ -76,19 +89,19 @@ export default function ServantAttendanceTotals({
     return list;
   }, []);
 
-  // Format date in Arabic short form (e.g. 2 أكتوبر)
+  // Format date in Arabic short form with strict English digits (e.g. 2 أكتوبر)
   const formatShortDate = (dateStr) => {
     if (!dateStr) return '';
     try {
       if (typeof dateStr === 'object' && dateStr.seconds) {
-        return new Date(dateStr.seconds * 1000).toLocaleDateString('ar-EG', { day: 'numeric', month: 'short' });
+        return toEnglishDigits(new Date(dateStr.seconds * 1000).toLocaleDateString('ar-EG-u-nu-latn', { day: 'numeric', month: 'short' }));
       }
       if (typeof dateStr === 'string' && dateStr.includes('-')) {
         const [year, month, day] = dateStr.split('-');
         const d = new Date(parseInt(year, 10), parseInt(month, 10) - 1, parseInt(day, 10));
-        return d.toLocaleDateString('ar-EG', { day: 'numeric', month: 'short' });
+        return toEnglishDigits(d.toLocaleDateString('ar-EG-u-nu-latn', { day: 'numeric', month: 'short' }));
       }
-      return String(dateStr);
+      return toEnglishDigits(String(dateStr));
     } catch {
       return '';
     }
@@ -256,24 +269,45 @@ export default function ServantAttendanceTotals({
     });
   }, [servantsPrepStudents, searchQuery, activeStageFilter]);
 
-  // Toggle or switch attendance directly from cell
-  const handleToggleCell = async (student, dateStr) => {
+  // Cell click dispatcher based on active mode
+  const handleCellClick = (student, dateStr) => {
+    const key = `${student.id}_${dateStr}`;
+    const curRecord = recordsMap[key];
+
+    if (attendanceEntryMode === 'detailed') {
+      // Detailed Mode: Open Edit Modal to specify arrival time or edit status
+      const existing = attendanceRecords.find(r => r.userId === student.id && r.date === dateStr);
+      setEditingCell({
+        student,
+        dateStr,
+        recordId: existing?.id,
+        currentRecord: curRecord || existing
+      });
+      setModalStatus(curRecord?.status || 'حاضر');
+      setModalTime(curRecord?.time ? toEnglishDigits(curRecord.time) : '');
+    } else {
+      // Quick Mode: 1-touch toggle (حاضر / غائب) without fake times
+      handleQuickToggleCell(student, dateStr);
+    }
+  };
+
+  // Quick Mode Handler: Toggle status cleanly without generating fake night times
+  const handleQuickToggleCell = async (student, dateStr) => {
     const key = `${student.id}_${dateStr}`;
     const curRecord = recordsMap[key];
     setUpdatingId(key);
 
     try {
-      // Find existing doc in attendanceRecords
       const existing = attendanceRecords.find(r => r.userId === student.id && r.date === dateStr);
       const nextStatus = curRecord?.status === 'حاضر' ? 'غائب' : 'حاضر';
       const points = nextStatus === 'حاضر' ? 10 : 0;
-      const nowTime = new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
 
       if (existing) {
         await updateDoc(doc(db, 'attendance', existing.id), {
           status: nextStatus,
           pointsAwarded: points,
-          time: nextStatus === 'حاضر' ? (existing.time || nowTime) : '',
+          // In quick toggle mode, do not invent a fake time. Preserve existing only if code-registered, otherwise clear
+          time: nextStatus === 'حاضر' ? (existing.time || '') : '',
           updatedAt: serverTimestamp()
         });
       } else {
@@ -283,8 +317,8 @@ export default function ServantAttendanceTotals({
           userPhone: student.phone || '',
           userGrade: student.grade || 'first',
           date: dateStr,
-          time: nextStatus === 'حاضر' ? nowTime : '',
-          type: 'manual_servant',
+          time: '', // Clean checkmark without fake time!
+          type: 'manual_quick',
           status: nextStatus,
           pointsAwarded: points,
           createdAt: serverTimestamp()
@@ -298,6 +332,59 @@ export default function ServantAttendanceTotals({
     }
   };
 
+  // Detailed Modal Save Handler: Save custom arrival time and status
+  const handleSaveModal = async () => {
+    if (!editingCell) return;
+    const { student, dateStr, recordId } = editingCell;
+    setModalSubmitting(true);
+
+    try {
+      if (modalStatus === 'unrecorded') {
+        // If unrecorded, clear status
+        if (recordId) {
+          await updateDoc(doc(db, 'attendance', recordId), {
+            status: 'unrecorded',
+            pointsAwarded: 0,
+            time: '',
+            punctualityStatus: '',
+            updatedAt: serverTimestamp()
+          });
+        }
+      } else {
+        const points = modalStatus === 'حاضر' ? 10 : 0;
+        const cleanTime = modalStatus === 'حاضر' ? toEnglishDigits(modalTime.trim()) : '';
+
+        if (recordId) {
+          await updateDoc(doc(db, 'attendance', recordId), {
+            status: modalStatus,
+            pointsAwarded: points,
+            time: cleanTime,
+            updatedAt: serverTimestamp()
+          });
+        } else {
+          await addDoc(collection(db, 'attendance'), {
+            userId: student.id,
+            userName: student.fullName || 'مخدوم',
+            userPhone: student.phone || '',
+            userGrade: student.grade || 'first',
+            date: dateStr,
+            time: cleanTime,
+            type: 'manual_detailed',
+            status: modalStatus,
+            pointsAwarded: points,
+            createdAt: serverTimestamp()
+          });
+        }
+      }
+      setEditingCell(null);
+    } catch (err) {
+      console.error('Error saving attendance modal:', err);
+      alert('حدث خطأ أثناء حفظ التعديل.');
+    } finally {
+      setModalSubmitting(false);
+    }
+  };
+
   // Bulk mark all students in current filtered view as present for a selected Friday
   const handleBulkMarkAllPresent = async (targetDate) => {
     const targetStudents = displayedStudents;
@@ -307,15 +394,14 @@ export default function ServantAttendanceTotals({
     }
 
     const targetDateLabel = fridaysList.find(f => f.dateStr === targetDate);
-    const weekLabel = targetDateLabel ? `الجمعة (${targetDateLabel.weekNum}) الموافق ${formatShortDate(targetDate)}` : targetDate;
+    const weekLabel = targetDateLabel ? `الجمعة (${toEnglishDigits(targetDateLabel.weekNum)}) الموافق ${formatShortDate(targetDate)}` : targetDate;
 
-    if (!window.confirm(`هل تريد تسجيل جميع مخدومي القائمة الحالية (${targetStudents.length} مخدوم) كـ "حاضر" لـ ${weekLabel}؟\n(يمكنك بعد ذلك تعديل من غاب فقط بلمسة واحدة)`)) {
+    if (!window.confirm(`هل تريد تسجيل جميع مخدومي القائمة الحالية (${toEnglishDigits(targetStudents.length)} مخدوم) كـ "حاضر" لـ ${weekLabel}؟\n(يمكنك بعد ذلك تعديل من غاب فقط بلمسة واحدة)`)) {
       return;
     }
 
     setBulkLoading(true);
     try {
-      const nowTime = '10:30 ص';
       const promises = targetStudents.map(async (st) => {
         const existing = attendanceRecords.find(r => r.userId === st.id && r.date === targetDate);
         if (existing) {
@@ -323,7 +409,7 @@ export default function ServantAttendanceTotals({
             return updateDoc(doc(db, 'attendance', existing.id), {
               status: 'حاضر',
               pointsAwarded: 10,
-              time: existing.time || nowTime,
+              time: existing.time || '', // Do NOT invent fake time
               updatedAt: serverTimestamp()
             });
           }
@@ -331,10 +417,10 @@ export default function ServantAttendanceTotals({
           return addDoc(collection(db, 'attendance'), {
             userId: st.id,
             userName: st.fullName || 'مخدوم',
-            userPhone: st.phone || '',
-            userGrade: st.grade || 'first',
+            userPhone: student.phone || '',
+            userGrade: student.grade || 'first',
             date: targetDate,
-            time: nowTime,
+            time: '', // Clean checkmark without fake time
             type: 'manual_bulk',
             status: 'حاضر',
             pointsAwarded: 10,
@@ -344,7 +430,7 @@ export default function ServantAttendanceTotals({
       });
 
       await Promise.all(promises);
-      setBulkSuccessMsg(`تم رصد حضور (${targetStudents.length}) مخدوم بنجاح لـ ${weekLabel} ✓`);
+      setBulkSuccessMsg(`تم رصد حضور (${toEnglishDigits(targetStudents.length)}) مخدوم بنجاح لـ ${weekLabel} ✓`);
       setTimeout(() => setBulkSuccessMsg(''), 4000);
     } catch (err) {
       console.error('Error in bulk attendance:', err);
@@ -386,6 +472,48 @@ export default function ServantAttendanceTotals({
               <span>إجازات الخدمة 🏖️</span>
             </button>
           )}
+        </div>
+      </div>
+
+      {/* 🎛️ Dual Attendance Entry Modes (رصد سريع vs رصد تفصيلي بالوقت) */}
+      <div className="bg-white border border-slate-200 rounded-3xl p-3 sm:p-4 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-black text-slate-800">
+            نمط الرصد في الجدول:
+          </span>
+          <span className="text-[11px] text-slate-500 font-bold">
+            {attendanceEntryMode === 'quick' 
+              ? '⚡ لمسة واحدة على الخانة تبدّل (حاضر / غائب) سريعاً بدون أوقات مصطنعة.' 
+              : '⏱️ النقر على الخانة يتيح تحديد ساعة الوصول بالدقيقة والتعديل.'}
+          </span>
+        </div>
+
+        <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-2xl border border-slate-200 shrink-0 w-full sm:w-auto justify-center">
+          <button
+            type="button"
+            onClick={() => setAttendanceEntryMode('quick')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+              attendanceEntryMode === 'quick'
+                ? 'bg-maroon-900 text-white shadow-xs font-black'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <Sparkles className="w-3.5 h-3.5 text-gold-300" />
+            <span>رصد سريع (حضور/غياب) ⚡</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setAttendanceEntryMode('detailed')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+              attendanceEntryMode === 'detailed'
+                ? 'bg-maroon-900 text-white shadow-xs font-black'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <Clock className="w-3.5 h-3.5 text-gold-300" />
+            <span>رصد تفصيلي (بالوقت والدقائق) ⏱️</span>
+          </button>
         </div>
       </div>
 
@@ -464,14 +592,14 @@ export default function ServantAttendanceTotals({
           <div className="mt-4 flex items-baseline justify-between">
             <div>
               <span className="text-3xl font-black text-gold-300 font-mono">
-                {stats.overallRate}%
+                {toEnglishDigits(stats.overallRate)}%
               </span>
               <span className="text-[11px] text-slate-300 mr-2 font-bold">
                 متوسط الالتزام
               </span>
             </div>
-            <span className="text-xs bg-white/15 px-2.5 py-1 rounded-xl font-black text-slate-200">
-              {stats.totalStudents} مخدوم مسجل
+            <span className="text-xs bg-white/15 px-2.5 py-1 rounded-xl font-black text-slate-200 font-mono">
+              {toEnglishDigits(stats.totalStudents)} مخدوم مسجل
             </span>
           </div>
         </div>
@@ -495,14 +623,14 @@ export default function ServantAttendanceTotals({
           <div className="mt-4 flex items-baseline justify-between">
             <div>
               <span className="text-3xl font-black text-emerald-600 font-mono">
-                {stats.year1Rate}%
+                {toEnglishDigits(stats.year1Rate)}%
               </span>
               <span className="text-[11px] text-slate-500 mr-2 font-bold">
                 نسبة الحضور
               </span>
             </div>
-            <span className="text-xs bg-emerald-50 text-emerald-800 border border-emerald-200 px-2.5 py-1 rounded-xl font-black">
-              {stats.year1Count} مخدوم
+            <span className="text-xs bg-emerald-50 text-emerald-800 border border-emerald-200 px-2.5 py-1 rounded-xl font-black font-mono">
+              {toEnglishDigits(stats.year1Count)} مخدوم
             </span>
           </div>
         </div>
@@ -526,14 +654,14 @@ export default function ServantAttendanceTotals({
           <div className="mt-4 flex items-baseline justify-between">
             <div>
               <span className="text-3xl font-black text-blue-600 font-mono">
-                {stats.year2Rate}%
+                {toEnglishDigits(stats.year2Rate)}%
               </span>
               <span className="text-[11px] text-slate-500 mr-2 font-bold">
                 نسبة الحضور
               </span>
             </div>
-            <span className="text-xs bg-blue-50 text-blue-800 border border-blue-200 px-2.5 py-1 rounded-xl font-black">
-              {stats.year2Count} مخدوم
+            <span className="text-xs bg-blue-50 text-blue-800 border border-blue-200 px-2.5 py-1 rounded-xl font-black font-mono">
+              {toEnglishDigits(stats.year2Count)} مخدوم
             </span>
           </div>
         </div>
@@ -548,8 +676,8 @@ export default function ServantAttendanceTotals({
               تفاصيل ونسب كل جمعة خدمة على حدة:
             </h3>
           </div>
-          <span className="text-[11px] text-slate-500 font-bold">
-            ({stats.fridayStats.length}) جمعات مرت
+          <span className="text-[11px] text-slate-500 font-bold font-mono">
+            ({toEnglishDigits(stats.fridayStats.length)}) جمعات مرت
           </span>
         </div>
 
@@ -567,8 +695,8 @@ export default function ServantAttendanceTotals({
               >
                 <div>
                   <div className="flex items-center justify-between text-[11px]">
-                    <span className="font-extrabold text-slate-900">
-                      الجمعة ({fri.weekNum})
+                    <span className="font-extrabold text-slate-900 font-mono">
+                      الجمعة ({toEnglishDigits(fri.weekNum)})
                     </span>
                     <span className="font-bold text-slate-500 font-mono">
                       {formatShortDate(fri.dateStr)}
@@ -577,22 +705,22 @@ export default function ServantAttendanceTotals({
 
                   <div className="mt-2.5 flex items-baseline justify-between">
                     <span className="text-xl font-black text-maroon-900 font-mono">
-                      {fri.rateAll}%
+                      {toEnglishDigits(fri.rateAll)}%
                     </span>
-                    <div className="flex items-center gap-1.5 text-[10px] font-black">
+                    <div className="flex items-center gap-1.5 text-[10px] font-black font-mono">
                       <span className="text-emerald-700 bg-emerald-100/80 px-1.5 py-0.5 rounded-md">
-                        🟢 {fri.presentAll}
+                        🟢 {toEnglishDigits(fri.presentAll)}
                       </span>
                       <span className="text-rose-700 bg-rose-100/80 px-1.5 py-0.5 rounded-md">
-                        🔴 {fri.absentAll}
+                        🔴 {toEnglishDigits(fri.absentAll)}
                       </span>
                     </div>
                   </div>
                 </div>
 
-                <div className="mt-2.5 pt-2 border-t border-slate-200/70 text-[10px] flex items-center justify-between text-slate-600 font-bold">
-                  <span>سنة أولى: <strong className="text-emerald-800">{fri.rateY1}%</strong></span>
-                  <span>سنة ثانية: <strong className="text-blue-800">{fri.rateY2}%</strong></span>
+                <div className="mt-2.5 pt-2 border-t border-slate-200/70 text-[10px] flex items-center justify-between text-slate-600 font-bold font-mono">
+                  <span>سنة أولى: <strong className="text-emerald-800">{toEnglishDigits(fri.rateY1)}%</strong></span>
+                  <span>سنة ثانية: <strong className="text-blue-800">{toEnglishDigits(fri.rateY2)}%</strong></span>
                 </div>
               </div>
             );
@@ -614,7 +742,7 @@ export default function ServantAttendanceTotals({
                   : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
               }`}
             >
-              القاعة المشتركة (سنة أولى + ثانية) ({servantsPrepStudents.length})
+              القاعة المشتركة (سنة أولى + ثانية) ({toEnglishDigits(servantsPrepStudents.length)})
             </button>
 
             <button
@@ -626,7 +754,7 @@ export default function ServantAttendanceTotals({
                   : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
               }`}
             >
-              السنة الأولى ({stats.year1Count})
+              السنة الأولى ({toEnglishDigits(stats.year1Count)})
             </button>
 
             <button
@@ -638,7 +766,7 @@ export default function ServantAttendanceTotals({
                   : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
               }`}
             >
-              السنة الثانية ({stats.year2Count})
+              السنة الثانية ({toEnglishDigits(stats.year2Count)})
             </button>
           </div>
 
@@ -737,10 +865,10 @@ export default function ServantAttendanceTotals({
                           return (
                             <td 
                               key={dateStr}
-                              onClick={() => handleToggleCell(st, dateStr)}
+                              onClick={() => handleCellClick(st, dateStr)}
                               title={
                                 record?.status === 'حاضر'
-                                  ? `حاضر • ${isLate ? 'متأخر ⏱️' : 'في الموعد 🟢'} ${record.time ? `(ساعة الحضور: ${record.time})` : ''} ${record.type === 'numeric_pin' ? '• تم بكود الخدمة' : record.type === 'qr_scan' ? '• تم بمسح QR' : ''} (انقر للتعديل)`
+                                  ? `حاضر • ${isLate ? 'متأخر ⏱️' : 'في الموعد 🟢'} ${record.time ? `(ساعة الحضور: ${toEnglishDigits(record.time)})` : ''} ${record.type === 'numeric_pin' ? '• تم بكود الخدمة' : record.type === 'qr_scan' ? '• تم بمسح QR' : ''} (انقر للتعديل)`
                                   : record?.status === 'غائب'
                                   ? 'غائب (انقر للتعديل)'
                                   : 'لم يُرصد (انقر للرصد)'
@@ -774,7 +902,7 @@ export default function ServantAttendanceTotals({
                                         ? 'text-amber-900 bg-amber-100/90'
                                         : 'text-emerald-800'
                                     }`}>
-                                      {record.time}
+                                      {toEnglishDigits(record.time)}
                                     </span>
                                   )}
                                 </div>
@@ -792,15 +920,15 @@ export default function ServantAttendanceTotals({
                         })}
 
                         {/* Student Totals */}
-                        <td className="py-2.5 px-2 text-center border-l border-amber-200 bg-amber-50/30 font-black text-slate-800">
-                          {studentPresentCount} / {fridaysList.length}
+                        <td className="py-2.5 px-2 text-center border-l border-amber-200 bg-amber-50/30 font-black text-slate-800 font-mono">
+                          {toEnglishDigits(studentPresentCount)} / {toEnglishDigits(fridaysList.length)}
                         </td>
                         <td className="py-2.5 px-2 text-center bg-emerald-50/30 font-black font-mono">
                           <span className={`px-2 py-0.5 rounded-lg text-[11px] ${
                             studentRate >= 80 ? 'bg-emerald-100 text-emerald-800' :
                             studentRate >= 50 ? 'bg-amber-100 text-amber-900' : 'bg-rose-100 text-rose-800'
                           }`}>
-                            {studentRate}%
+                            {toEnglishDigits(studentRate)}%
                           </span>
                         </td>
                       </tr>
@@ -820,14 +948,14 @@ export default function ServantAttendanceTotals({
                     const friStat = stats.fridayStats.find(f => f.dateStr === dateStr);
                     return (
                       <td key={dateStr} className="py-2.5 px-1 text-center border-l border-slate-300 font-mono text-[11px]">
-                        <div className="text-emerald-700 font-black">{friStat?.presentAll || 0}</div>
-                        <div className="text-[10px] text-slate-500 font-normal">({friStat?.rateAll || 0}%)</div>
+                        <div className="text-emerald-700 font-black">{toEnglishDigits(friStat?.presentAll || 0)}</div>
+                        <div className="text-[10px] text-slate-500 font-normal">({toEnglishDigits(friStat?.rateAll || 0)}%)</div>
                       </td>
                     );
                   })}
 
                   <td colSpan={2} className="py-3 px-3 text-center bg-slate-200 text-slate-900 font-black">
-                    المتوسط العام: <span className="text-maroon-900 font-mono mr-1">{stats.overallRate}%</span>
+                    المتوسط العام: <span className="text-maroon-900 font-mono mr-1">{toEnglishDigits(stats.overallRate)}%</span>
                   </td>
                 </tr>
               </tfoot>
@@ -865,6 +993,155 @@ export default function ServantAttendanceTotals({
           </span>
         </div>
       </div>
+
+      {/* 📝 Detailed Cell Edit Modal (تعديل الحالة وساعة الوصول بالدقيقة وتفريغ الورق) */}
+      {editingCell && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/50 backdrop-blur-xs font-cairo">
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-sm w-full p-5 space-y-4 animate-in fade-in zoom-in-95 duration-150 text-right">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div>
+                <h3 className="text-sm font-black text-slate-900">
+                  {editingCell.student.fullName || 'مخدوم'}
+                </h3>
+                <span className="text-[11px] text-slate-500 font-bold">
+                  {fridaysList.find(f => f.dateStr === editingCell.dateStr)?.weekNum 
+                    ? `جمعة (${toEnglishDigits(fridaysList.find(f => f.dateStr === editingCell.dateStr).weekNum)}) - ${formatShortDate(editingCell.dateStr)}` 
+                    : editingCell.dateStr}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingCell(null)}
+                className="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center cursor-pointer transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Status Selector */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-700 block">حالة الحضور:</label>
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setModalStatus('حاضر')}
+                  className={`py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                    modalStatus === 'حاضر'
+                      ? 'bg-emerald-700 text-white shadow-xs ring-2 ring-emerald-300'
+                      : 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100'
+                  }`}
+                >
+                  ✓ حاضر
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setModalStatus('غائب');
+                    setModalTime('');
+                  }}
+                  className={`py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                    modalStatus === 'غائب'
+                      ? 'bg-rose-700 text-white shadow-xs ring-2 ring-rose-300'
+                      : 'bg-rose-50 text-rose-800 hover:bg-rose-100'
+                  }`}
+                >
+                  ✕ غائب
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setModalStatus('unrecorded');
+                    setModalTime('');
+                  }}
+                  className={`py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                    modalStatus === 'unrecorded'
+                      ? 'bg-slate-800 text-white shadow-xs'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  — مسح
+                </button>
+              </div>
+            </div>
+
+            {/* Time Controls (Only if حاضر) */}
+            {modalStatus === 'حاضر' && (
+              <div className="space-y-2 bg-slate-50 p-3 rounded-2xl border border-slate-200">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-slate-700 flex items-center gap-1">
+                    <Clock className="w-3.5 h-3.5 text-maroon-800" />
+                    <span>ساعة الحضور (بالدقيقة):</span>
+                  </label>
+                  {modalTime && (
+                    <button
+                      type="button"
+                      onClick={() => setModalTime('')}
+                      className="text-[10px] text-rose-600 hover:underline font-bold cursor-pointer"
+                      title="مسح الوقت ليبقى حاضر بدون وقت محدد"
+                    >
+                      مسح الوقت ✕
+                    </button>
+                  )}
+                </div>
+
+                {/* Quick Preset Buttons */}
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {['10:30', '10:45', '11:00', '11:15'].map(pTime => {
+                    const displayLabel = `${pTime} ص`;
+                    return (
+                      <button
+                        key={pTime}
+                        type="button"
+                        onClick={() => setModalTime(displayLabel)}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer ${
+                          modalTime === displayLabel
+                            ? 'bg-maroon-900 text-white ring-1 ring-gold-400'
+                            : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-100'
+                        }`}
+                      >
+                        {toEnglishDigits(displayLabel)}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Direct Input */}
+                <div className="mt-1">
+                  <input
+                    type="text"
+                    placeholder="مثال: 10:42 ص"
+                    value={modalTime}
+                    onChange={(e) => setModalTime(toEnglishDigits(e.target.value))}
+                    className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono font-bold text-slate-800 focus:outline-none focus:border-maroon-800"
+                  />
+                </div>
+                <p className="text-[10px] text-slate-400 font-medium leading-relaxed">
+                  💡 اترك الوقت فارغاً إن أردت إظهار علامة (✓) فقط بدون وقت محدد.
+                </p>
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            <div className="flex items-center gap-2 pt-2">
+              <button
+                type="button"
+                disabled={modalSubmitting}
+                onClick={handleSaveModal}
+                className="flex-1 py-2.5 bg-maroon-900 hover:bg-maroon-800 active:scale-95 text-white rounded-xl text-xs font-black transition-all cursor-pointer shadow-xs disabled:opacity-50"
+              >
+                {modalSubmitting ? 'جارٍ الحفظ...' : 'حفظ التعديل ✓'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setEditingCell(null)}
+                className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all cursor-pointer"
+              >
+                إلغاء
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
