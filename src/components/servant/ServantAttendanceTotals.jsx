@@ -129,6 +129,47 @@ export default function ServantAttendanceTotals({
     return map;
   }, [attendanceRecords]);
 
+  // Real-time listener for attendance window settings to get variable start times per Friday
+  const [attendanceWindowSettings, setAttendanceWindowSettings] = useState({});
+  useEffect(() => {
+    const unsubSettings = onSnapshot(doc(db, 'service_settings', 'attendance_window'), (snap) => {
+      if (snap.exists()) {
+        setAttendanceWindowSettings(snap.data() || {});
+      }
+    });
+    return () => unsubSettings();
+  }, []);
+
+  // Check if student arrived late on a specific Friday based on that Friday's start time + 15 mins
+  const checkIsLate = (record, dateStr) => {
+    if (!record || record.status !== 'حاضر') return false;
+    if (record.punctualityStatus && typeof record.punctualityStatus === 'string') {
+      if (record.punctualityStatus.includes('متأخر')) return true;
+      if (record.punctualityStatus.includes('مبكر') || record.punctualityStatus.includes('في الموعد')) return false;
+    }
+    if (!record.time) return false;
+    try {
+      const fridayStartTime = attendanceWindowSettings[`startTime_${dateStr}`] || attendanceWindowSettings.serviceStartTime || '10:30';
+      const [startH, startM] = fridayStartTime.split(':').map(Number);
+      const thresholdMins = (startH * 60) + startM + 15;
+
+      const cleanParts = record.time.match(/(\d+):(\d+)/);
+      if (!cleanParts) return false;
+      let recH = parseInt(cleanParts[1], 10);
+      const recM = parseInt(cleanParts[2], 10);
+      const isPM = record.time.includes('م') || record.time.toLowerCase().includes('pm');
+      const isAM = record.time.includes('ص') || record.time.toLowerCase().includes('am');
+
+      if (isPM && recH < 12) recH += 12;
+      if (isAM && recH === 12) recH = 0;
+
+      const recordTotalMins = (recH * 60) + recM;
+      return recordTotalMins > thresholdMins;
+    } catch {
+      return false;
+    }
+  };
+
   // Overall Statistics for Leadership (أمين الخدمة)
   const stats = useMemo(() => {
     const totalStudents = servantsPrepStudents.length;
@@ -625,15 +666,22 @@ export default function ServantAttendanceTotals({
                   </th>
 
                   {/* Friday Columns */}
-                  {fridaysList.map(({ dateStr, weekNum }) => (
-                    <th 
-                      key={dateStr}
-                      className="py-2.5 px-2 text-center min-w-[70px] border-l border-slate-200 whitespace-nowrap"
-                    >
-                      <div className="font-extrabold text-[11px]">جمعة {weekNum}</div>
-                      <div className="text-[10px] text-slate-500 font-mono">{formatShortDate(dateStr)}</div>
-                    </th>
-                  ))}
+                  {fridaysList.map(({ dateStr, weekNum }) => {
+                    const friStart = attendanceWindowSettings[`startTime_${dateStr}`] || attendanceWindowSettings.serviceStartTime || '10:30';
+                    return (
+                      <th 
+                        key={dateStr}
+                        className="py-2 px-1 text-center min-w-[72px] border-l border-slate-200 whitespace-nowrap"
+                        title={`موعد بدء الخدمة لهذه الجمعة: ${friStart} ص (سماح حتى 15 دقيقة)`}
+                      >
+                        <div className="font-extrabold text-[11px]">جمعة {weekNum}</div>
+                        <div className="text-[10px] text-slate-500 font-mono">{formatShortDate(dateStr)}</div>
+                        <div className="text-[9px] text-amber-800 font-mono font-bold bg-amber-50/80 rounded px-1 mt-0.5 inline-block">
+                          {friStart} ص
+                        </div>
+                      </th>
+                    );
+                  })}
 
                   {/* Totals Columns */}
                   <th className="py-3 px-3 text-center min-w-[80px] bg-amber-50/80 text-amber-950 border-l border-amber-200 font-black">
@@ -684,6 +732,7 @@ export default function ServantAttendanceTotals({
                           const cellKey = `${st.id}_${dateStr}`;
                           const record = recordsMap[cellKey];
                           const isUpdating = updatingId === cellKey;
+                          const isLate = checkIsLate(record, dateStr);
 
                           return (
                             <td 
@@ -691,20 +740,26 @@ export default function ServantAttendanceTotals({
                               onClick={() => handleToggleCell(st, dateStr)}
                               title={
                                 record?.status === 'حاضر'
-                                  ? `حاضر ${record.time ? `(وقت الحضور: ${record.time})` : ''} ${record.type === 'numeric_pin' ? '• تم بكود الخدمة' : record.type === 'qr_scan' ? '• تم بمسح QR' : ''} (انقر للتعديل)`
+                                  ? `حاضر • ${isLate ? 'متأخر ⏱️' : 'في الموعد 🟢'} ${record.time ? `(ساعة الحضور: ${record.time})` : ''} ${record.type === 'numeric_pin' ? '• تم بكود الخدمة' : record.type === 'qr_scan' ? '• تم بمسح QR' : ''} (انقر للتعديل)`
                                   : record?.status === 'غائب'
                                   ? 'غائب (انقر للتعديل)'
                                   : 'لم يُرصد (انقر للرصد)'
                               }
-                              className="py-1.5 px-1 text-center border-l border-slate-100 cursor-pointer hover:bg-slate-100/70 transition-all active:scale-95 select-none"
+                              className={`py-1.5 px-1 text-center border-l border-slate-100 cursor-pointer hover:bg-slate-100/70 transition-all active:scale-95 select-none ${
+                                isLate ? 'bg-amber-50/60' : ''
+                              }`}
                             >
                               {isUpdating ? (
                                 <span className="inline-block w-3.5 h-3.5 border-2 border-maroon-800 border-t-transparent rounded-full animate-spin"></span>
                               ) : record?.status === 'حاضر' ? (
                                 <div className="flex flex-col items-center justify-center gap-0.5">
                                   <div className="relative inline-flex items-center justify-center">
-                                    <span className="inline-flex items-center justify-center w-6 h-6 rounded-lg bg-emerald-100 text-emerald-800 font-black text-xs shadow-2xs">
-                                      ✓
+                                    <span className={`inline-flex items-center justify-center w-6 h-6 rounded-lg font-black text-xs shadow-2xs ${
+                                      isLate
+                                        ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                                        : 'bg-emerald-100 text-emerald-800'
+                                    }`}>
+                                      {isLate ? '⏱️' : '✓'}
                                     </span>
                                     {(record.type === 'numeric_pin' || record.type === 'qr_scan') && (
                                       <span 
@@ -714,7 +769,11 @@ export default function ServantAttendanceTotals({
                                     )}
                                   </div>
                                   {record.time && (
-                                    <span className="text-[9px] font-mono font-bold text-emerald-800 leading-tight whitespace-nowrap">
+                                    <span className={`text-[9px] font-mono font-bold leading-tight whitespace-nowrap px-1 rounded ${
+                                      isLate
+                                        ? 'text-amber-900 bg-amber-100/90'
+                                        : 'text-emerald-800'
+                                    }`}>
                                       {record.time}
                                     </span>
                                   )}
@@ -780,10 +839,14 @@ export default function ServantAttendanceTotals({
         <div className="flex flex-wrap items-center gap-4 text-[11px] text-slate-600 pt-1">
           <div className="flex items-center gap-1.5">
             <span className="w-5 h-5 rounded-md bg-emerald-100 text-emerald-700 font-black flex items-center justify-center text-xs">✓</span>
-            <span>حاضر (يظهر أسفلها وقت الحضور الفعلي بالدقيقة)</span>
+            <span>حاضر في الموعد (أول 15 دقيقة)</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="relative inline-flex items-center justify-center w-5 h-5 rounded-md bg-emerald-100 text-emerald-800 font-black text-xs">
+            <span className="w-5 h-5 rounded-md bg-amber-100 text-amber-900 border border-amber-300 font-black flex items-center justify-center text-xs">⏱️</span>
+            <span>حاضر متأخر (بعد فترة السماح)</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="relative inline-flex items-center justify-center w-5 h-5 rounded-md bg-slate-100 text-slate-800 font-black text-xs">
               ✓
               <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-amber-500 border border-white" />
             </span>

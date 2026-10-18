@@ -225,11 +225,13 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
     }
   };
 
-  const handleUpdateServiceStartTime = async (newTime) => {
+  const handleUpdateServiceStartTime = async (newTime, targetDate = null) => {
     setServiceStartTime(newTime);
+    const dateKey = targetDate || new Date().toISOString().split('T')[0];
     try {
       await setDoc(doc(db, 'service_settings', 'attendance_window'), {
         serviceStartTime: newTime,
+        [`startTime_${dateKey}`]: newTime,
         updatedBy: user.fullName || 'الخادم المسؤول',
         updatedAt: serverTimestamp()
       }, { merge: true });

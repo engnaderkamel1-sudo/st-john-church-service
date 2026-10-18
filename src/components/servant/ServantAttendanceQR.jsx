@@ -56,51 +56,80 @@ export default function ServantAttendanceQR({
           <h3 className="text-lg font-black text-slate-900">{todayStr}</h3>
 
           {/* Dynamic Service Start Time Setting */}
-          <div className="mt-3 flex items-center justify-center gap-2">
-            <span className="text-xs text-slate-600 font-bold">موعد بدء الخدمة:</span>
-            {isEditingStartTime ? (
-              <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 p-1 rounded-xl">
-                <input
-                  type="time"
-                  value={inputStartTime}
-                  onChange={(e) => setInputStartTime(e.target.value)}
-                  className="bg-white border border-slate-300 rounded-lg px-2 py-0.5 text-xs font-mono font-bold text-slate-800 focus:outline-none"
-                />
+          <div className="mt-3 flex flex-col items-center justify-center gap-2">
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-slate-600 font-bold flex items-center gap-1">
+                <Clock className="w-3.5 h-3.5 text-maroon-800" />
+                <span>موعد بدء خدمة اليوم:</span>
+              </span>
+              <span className="font-mono font-black text-xs text-maroon-900 bg-maroon-50 border border-maroon-200 px-2.5 py-0.5 rounded-lg">
+                {serviceStartTime} ص
+              </span>
+            </div>
+
+            {/* Quick Presets & Custom Time */}
+            <div className="flex flex-wrap items-center justify-center gap-1.5">
+              {['10:30', '10:45', '11:00', '11:15'].map((t) => (
                 <button
+                  key={t}
                   type="button"
                   onClick={() => {
-                    if (inputStartTime && handleUpdateServiceStartTime) {
-                      handleUpdateServiceStartTime(inputStartTime);
+                    if (handleUpdateServiceStartTime) {
+                      handleUpdateServiceStartTime(t);
                     }
                     setIsEditingStartTime(false);
                   }}
-                  className="bg-maroon-800 text-white text-[10px] font-bold px-2 py-1 rounded-lg cursor-pointer"
+                  className={`px-3 py-1 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer shadow-2xs active:scale-95 ${
+                    serviceStartTime === t
+                      ? 'bg-maroon-900 text-white ring-2 ring-gold-400 font-black'
+                      : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                  }`}
                 >
-                  حفظ ✓
+                  {t} ص
                 </button>
+              ))}
+
+              {isEditingStartTime ? (
+                <div className="flex items-center gap-1 bg-slate-50 border border-slate-200 p-0.5 rounded-xl">
+                  <input
+                    type="time"
+                    value={inputStartTime}
+                    onChange={(e) => setInputStartTime(e.target.value)}
+                    className="bg-white border border-slate-300 rounded-lg px-2 py-0.5 text-xs font-mono font-bold text-slate-800 focus:outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (inputStartTime && handleUpdateServiceStartTime) {
+                        handleUpdateServiceStartTime(inputStartTime);
+                      }
+                      setIsEditingStartTime(false);
+                    }}
+                    className="bg-maroon-800 text-white text-[10px] font-bold px-2 py-1 rounded-lg cursor-pointer"
+                  >
+                    حفظ ✓
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsEditingStartTime(false)}
+                    className="text-slate-400 text-[10px] px-1 cursor-pointer"
+                  >
+                    إلغاء
+                  </button>
+                </div>
+              ) : (
                 <button
                   type="button"
-                  onClick={() => setIsEditingStartTime(false)}
-                  className="text-slate-400 text-[10px] px-1 cursor-pointer"
+                  onClick={() => {
+                    setInputStartTime(serviceStartTime);
+                    setIsEditingStartTime(true);
+                  }}
+                  className="px-2.5 py-1 rounded-xl text-xs font-bold bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 transition-all cursor-pointer shadow-2xs flex items-center gap-1"
                 >
-                  إلغاء
+                  <span>وقت آخر ✏️</span>
                 </button>
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={() => {
-                  setInputStartTime(serviceStartTime);
-                  setIsEditingStartTime(true);
-                }}
-                className="bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 px-3 py-1 rounded-xl text-xs font-bold font-mono flex items-center gap-1 cursor-pointer shadow-2xs"
-                title="تعديل موعد بدء الخدمة"
-              >
-                <Clock className="w-3.5 h-3.5 text-amber-700" />
-                <span>{serviceStartTime} ص</span>
-                <span className="text-[10px]">✏️</span>
-              </button>
-            )}
+              )}
+            </div>
           </div>
         </div>
 
