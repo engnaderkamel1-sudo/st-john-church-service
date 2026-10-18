@@ -102,14 +102,6 @@ export default function ServantAttendanceQR({
               </button>
             )}
           </div>
-          <p className="text-[11px] text-slate-400 mt-1">
-            أول ربع ساعة (حتى {serviceStartTime ? (() => {
-              const [h, m] = serviceStartTime.split(':').map(Number);
-              const endM = (m + 15) % 60;
-              const endH = endM < m ? h + 1 : h;
-              return `${endH}:${endM < 10 ? '0' + endM : endM}`;
-            })() : '10:45'} ص) = 3 درجات، وبعدها درجتان طبقاً للائحة.
-          </p>
         </div>
 
         {/* Hero PIN Display Box */}
@@ -127,11 +119,11 @@ export default function ServantAttendanceQR({
 
           <div className="flex items-center justify-center gap-1.5 text-emerald-800 bg-emerald-50 border border-emerald-200/80 py-1.5 px-3 rounded-xl text-xs font-bold max-w-xs mx-auto">
             <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
-            <span>يعمل أوفلاين في القاعة بدون قطرة إنترنت</span>
+            <span>تسجيل فوري دون الحاجة لاتصال بالإنترنت</span>
           </div>
 
           <p className="text-xs text-slate-500 max-w-sm mx-auto">
-            اكتب هذا الرقم على الشاشة أو أعلنه للمخدومين في القاعة؛ يسجله المخدوم في حسابه بضغطة زر واحدة حتى وهو في وضع الطيران.
+            يُعرض هذا الكود للمخدومين في القاعة لتسجيل الحضور مباشرة من حساباتهم.
           </p>
 
           <div className="pt-2 flex flex-wrap items-center justify-center gap-3">
