@@ -27,13 +27,16 @@ import {
   FileSpreadsheet,
   Percent,
   Check,
-  UserCheck
+  UserCheck,
+  Clock,
+  CalendarOff,
+  QrCode
 } from 'lucide-react';
 
 export default function ServantAttendanceTotals({ 
   allUsers = [], 
   todayStr,
-  onSwitchToManualAttendance 
+  onOpenHolidays 
 }) {
   const SERVICE_START_FRIDAY = '2026-10-02';
 
@@ -42,6 +45,9 @@ export default function ServantAttendanceTotals({
   const [searchQuery, setSearchQuery] = useState('');
   const [activeStageFilter, setActiveStageFilter] = useState('all'); // 'all' (combined) | 'first' | 'second'
   const [updatingId, setUpdatingId] = useState(null);
+  const [selectedRetroFriday, setSelectedRetroFriday] = useState(SERVICE_START_FRIDAY);
+  const [bulkLoading, setBulkLoading] = useState(false);
+  const [bulkSuccessMsg, setBulkSuccessMsg] = useState('');
 
   // Generate dynamic list of service Fridays from 2026-10-02 up to today / upcoming Friday
   const fridaysList = useMemo(() => {
@@ -220,11 +226,13 @@ export default function ServantAttendanceTotals({
       const existing = attendanceRecords.find(r => r.userId === student.id && r.date === dateStr);
       const nextStatus = curRecord?.status === 'حاضر' ? 'غائب' : 'حاضر';
       const points = nextStatus === 'حاضر' ? 10 : 0;
+      const nowTime = new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
 
       if (existing) {
         await updateDoc(doc(db, 'attendance', existing.id), {
           status: nextStatus,
           pointsAwarded: points,
+          time: nextStatus === 'حاضر' ? (existing.time || nowTime) : '',
           updatedAt: serverTimestamp()
         });
       } else {
@@ -234,6 +242,8 @@ export default function ServantAttendanceTotals({
           userPhone: student.phone || '',
           userGrade: student.grade || 'first',
           date: dateStr,
+          time: nextStatus === 'حاضر' ? nowTime : '',
+          type: 'manual_servant',
           status: nextStatus,
           pointsAwarded: points,
           createdAt: serverTimestamp()
@@ -247,35 +257,148 @@ export default function ServantAttendanceTotals({
     }
   };
 
+  // Bulk mark all students in current filtered view as present for a selected Friday
+  const handleBulkMarkAllPresent = async (targetDate) => {
+    const targetStudents = displayedStudents;
+    if (!targetStudents || targetStudents.length === 0) {
+      alert('لا يوجد مخدومين في القائمة الحالية لتسجيلهم.');
+      return;
+    }
+
+    const targetDateLabel = fridaysList.find(f => f.dateStr === targetDate);
+    const weekLabel = targetDateLabel ? `الجمعة (${targetDateLabel.weekNum}) الموافق ${formatShortDate(targetDate)}` : targetDate;
+
+    if (!window.confirm(`هل تريد تسجيل جميع مخدومي القائمة الحالية (${targetStudents.length} مخدوم) كـ "حاضر" لـ ${weekLabel}؟\n(يمكنك بعد ذلك تعديل من غاب فقط بلمسة واحدة)`)) {
+      return;
+    }
+
+    setBulkLoading(true);
+    try {
+      const nowTime = '10:30 ص';
+      const promises = targetStudents.map(async (st) => {
+        const existing = attendanceRecords.find(r => r.userId === st.id && r.date === targetDate);
+        if (existing) {
+          if (existing.status !== 'حاضر') {
+            return updateDoc(doc(db, 'attendance', existing.id), {
+              status: 'حاضر',
+              pointsAwarded: 10,
+              time: existing.time || nowTime,
+              updatedAt: serverTimestamp()
+            });
+          }
+        } else {
+          return addDoc(collection(db, 'attendance'), {
+            userId: st.id,
+            userName: st.fullName || 'مخدوم',
+            userPhone: st.phone || '',
+            userGrade: st.grade || 'first',
+            date: targetDate,
+            time: nowTime,
+            type: 'manual_bulk',
+            status: 'حاضر',
+            pointsAwarded: 10,
+            createdAt: serverTimestamp()
+          });
+        }
+      });
+
+      await Promise.all(promises);
+      setBulkSuccessMsg(`تم رصد حضور (${targetStudents.length}) مخدوم بنجاح لـ ${weekLabel} ✓`);
+      setTimeout(() => setBulkSuccessMsg(''), 4000);
+    } catch (err) {
+      console.error('Error in bulk attendance:', err);
+      alert('حدث خطأ أثناء الرصد الجماعي.');
+    } finally {
+      setBulkLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-5 animate-fade-in pb-12">
       {/* Top Header */}
       <div className="bg-white border border-slate-200 rounded-3xl p-5 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <span className="p-2 bg-maroon-50 text-maroon-800 rounded-2xl">
-              <FileSpreadsheet className="w-5 h-5 text-maroon-800" />
+            <span className="p-2.5 bg-maroon-50 text-maroon-800 rounded-2xl border border-maroon-100">
+              <UserCheck className="w-5 h-5 text-maroon-800" />
             </span>
             <div>
               <h2 className="text-base md:text-lg font-black text-slate-900">
-                كشف الحضور الإجمالي الشامل (Totals)
+                الحضور (تسجيل ومتابعة)
               </h2>
               <p className="text-xs text-slate-500 font-bold">
-                متابعة دقيقة لنسب الحضور لجميع جمعات إعداد المخدومين من الجمعة الأولى (2 أكتوبر 2026).
+                كشف الحضور الشامل والرصد المباشر لجميع جمعات الخدمة منذ 2 أكتوبر 2026.
               </p>
             </div>
           </div>
         </div>
 
-        {onSwitchToManualAttendance && (
-          <button
-            type="button"
-            onClick={onSwitchToManualAttendance}
-            className="min-h-[44px] px-4 py-2 bg-slate-900 hover:bg-maroon-900 text-white rounded-2xl text-xs font-black flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xs active:scale-95 shrink-0"
-          >
-            <Calendar className="w-4 h-4 text-gold-300" />
-            <span>الانتقال لرصد جمعة اليوم 🗓️</span>
-          </button>
+        <div className="flex items-center gap-2 shrink-0">
+          {onOpenHolidays && (
+            <button
+              type="button"
+              onClick={onOpenHolidays}
+              className="min-h-[40px] px-3.5 py-2 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-2xl text-xs font-black flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-2xs active:scale-95"
+              title="إدارة إجازات الخدمة والجمعات الملغاة"
+            >
+              <CalendarOff className="w-4 h-4 text-amber-800" />
+              <span>إجازات الخدمة 🏖️</span>
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* ⚡ Retroactive & Quick Bulk Attendance Bar (أداة الرصد بأثر رجعي) */}
+      <div className="bg-gradient-to-r from-amber-50/80 via-white to-amber-50/80 border-2 border-amber-300 rounded-3xl p-4 shadow-xs space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <span className="p-2 bg-amber-100 text-amber-900 rounded-xl">
+              <Sparkles className="w-4 h-4 text-amber-800" />
+            </span>
+            <div>
+              <h3 className="text-xs font-black text-slate-900">
+                أداة الرصد السريع وتوثيق الجمعات السابقة (بأثر رجعي):
+              </h3>
+              <p className="text-[11px] text-slate-500 font-medium">
+                اختر أي جمعة لتسجيل القائمة المعروضة كاملة "حاضر" بنقرة واحدة، ثم عدّل من غاب فقط في الجدول.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <select
+              value={selectedRetroFriday}
+              onChange={(e) => setSelectedRetroFriday(e.target.value)}
+              className="bg-white border-2 border-amber-400 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-900 focus:outline-none min-h-[38px] shadow-2xs cursor-pointer"
+            >
+              {fridaysList.slice().reverse().map(f => (
+                <option key={f.dateStr} value={f.dateStr}>
+                  الجمعة ({f.weekNum}) - {formatShortDate(f.dateStr)}
+                </option>
+              ))}
+            </select>
+
+            <button
+              type="button"
+              disabled={bulkLoading}
+              onClick={() => handleBulkMarkAllPresent(selectedRetroFriday)}
+              className="min-h-[38px] px-4 py-1.5 bg-emerald-700 hover:bg-emerald-800 active:scale-95 text-white rounded-xl text-xs font-black flex items-center justify-center gap-1.5 transition-all shadow-xs cursor-pointer disabled:opacity-50"
+            >
+              {bulkLoading ? (
+                <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+              ) : (
+                <Check className="w-4 h-4 text-gold-300" />
+              )}
+              <span>تسجيل الكل حاضر لهذه الجمعة ✓</span>
+            </button>
+          </div>
+        </div>
+
+        {bulkSuccessMsg && (
+          <div className="bg-emerald-100/80 border border-emerald-300 text-emerald-900 text-xs font-black px-3.5 py-2 rounded-xl flex items-center gap-2 animate-fade-in">
+            <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0" />
+            <span>{bulkSuccessMsg}</span>
+          </div>
         )}
       </div>
 
@@ -566,21 +689,42 @@ export default function ServantAttendanceTotals({
                             <td 
                               key={dateStr}
                               onClick={() => handleToggleCell(st, dateStr)}
-                              title="تعديل حالة الحضور"
-                              className="py-2 px-1 text-center border-l border-slate-100 cursor-pointer hover:bg-slate-100/70 transition-all active:scale-90 select-none"
+                              title={
+                                record?.status === 'حاضر'
+                                  ? `حاضر ${record.time ? `(وقت الحضور: ${record.time})` : ''} ${record.type === 'numeric_pin' ? '• تم بكود الخدمة' : record.type === 'qr_scan' ? '• تم بمسح QR' : ''} (انقر للتعديل)`
+                                  : record?.status === 'غائب'
+                                  ? 'غائب (انقر للتعديل)'
+                                  : 'لم يُرصد (انقر للرصد)'
+                              }
+                              className="py-1.5 px-1 text-center border-l border-slate-100 cursor-pointer hover:bg-slate-100/70 transition-all active:scale-95 select-none"
                             >
                               {isUpdating ? (
                                 <span className="inline-block w-3.5 h-3.5 border-2 border-maroon-800 border-t-transparent rounded-full animate-spin"></span>
                               ) : record?.status === 'حاضر' ? (
-                                <span className="inline-flex items-center justify-center w-6 h-6 rounded-lg bg-emerald-100 text-emerald-700 font-black text-xs shadow-2xs">
-                                  ✓
-                                </span>
+                                <div className="flex flex-col items-center justify-center gap-0.5">
+                                  <div className="relative inline-flex items-center justify-center">
+                                    <span className="inline-flex items-center justify-center w-6 h-6 rounded-lg bg-emerald-100 text-emerald-800 font-black text-xs shadow-2xs">
+                                      ✓
+                                    </span>
+                                    {(record.type === 'numeric_pin' || record.type === 'qr_scan') && (
+                                      <span 
+                                        className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-amber-500 border border-white shadow-2xs"
+                                        title="تم التسجيل ذاتياً بكود الحضور"
+                                      />
+                                    )}
+                                  </div>
+                                  {record.time && (
+                                    <span className="text-[9px] font-mono font-bold text-emerald-800 leading-tight whitespace-nowrap">
+                                      {record.time}
+                                    </span>
+                                  )}
+                                </div>
                               ) : record?.status === 'غائب' ? (
                                 <span className="inline-flex items-center justify-center w-6 h-6 rounded-lg bg-rose-100 text-rose-700 font-black text-xs shadow-2xs">
                                   ✕
                                 </span>
                               ) : (
-                                <span className="inline-flex items-center justify-center w-6 h-6 rounded-lg text-slate-300 font-bold text-xs">
+                                <span className="inline-flex items-center justify-center w-6 h-6 rounded-lg text-slate-300 font-bold text-xs hover:text-slate-500">
                                   —
                                 </span>
                               )}
@@ -636,7 +780,14 @@ export default function ServantAttendanceTotals({
         <div className="flex flex-wrap items-center gap-4 text-[11px] text-slate-600 pt-1">
           <div className="flex items-center gap-1.5">
             <span className="w-5 h-5 rounded-md bg-emerald-100 text-emerald-700 font-black flex items-center justify-center text-xs">✓</span>
-            <span>حاضر</span>
+            <span>حاضر (يظهر أسفلها وقت الحضور الفعلي بالدقيقة)</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="relative inline-flex items-center justify-center w-5 h-5 rounded-md bg-emerald-100 text-emerald-800 font-black text-xs">
+              ✓
+              <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-amber-500 border border-white" />
+            </span>
+            <span>سجّل ذاتياً بكود الحضور 📱</span>
           </div>
           <div className="flex items-center gap-1.5">
             <span className="w-5 h-5 rounded-md bg-rose-100 text-rose-700 font-black flex items-center justify-center text-xs">✕</span>
@@ -647,7 +798,7 @@ export default function ServantAttendanceTotals({
             <span>لم يُرصد</span>
           </div>
           <span className="text-slate-400 mr-auto font-bold">
-            💡 يمكنك النقر على أي علامة في الجدول لتعديل حالة المخدوم فوراً.
+            💡 يمكنك النقر على أي خانة لتعديل حالة الحضور فوراً.
           </span>
         </div>
       </div>

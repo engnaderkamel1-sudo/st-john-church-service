@@ -1490,30 +1490,10 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
                   }`}
                 >
                   <QrCode className={`w-4 h-4 ${mainTab === 'attendance_qr' ? 'text-gold-300' : 'text-maroon-800'}`} />
-                  <span>كود الحضور (QR)</span>
+                  <span>كود الحضور</span>
                 </button>
 
-                {/* 2. Manual Attendance */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMainTab('manual_attendance');
-                    setActiveSubject(null);
-                    setMobileSidebarOpen(false);
-                  }}
-                  className={`w-full text-right py-2 px-3 rounded-xl flex items-center justify-between text-xs font-bold transition-all cursor-pointer ${
-                    mainTab === 'manual_attendance'
-                      ? 'bg-maroon-800 text-white shadow-xs'
-                      : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5">
-                    <UserCheck className={`w-4 h-4 ${mainTab === 'manual_attendance' ? 'text-gold-300' : 'text-emerald-700'}`} />
-                    <span>تسجيل حضور يدوي</span>
-                  </div>
-                </button>
-
-                {/* 2b. Attendance Totals & Excel Sheet */}
+                {/* 2. Unified Master Attendance: Registration & Tracking */}
                 <button
                   type="button"
                   onClick={() => {
@@ -1522,17 +1502,17 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
                     setMobileSidebarOpen(false);
                   }}
                   className={`w-full text-right py-2 px-3 rounded-xl flex items-center justify-between text-xs font-bold transition-all cursor-pointer ${
-                    mainTab === 'attendance_totals'
+                    mainTab === 'attendance_totals' || mainTab === 'manual_attendance'
                       ? 'bg-maroon-800 text-white shadow-xs'
                       : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
                   }`}
                 >
                   <div className="flex items-center gap-2.5">
-                    <FileSpreadsheet className={`w-4 h-4 ${mainTab === 'attendance_totals' ? 'text-gold-300' : 'text-blue-700'}`} />
-                    <span>كشف الحضور والإجماليات</span>
+                    <UserCheck className={`w-4 h-4 ${mainTab === 'attendance_totals' || mainTab === 'manual_attendance' ? 'text-gold-300' : 'text-emerald-700'}`} />
+                    <span>الحضور (تسجيل ومتابعة)</span>
                   </div>
                   <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-md bg-slate-100 text-slate-600 font-bold">
-                    Totals
+                    Sheet
                   </span>
                 </button>
 
@@ -1960,29 +1940,12 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
         />
       )}
 
-      {/* Direct Servant Manual Attendance with Custom Arrival Time (All Servants) */}
-      {mainTab === 'manual_attendance' && (
-        <ServantManualAttendance
-          allUsers={allUsers}
-          getGradeTitle={getGradeTitle}
-          handleManualAttendanceWithTime={handleManualAttendance}
-          handleManualAbsence={handleManualAbsence}
-          manualAttendLoadingId={manualAttendLoadingId}
-          manualAttendSuccessId={manualAttendSuccessId}
-          manualAbsenceLoadingId={manualAbsenceLoadingId}
-          manualAbsenceSuccessId={manualAbsenceSuccessId}
-          todayStr={todayStr}
-          onOpenHolidays={() => setMainTab('holidays_manager')}
-          onSwitchToTotals={() => setMainTab('attendance_totals')}
-        />
-      )}
-
-      {/* Attendance Totals & Excel Sheet (All Servants & Leaders) */}
-      {mainTab === 'attendance_totals' && (
+      {/* Unified Master Attendance: Registration & Tracking (All Servants & Leaders) */}
+      {(mainTab === 'attendance_totals' || mainTab === 'manual_attendance') && (
         <ServantAttendanceTotals
           allUsers={allUsers}
           todayStr={todayStr}
-          onSwitchToManualAttendance={() => setMainTab('manual_attendance')}
+          onOpenHolidays={() => setMainTab('holidays_manager')}
         />
       )}
 
