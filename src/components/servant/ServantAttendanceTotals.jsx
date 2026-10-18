@@ -475,47 +475,6 @@ export default function ServantAttendanceTotals({
         </div>
       </div>
 
-      {/* 🎛️ Dual Attendance Entry Modes (رصد سريع vs رصد تفصيلي بالوقت) */}
-      <div className="bg-white border border-slate-200 rounded-3xl p-3 sm:p-4 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-black text-slate-800">
-            نمط الرصد في الجدول:
-          </span>
-          <span className="text-[11px] text-slate-500 font-bold">
-            {attendanceEntryMode === 'quick' 
-              ? '⚡ لمسة واحدة على الخانة تبدّل (حاضر / غائب) سريعاً بدون أوقات مصطنعة.' 
-              : '⏱️ النقر على الخانة يتيح تحديد ساعة الوصول بالدقيقة والتعديل.'}
-          </span>
-        </div>
-
-        <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-2xl border border-slate-200 shrink-0 w-full sm:w-auto justify-center">
-          <button
-            type="button"
-            onClick={() => setAttendanceEntryMode('quick')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
-              attendanceEntryMode === 'quick'
-                ? 'bg-maroon-900 text-white shadow-xs font-black'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            <Sparkles className="w-3.5 h-3.5 text-gold-300" />
-            <span>رصد سريع (حضور/غياب) ⚡</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setAttendanceEntryMode('detailed')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
-              attendanceEntryMode === 'detailed'
-                ? 'bg-maroon-900 text-white shadow-xs font-black'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            <Clock className="w-3.5 h-3.5 text-gold-300" />
-            <span>رصد تفصيلي (بالوقت والدقائق) ⏱️</span>
-          </button>
-        </div>
-      </div>
 
       {/* ⚡ Retroactive & Quick Bulk Attendance Bar (أداة الرصد بأثر رجعي) */}
       <div className="bg-gradient-to-r from-amber-50/80 via-white to-amber-50/80 border-2 border-amber-300 rounded-3xl p-4 shadow-xs space-y-3">
@@ -730,9 +689,10 @@ export default function ServantAttendanceTotals({
 
       {/* 📊 Section 3: Master Attendance Sheet Table (Excel Style) */}
       <div className="bg-white border border-slate-200 rounded-3xl p-4 shadow-xs space-y-4">
-        {/* Table Filters & Search Bar */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-          <div className="flex items-center gap-2 overflow-x-auto pb-1">
+        {/* Table Filters, Mode Switcher & Search Bar */}
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+          {/* Stage Filter Buttons */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
             <button
               type="button"
               onClick={() => setActiveStageFilter('all')}
@@ -742,7 +702,7 @@ export default function ServantAttendanceTotals({
                   : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
               }`}
             >
-              القاعة المشتركة (سنة أولى + ثانية) ({toEnglishDigits(servantsPrepStudents.length)})
+              القاعة المشتركة ({toEnglishDigits(servantsPrepStudents.length)})
             </button>
 
             <button
@@ -770,7 +730,39 @@ export default function ServantAttendanceTotals({
             </button>
           </div>
 
-          <div className="relative w-full md:w-64 shrink-0">
+          {/* 🎛️ Dual Attendance Entry Modes (تسجيل بدون وقت [الافتراضي] / تسجيل بوقت) */}
+          <div className="flex items-center justify-between sm:justify-start gap-1 bg-slate-100 p-1 rounded-2xl border border-slate-200 shrink-0">
+            <button
+              type="button"
+              onClick={() => setAttendanceEntryMode('quick')}
+              className={`flex-1 sm:flex-initial px-3 py-1.5 min-h-[34px] rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                attendanceEntryMode === 'quick'
+                  ? 'bg-maroon-900 text-white shadow-xs font-black'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+              title="لمسة واحدة للتبديل بين حاضر وغائب بدون تسجيل وقت"
+            >
+              <Check className="w-3.5 h-3.5 text-gold-300" />
+              <span>تسجيل بدون وقت</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setAttendanceEntryMode('detailed')}
+              className={`flex-1 sm:flex-initial px-3 py-1.5 min-h-[34px] rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                attendanceEntryMode === 'detailed'
+                  ? 'bg-maroon-900 text-white shadow-xs font-black'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+              title="تحديد ساعة الوصول بالدقيقة عند النقر على أي خانة"
+            >
+              <Clock className="w-3.5 h-3.5 text-gold-300" />
+              <span>تسجيل بوقت</span>
+            </button>
+          </div>
+
+          {/* Search Input */}
+          <div className="relative w-full lg:w-56 shrink-0">
             <Search className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
