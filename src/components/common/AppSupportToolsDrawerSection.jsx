@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Bell, Lightbulb, Smartphone, AlertTriangle, Rocket, Sparkles, Check, Camera
+  Bell, Lightbulb, Smartphone, AlertTriangle, Rocket, Sparkles, Check
 } from 'lucide-react';
 import InstallPromptModal from './InstallPromptModal';
 import FeatureRequestModal from './FeatureRequestModal';
@@ -19,21 +19,6 @@ export default function AppSupportToolsDrawerSection({ user, onCloseDrawer }) {
   const [hasNotificationPermission, setHasNotificationPermission] = useState(() => {
     return typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted';
   });
-
-  const [hasCameraPermission, setHasCameraPermission] = useState(false);
-
-  useEffect(() => {
-    if (typeof navigator !== 'undefined' && navigator.permissions?.query) {
-      navigator.permissions.query({ name: 'camera' }).then(result => {
-        setHasCameraPermission(result.state === 'granted');
-        result.onchange = () => {
-          setHasCameraPermission(result.state === 'granted');
-        };
-      }).catch(() => {
-        // quiet fail on browsers that don't support camera permission query
-      });
-    }
-  }, []);
 
   const isAppAdmin = checkIsAppAdmin(user);
 
@@ -58,26 +43,6 @@ export default function AppSupportToolsDrawerSection({ user, onCloseDrawer }) {
       }
     } catch {
       // quiet fail
-    }
-  };
-
-  const handleRequestCameraPermission = async () => {
-    if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
-      alert('متصفحك لا يدعم الوصول المباشر إلى الكاميرا.');
-      return;
-    }
-    if (hasCameraPermission) {
-      alert('صلاحية الكاميرا مفعلة بالفعل وجاهزة للاستخدام.');
-      return;
-    }
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-      stream.getTracks().forEach(track => track.stop());
-      setHasCameraPermission(true);
-      alert('تم منح صلاحية الكاميرا بنجاح! يمكنك الآن مسح كود الـ QR لتسجيل الحضور.');
-    } catch (err) {
-      console.warn('Camera permission request denied or failed', err);
-      alert('تعذر الوصول إلى الكاميرا. يرجى السماح بالوصول إليها من إعدادات المتصفح أو الهاتف.');
     }
   };
 
@@ -112,25 +77,6 @@ export default function AppSupportToolsDrawerSection({ user, onCloseDrawer }) {
               : 'bg-slate-100 text-slate-600 border border-slate-200/80'
           }`}>
             {hasNotificationPermission ? 'مفعلة ✓' : 'تفعيل'}
-          </span>
-        </button>
-
-        {/* 3. Camera Permission (QR Code Attendance) */}
-        <button
-          type="button"
-          onClick={handleRequestCameraPermission}
-          className="w-full text-right py-2.5 px-3 rounded-xl flex items-center justify-between text-xs font-bold text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition-all cursor-pointer"
-        >
-          <div className="flex items-center gap-2.5">
-            <Camera className="w-4 h-4 text-slate-600 shrink-0" />
-            <span>صلاحية الكاميرا (مسح الـ QR)</span>
-          </div>
-          <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold transition-colors ${
-            hasCameraPermission 
-              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
-              : 'bg-slate-100 text-slate-600 border border-slate-200/80'
-          }`}>
-            {hasCameraPermission ? 'مفعلة ✓' : 'تفعيل'}
           </span>
         </button>
 

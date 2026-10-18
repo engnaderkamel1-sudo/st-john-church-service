@@ -104,7 +104,7 @@ export default async function handler(req, res) {
   const uniqueSubs = Array.from(new Map(subscriptionsToSend.map(s => [s.endpoint, s])).values());
 
   const results = await Promise.allSettled(
-    uniqueSubs.map(sub => webpush.sendNotification(sub, payload))
+    uniqueSubs.map(sub => webpush.sendNotification(sub, Buffer.from(payload, 'utf8')))
   );
 
   return res.status(200).json({

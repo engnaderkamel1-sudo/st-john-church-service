@@ -13,7 +13,7 @@ import StudentTasks from './student/StudentTasks';
 import StageRegulationsModal from './common/StageRegulationsModal';
 import UserProfileModal from './common/UserProfileModal';
 import AppSupportToolsDrawerSection from './common/AppSupportToolsDrawerSection';
-import { triggerServerPush } from '../services/webPushService';
+import { triggerServerPush, registerServiceWorkerAndSubscribe } from '../services/webPushService';
 import { calculateAttendancePoints, DEFAULT_STAGE_REGULATIONS, getDiaryPointsConfig } from '../utils/regulationsService';
 import { getDailyServicePin, isValidServicePin } from '../utils/security';
 
@@ -21,6 +21,32 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser, externa
   // Tabs: 'home', 'attendance', 'spiritual_diary', 'curriculum', 'exams', 'tasks', 'announcements'
   const [activeTab, setActiveTab] = useState('home');
   const [isNavDrawerOpen, setIsNavDrawerOpen] = useState(false);
+
+  // Background Web Push Notification Banner state (only shown if not granted)
+  const [hasNotifPermission, setHasNotifPermission] = useState(() => {
+    return typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted';
+  });
+  const [isNotifBannerDismissed, setIsNotifBannerDismissed] = useState(false);
+  const [isEnablingPush, setIsEnablingPush] = useState(false);
+
+  const handleEnablePushNotifications = async () => {
+    if (typeof window === 'undefined' || !('Notification' in window)) {
+      alert('متصفحك لا يدعم الإشعارات المباشرة.');
+      return;
+    }
+    setIsEnablingPush(true);
+    try {
+      const perm = await Notification.requestPermission();
+      if (perm === 'granted') {
+        setHasNotifPermission(true);
+        await registerServiceWorkerAndSubscribe(user);
+      }
+    } catch (e) {
+      console.warn('Error enabling notifications:', e);
+    } finally {
+      setIsEnablingPush(false);
+    }
+  };
 
   // Sync external menu trigger from top header
   useEffect(() => {
@@ -978,6 +1004,43 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser, externa
           <span>التاسكات</span>
         </button>
       </div>
+
+      {/* Gentle Mobile Notification Activation Banner for Students */}
+      {!hasNotifPermission && !isNotifBannerDismissed && (
+        <div className="bg-gradient-to-r from-maroon-900 via-maroon-800 to-maroon-900 text-white p-3 sm:p-3.5 rounded-2xl shadow-md border border-amber-500/30 flex items-center justify-between gap-3 font-cairo animate-in fade-in duration-300">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-8 h-8 rounded-xl bg-amber-400 text-maroon-950 flex items-center justify-center shrink-0 shadow-xs">
+              <Bell className="w-4 h-4 animate-bounce" />
+            </div>
+            <div className="min-w-0">
+              <p className="font-black text-xs sm:text-sm text-amber-300 truncate">
+                تفعيل إشعارات الخدمة والمحاضرات 🔔
+              </p>
+              <p className="text-[11px] text-white/80 hidden sm:block truncate">
+                لتصلك المحاضرات والمسابقات فور نشرها حتى والتطبيق مغلق.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              type="button"
+              disabled={isEnablingPush}
+              onClick={handleEnablePushNotifications}
+              className="px-3 py-1.5 bg-gradient-to-r from-amber-400 to-amber-500 text-maroon-950 font-black text-xs rounded-xl shadow-xs hover:from-amber-300 hover:to-amber-400 transition-all cursor-pointer active:scale-95 disabled:opacity-60"
+            >
+              {isEnablingPush ? 'جاري التفعيل...' : 'تفعيل الآن'}
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsNotifBannerDismissed(true)}
+              className="p-1.5 text-white/60 hover:text-white rounded-lg transition-colors cursor-pointer"
+              title="إخفاء مؤقت"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Slide-Over Navigation Drawer for Students */}
       {isNavDrawerOpen && (
