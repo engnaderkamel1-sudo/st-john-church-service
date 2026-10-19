@@ -7,7 +7,7 @@ import ServantDashboard from './components/ServantDashboard';
 import AutoUpdateWatcher from './components/common/AutoUpdateWatcher';
 import ErrorBoundary from './components/common/ErrorBoundary';
 
-import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, orderBy, doc, deleteDoc } from 'firebase/firestore';
 import { checkIsAppAdmin } from './utils/security';
 import { playNotificationChime, triggerBrowserNotification, formatNotificationTime } from './utils/notificationSystem';
 import { registerServiceWorkerAndSubscribe } from './services/webPushService';
@@ -118,7 +118,26 @@ export default function App() {
         }
       }
 
-      const list = rawList;
+      // Auto-purge and filter out corrupted notifications with garbled/question mark encoding (e.g. '????')
+      const isCorruptedNotif = (item) => {
+        const text = `${item.title || ''} ${item.desc || ''}`.trim();
+        if (!text) return false;
+        // If text contains 5 or more question marks or consists mostly of ???
+        const qCount = (text.match(/[\?\؟]/g) || []).length;
+        return qCount >= 5 && (qCount / text.replace(/\s+/g, '').length) > 0.4;
+      };
+
+      const validRawList = [];
+      rawList.forEach(item => {
+        if (isCorruptedNotif(item)) {
+          // Permanently purge corrupted document from Firestore
+          deleteDoc(doc(db, 'notifications', item.id)).catch(() => {});
+        } else {
+          validRawList.push(item);
+        }
+      });
+
+      const list = validRawList;
 
       // If current user is a servant or admin, compute 3-day advance birthday alerts
       const isServantOrAdmin = currentUser.role !== 'student';
@@ -277,6 +296,11 @@ export default function App() {
       }
       return updated;
     });
+
+    // If it's a persistent Firestore notification (not an in-memory birthday alert), delete from Firestore directly
+    if (!id.startsWith('bday_') && !id.startsWith('student_bday_')) {
+      deleteDoc(doc(db, 'notifications', id)).catch(() => {});
+    }
   };
 
   const deleteAllNotifications = () => {
@@ -287,6 +311,13 @@ export default function App() {
         localStorage.setItem(`deleted_notifs_${currentUser.id}`, JSON.stringify(updated));
       }
       return updated;
+    });
+
+    // Delete all persistent notifications from Firestore
+    visibleNotifications.forEach(n => {
+      if (!n.id.startsWith('bday_') && !n.id.startsWith('student_bday_')) {
+        deleteDoc(doc(db, 'notifications', n.id)).catch(() => {});
+      }
     });
   };
 
