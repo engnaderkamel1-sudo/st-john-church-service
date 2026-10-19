@@ -24,6 +24,7 @@ import ServantUsersHub from './servant/ServantUsersHub';
 import ServantStudentsHub from './servant/ServantStudentsHub';
 import ServantManualAttendance from './servant/ServantManualAttendance';
 import ServantAttendanceTotals from './servant/ServantAttendanceTotals';
+import ServantTasksTotals from './servant/ServantTasksTotals';
 import ServantHolidaysManager from './servant/ServantHolidaysManager';
 import ServantBirthdaysHub from './servant/ServantBirthdaysHub';
 import StudentProfileModal from './servant/StudentProfileModal';
@@ -1518,6 +1519,29 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
                   </span>
                 </button>
 
+                {/* 2.1 Tasks Totals & Retro Grading */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMainTab('tasks_totals');
+                    setActiveSubject(null);
+                    setMobileSidebarOpen(false);
+                  }}
+                  className={`w-full text-right py-2 px-3 rounded-xl flex items-center justify-between text-xs font-bold transition-all cursor-pointer ${
+                    mainTab === 'tasks_totals'
+                      ? 'bg-maroon-800 text-white shadow-xs'
+                      : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <FileSpreadsheet className={`w-4 h-4 ${mainTab === 'tasks_totals' ? 'text-gold-300' : 'text-amber-600'}`} />
+                    <span>التاسكات (رصد ومتابعة)</span>
+                  </div>
+                  <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-md bg-slate-100 text-slate-600 font-bold">
+                    Sheet
+                  </span>
+                </button>
+
                 {/* 3. Students Data Hub */}
                 <button
                   type="button"
@@ -1948,6 +1972,19 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
           allUsers={allUsers}
           todayStr={todayStr}
           onOpenHolidays={() => setMainTab('holidays_manager')}
+        />
+      )}
+
+      {/* Unified Master Tasks: Grading, Retroactive Scoring & Tracking */}
+      {mainTab === 'tasks_totals' && (
+        <ServantTasksTotals
+          allUsers={allUsers}
+          createdExams={createdExams}
+          getGradeTitle={getGradeTitle}
+          onSelectStudent={(st) => setStudent360Profile(st)}
+          user={user}
+          fetchAllUsers={fetchAllUsers}
+          currentGradeSubjects={currentGradeSubjects}
         />
       )}
 

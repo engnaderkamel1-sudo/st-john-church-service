@@ -1,22 +1,33 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
   FileSpreadsheet, Award, TrendingUp, Search, Download, 
-  CheckCircle2, XCircle, Users, Sparkles, Filter, ChevronRight, Eye
+  CheckCircle2, XCircle, Users, Sparkles, Filter, ChevronRight, Eye,
+  Calendar, Edit3, Plus, Trash2, Check, X, Loader2
 } from 'lucide-react';
 import { db } from '../../firebase';
-import { collection, onSnapshot } from 'firebase/firestore';
+import { collection, onSnapshot, doc, setDoc, updateDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
+import ServantRetroTaskModal, { toEnglishDigits } from './ServantRetroTaskModal';
 
 export default function ServantTasksTotals({
   allUsers = [],
   createdExams = [],
   getGradeTitle,
   onSelectStudent,
-  onOpenResponses
+  onOpenResponses,
+  user,
+  fetchAllUsers,
+  currentGradeSubjects = []
 }) {
   const [submissions, setSubmissions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeStageFilter, setActiveStageFilter] = useState('all'); // 'all' | 'first' | 'second'
+
+  // Modal & Quick Cell Grading State
+  const [showRetroModal, setShowRetroModal] = useState(false);
+  const [retroModalTask, setRetroModalTask] = useState(null);
+  const [editingCell, setEditingCell] = useState(null); // { student, task, currentSub, scoreInput }
+  const [cellSaving, setCellSaving] = useState(false);
 
   // Listen to all exam/task submissions
   useEffect(() => {
@@ -38,10 +49,48 @@ export default function ServantTasksTotals({
     return (allUsers || []).filter(u => u.role === 'student' && u.grade !== 'elisha');
   }, [allUsers]);
 
-  // Filter tasks/exams (only online_quiz or created tasks)
+  // Aggregate tasks: online quizzes + manual weekly tasks recorded in submissions
   const tasksList = useMemo(() => {
-    return (createdExams || []).filter(e => e.type !== 'paper');
-  }, [createdExams]);
+    const map = new Map();
+
+    // 1. Online quizzes
+    (createdExams || []).filter(e => e.type !== 'paper').forEach(e => {
+      map.set(e.id, {
+        id: e.id,
+        title: e.title || 'مسابقة أونلاين',
+        subject: e.subject || 'عام',
+        grade: e.grade || 'all',
+        totalScore: Number(e.totalScore) || 20,
+        type: 'online_quiz',
+        date: e.date || (e.createdAt?.toDate ? e.createdAt.toDate().toISOString().split('T')[0] : null)
+      });
+    });
+
+    // 2. Weekly manual tasks from submissions
+    submissions.forEach(sub => {
+      if (!sub.examId) return;
+      if (!map.has(sub.examId)) {
+        map.set(sub.examId, {
+          id: sub.examId,
+          title: sub.examTitle || 'تاسك أسبوعي',
+          subject: sub.subject || 'عام',
+          grade: sub.grade || 'all',
+          totalScore: Number(sub.totalScore) || 20,
+          type: sub.type || 'manual_weekly_entry',
+          date: sub.date || null
+        });
+      }
+    });
+
+    const arr = Array.from(map.values());
+    arr.sort((a, b) => {
+      if (a.date && b.date) return a.date.localeCompare(b.date);
+      if (a.date) return 1;
+      if (b.date) return -1;
+      return 0;
+    });
+    return arr;
+  }, [createdExams, submissions]);
 
   // Filter tasks matching current stage filter
   const currentStageTasks = useMemo(() => {
@@ -62,8 +111,11 @@ export default function ServantTasksTotals({
     submissions.forEach(sub => {
       if (!sub.userId || !sub.examId) return;
       if (!map[sub.userId]) map[sub.userId] = {};
-      // In case of multiple submissions, keep the one with highest score
-      if (!map[sub.userId][sub.examId] || (sub.autoScore || 0) > (map[sub.userId][sub.examId].autoScore || 0)) {
+      const cur = map[sub.userId][sub.examId];
+      const curScore = cur ? (cur.score ?? cur.autoScore ?? 0) : -1;
+      const newScore = sub.score ?? sub.autoScore ?? 0;
+      // In case of multiple submissions, keep the one with higher score or manual servant entry
+      if (!cur || sub.isManualServantEntry || newScore > curScore) {
         map[sub.userId][sub.examId] = sub;
       }
     });
@@ -152,6 +204,90 @@ export default function ServantTasksTotals({
     };
   }, [servantsPrepStudents, tasksList, submissionsMap]);
 
+  // Handle in-place single cell save/update
+  const handleSaveCellScore = async (student, task, scoreVal) => {
+    if (scoreVal === '' || scoreVal === null || scoreVal === undefined) return;
+    const num = Number(toEnglishDigits(scoreVal));
+    if (isNaN(num)) return;
+    const maxScore = task.totalScore || 20;
+    const clamped = Math.max(0, Math.min(maxScore, num));
+
+    const subKey = `${student.id}_${task.id}`;
+    const existingSub = submissionsMap[student.id]?.[task.id];
+    const prevScore = existingSub ? (existingSub.score ?? existingSub.autoScore ?? 0) : 0;
+    const diff = clamped - prevScore;
+
+    setCellSaving(true);
+    try {
+      const subRef = doc(db, 'exam_submissions', subKey);
+      await setDoc(subRef, {
+        id: subKey,
+        examId: task.id,
+        examTitle: task.title || 'تاسك أسبوعي',
+        subject: task.subject || 'عام',
+        grade: student.grade || 'first',
+        userId: student.id,
+        userName: student.fullName || 'مخدوم',
+        userPhone: student.phone || '',
+        score: clamped,
+        autoScore: clamped,
+        totalScore: maxScore,
+        type: 'manual_weekly_entry',
+        isManualServantEntry: true,
+        recordedBy: user?.fullName || 'الخادم المسؤول',
+        date: task.date || new Date().toISOString().split('T')[0],
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+
+      if (diff !== 0) {
+        const userRef = doc(db, 'users', student.id);
+        await updateDoc(userRef, {
+          points: Math.max(0, (student.points || 0) + diff)
+        }).catch(err => console.warn('Could not update user points:', err));
+      }
+
+      if (fetchAllUsers) fetchAllUsers();
+      setEditingCell(null);
+    } catch (err) {
+      console.error('Error saving cell score:', err);
+      alert('حدث خطأ أثناء حفظ درجة الطالب.');
+    } finally {
+      setCellSaving(false);
+    }
+  };
+
+  // Handle in-place single cell delete/clear
+  const handleDeleteCellScore = async (student, task) => {
+    const existingSub = submissionsMap[student.id]?.[task.id];
+    if (!existingSub) {
+      setEditingCell(null);
+      return;
+    }
+    if (!window.confirm(`هل أنت متأكد من مسح درجة ${student.fullName || 'الطالب'} في هذا التاسك؟`)) return;
+
+    setCellSaving(true);
+    const prevScore = existingSub.score ?? existingSub.autoScore ?? 0;
+    try {
+      const subRef = doc(db, 'exam_submissions', existingSub.id || `${student.id}_${task.id}`);
+      await deleteDoc(subRef);
+
+      if (prevScore > 0) {
+        const userRef = doc(db, 'users', student.id);
+        await updateDoc(userRef, {
+          points: Math.max(0, (student.points || 0) - prevScore)
+        }).catch(err => console.warn('Could not update user points:', err));
+      }
+
+      if (fetchAllUsers) fetchAllUsers();
+      setEditingCell(null);
+    } catch (err) {
+      console.error('Error deleting cell score:', err);
+      alert('حدث خطأ أثناء مسح الدرجة.');
+    } finally {
+      setCellSaving(false);
+    }
+  };
+
   // Export comprehensive Master Tasks CSV to Excel
   const handleExportCsv = () => {
     if (filteredStudents.length === 0 || currentStageTasks.length === 0) {
@@ -220,14 +356,28 @@ export default function ServantTasksTotals({
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={handleExportCsv}
-          className="min-h-[40px] px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xs active:scale-95 shrink-0"
-        >
-          <Download className="w-4 h-4" />
-          <span>تصدير كشف درجات إكسيل مجمّع (CSV)</span>
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              setRetroModalTask(null);
+              setShowRetroModal(true);
+            }}
+            className="min-h-[40px] px-4 py-2 bg-gradient-to-r from-amber-600 via-amber-500 to-gold-500 hover:from-amber-700 hover:to-amber-600 text-maroon-950 font-black rounded-xl text-xs flex items-center justify-center gap-1.5 transition-all shadow-xs active:scale-95 cursor-pointer shrink-0"
+          >
+            <Calendar className="w-4 h-4 text-maroon-950" />
+            <span>+ رصد درجات أسبوع / تاسك 📅✨</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleExportCsv}
+            className="min-h-[40px] px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xs active:scale-95 shrink-0"
+          >
+            <Download className="w-4 h-4" />
+            <span>تصدير إكسيل (CSV)</span>
+          </button>
+        </div>
       </div>
 
       {/* 2. Top Executive Percentage Cards */}
@@ -457,10 +607,28 @@ export default function ServantTasksTotals({
                 <th className="p-3 text-center min-w-[90px]">المرحلة</th>
                 <th className="p-3 text-center min-w-[110px]">نسبة الالتزام</th>
                 {currentStageTasks.map((t, idx) => (
-                  <th key={t.id} className="p-3 text-center min-w-[110px]" title={t.title}>
-                    <div className="text-[10px] font-black text-maroon-900">تاسك {idx + 1}</div>
-                    <div className="text-[9px] text-slate-500 font-bold truncate max-w-[100px] mx-auto">
+                  <th key={t.id} className="p-2.5 text-center min-w-[125px] bg-slate-50 border-r border-slate-200" title={t.title}>
+                    <div className="flex items-center justify-between gap-1 mb-0.5">
+                      <span className="text-[10px] font-black text-maroon-900">تاسك {idx + 1}</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setRetroModalTask(t);
+                          setShowRetroModal(true);
+                        }}
+                        className="p-1 text-slate-400 hover:text-maroon-800 hover:bg-slate-200/60 rounded-md transition-all cursor-pointer"
+                        title="رصد وتعديل درجات هذا التاسك للأسبوع"
+                      >
+                        <Edit3 className="w-3 h-3" />
+                      </button>
+                    </div>
+                    <div className="text-[10px] text-slate-800 font-extrabold truncate max-w-[110px] mx-auto">
                       {t.title}
+                    </div>
+                    <div className="text-[9px] text-slate-400 font-mono mt-0.5 flex items-center justify-center gap-1">
+                      <span>{t.subject || 'عام'}</span>
+                      <span>•</span>
+                      <span>{t.totalScore || 20} د</span>
                     </div>
                   </th>
                 ))}
@@ -532,17 +700,47 @@ export default function ServantTasksTotals({
                       </td>
                       {currentStageTasks.map((t) => {
                         const sub = submissionsMap[st.id]?.[t.id];
+                        const isOnline = sub && sub.type === 'online_quiz' && !sub.isManualServantEntry;
+
                         return (
-                          <td key={t.id} className="p-2.5 text-center">
+                          <td key={t.id} className="p-2 text-center border-r border-slate-100">
                             {sub ? (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200 text-[10px] font-black font-mono">
-                                <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                                <span>{sub.autoScore ?? sub.score ?? 0}/{t.totalScore || 20}</span>
-                              </span>
+                              <button
+                                type="button"
+                                onClick={() => setEditingCell({
+                                  student: st,
+                                  task: t,
+                                  currentSub: sub,
+                                  scoreInput: sub.score ?? sub.autoScore ?? 0
+                                })}
+                                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-[10px] font-black font-mono border transition-all cursor-pointer shadow-xs active:scale-95 ${
+                                  isOnline 
+                                    ? 'bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100' 
+                                    : 'bg-indigo-50 text-indigo-900 border-indigo-300 hover:bg-indigo-100'
+                                }`}
+                                title={isOnline ? 'حل أوتوماتيكي عبر التطبيق (انقر للتعديل)' : 'رصد يدوي بواسطة الخادم (انقر للتعديل)'}
+                              >
+                                {isOnline ? (
+                                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                                ) : (
+                                  <Edit3 className="w-3 h-3 text-indigo-600" />
+                                )}
+                                <span>{sub.score ?? sub.autoScore ?? 0}/{t.totalScore || 20}</span>
+                              </button>
                             ) : (
-                              <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-lg bg-slate-100 text-slate-400 text-[10px] font-bold">
+                              <button
+                                type="button"
+                                onClick={() => setEditingCell({
+                                  student: st,
+                                  task: t,
+                                  currentSub: null,
+                                  scoreInput: ''
+                                })}
+                                className="inline-flex items-center justify-center w-8 h-7 rounded-lg bg-slate-100 hover:bg-amber-100 hover:text-amber-900 text-slate-400 hover:border hover:border-amber-300 text-[11px] font-black transition-all cursor-pointer"
+                                title="انقر لرصد درجة هذا الطالب"
+                              >
                                 <span>—</span>
-                              </span>
+                              </button>
                             )}
                           </td>
                         );
@@ -556,6 +754,136 @@ export default function ServantTasksTotals({
         </div>
 
       </div>
+
+      {/* Quick Cell Grading Popover Modal */}
+      {editingCell && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-slate-900/60 backdrop-blur-xs font-cairo text-right animate-in fade-in duration-150">
+          <div className="bg-white border border-slate-200 rounded-3xl shadow-xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-150">
+            
+            {/* Header */}
+            <div className="px-4 py-3 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="p-1.5 bg-maroon-100 text-maroon-900 rounded-lg">
+                  <Edit3 className="w-4 h-4" />
+                </span>
+                <div>
+                  <h4 className="font-black text-xs text-slate-900">
+                    رصد درجة الطالب
+                  </h4>
+                  <p className="text-[10px] text-slate-500 font-bold truncate max-w-[200px]">
+                    {editingCell.task.title}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingCell(null)}
+                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-200/60"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="p-4 space-y-3.5">
+              <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/80">
+                <div className="font-black text-xs text-slate-900">
+                  {editingCell.student.fullName || 'مخدوم'}
+                </div>
+                <div className="text-[10px] text-slate-500 font-mono mt-0.5">
+                  {editingCell.student.phone || 'بدون هاتف'} • {getGradeTitle ? getGradeTitle(editingCell.student.grade) : editingCell.student.grade}
+                </div>
+                {editingCell.currentSub && editingCell.currentSub.type === 'online_quiz' && !editingCell.currentSub.isManualServantEntry && (
+                  <div className="mt-1 text-[10px] text-emerald-700 font-bold flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                    <span>تم الحل أوتوماتيكياً على التطبيق</span>
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-black text-slate-700 mb-1">
+                  الدرجة (من {editingCell.task.totalScore || 20})
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    min="0"
+                    max={editingCell.task.totalScore || 20}
+                    placeholder="0"
+                    value={editingCell.scoreInput}
+                    onChange={(e) => setEditingCell({ ...editingCell, scoreInput: e.target.value })}
+                    className="w-24 h-10 text-center font-mono font-black text-sm bg-white border-2 border-slate-200 rounded-xl focus:border-maroon-800 focus:outline-none"
+                    autoFocus
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setEditingCell({ ...editingCell, scoreInput: editingCell.task.totalScore || 20 })}
+                    className="h-10 px-3 rounded-xl bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200 text-xs font-black cursor-pointer transition-all"
+                  >
+                    الدرجة النهائية ★
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="px-4 py-3 bg-slate-50 border-t border-slate-100 flex items-center justify-between gap-2">
+              {editingCell.currentSub ? (
+                <button
+                  type="button"
+                  disabled={cellSaving}
+                  onClick={() => handleDeleteCellScore(editingCell.student, editingCell.task)}
+                  className="text-[11px] font-bold text-rose-600 hover:text-rose-800 hover:underline cursor-pointer disabled:opacity-50"
+                >
+                  مسح الدرجة
+                </button>
+              ) : <div />}
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  disabled={cellSaving}
+                  onClick={() => setEditingCell(null)}
+                  className="px-3 py-1.5 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-200/60 transition-all cursor-pointer"
+                >
+                  إلغاء
+                </button>
+                <button
+                  type="button"
+                  disabled={cellSaving || editingCell.scoreInput === ''}
+                  onClick={() => handleSaveCellScore(editingCell.student, editingCell.task, editingCell.scoreInput)}
+                  className="px-4 py-1.5 rounded-xl bg-maroon-800 hover:bg-maroon-900 text-white text-xs font-black flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer disabled:opacity-50"
+                >
+                  {cellSaving ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-gold-300" />
+                  ) : (
+                    <Save className="w-3.5 h-3.5 text-gold-300" />
+                  )}
+                  <span>حفظ</span>
+                </button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* Retroactive Weekly Task Scoring Modal */}
+      <ServantRetroTaskModal
+        isOpen={showRetroModal}
+        onClose={() => {
+          setShowRetroModal(false);
+          setRetroModalTask(null);
+        }}
+        allUsers={allUsers}
+        currentGradeSubjects={currentGradeSubjects}
+        user={user}
+        fetchAllUsers={fetchAllUsers}
+        onSaved={() => {}}
+        initialTask={retroModalTask}
+        existingSubmissions={submissions}
+      />
 
     </div>
   );

@@ -11,6 +11,11 @@ export default function UpdatesChangelogModal({ isOpen, onClose }) {
   // Recent system updates list (Curated changelog of major enhancements)
   const updatesList = [
     {
+      version: 'v2.7.0',
+      date: '2026-10-19 12:30',
+      title: 'كشف رصد ومتابعة حل التاسكات الأسبوعية والرصد التراجعي للأسابيع السابقة',
+      details: 'تحويل كشف التاسكات لشيت رصد تفاعلي يجمع بين حلول التطبيق التلقائية والرصد اليدوي للأسابيع السابقة بلمسة واحدة، نافذة رصد سريع للأسابيع السابقة (ServantRetroTaskModal)، تعديل درجات الخلايا المباشر ومزامنة نقاط التميز تلقائياً.'
+    },
       version: 'v2.6.0',
       date: '2026-10-16 23:15',
       title: 'شيت إجماليات وتاسكات المخدومين الشامل وتعديل المسابقات',

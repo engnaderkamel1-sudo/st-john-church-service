@@ -526,6 +526,9 @@ export default function ServantExamsBank({
           createdExams={createdExams}
           getGradeTitle={getGradeTitle}
           onSelectStudent={onSelectStudent}
+          user={user}
+          fetchAllUsers={fetchAllUsers}
+          currentGradeSubjects={currentGradeSubjects}
           onOpenResponses={(task) => {
             setSelectedExamForResponses(task);
             setShowResponsesModal(true);
