@@ -8,6 +8,7 @@ import {
   addDoc, updateDoc, deleteDoc, doc, serverTimestamp 
 } from 'firebase/firestore';
 import { db } from '../../firebase';
+import { formatNotificationTime } from '../../utils/notificationSystem';
 
 export default function ServantNotificationsHub({ currentUser, allStudents = [] }) {
   const [notifications, setNotifications] = useState([]);
@@ -433,7 +434,7 @@ export default function ServantNotificationsHub({ currentUser, allStudents = [] 
 
                 <div className="flex items-center justify-between text-[10px] text-slate-400 pt-1 border-t border-slate-200/60">
                   <span>المرسل: <strong className="text-slate-600">{notif.senderName || 'أمين الخدمة'}</strong></span>
-                  <span>{notif.time || 'الآن'}</span>
+                  <span>{formatNotificationTime(notif)}</span>
                 </div>
               </div>
             ))}

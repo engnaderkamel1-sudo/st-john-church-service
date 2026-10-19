@@ -9,7 +9,7 @@ import ErrorBoundary from './components/common/ErrorBoundary';
 
 import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore';
 import { checkIsAppAdmin } from './utils/security';
-import { playNotificationChime, triggerBrowserNotification } from './utils/notificationSystem';
+import { playNotificationChime, triggerBrowserNotification, formatNotificationTime } from './utils/notificationSystem';
 import { registerServiceWorkerAndSubscribe } from './services/webPushService';
 
 export default function App() {
@@ -103,18 +103,8 @@ export default function App() {
 
       // Detect newly arrived notifications to trigger audio & visual alerts
       if (knownNotifIdsRef.current === null) {
-        // Initial load: record existing IDs and alert admin if there are pending registrations waiting
+        // Initial load: record existing IDs and prevent replaying old alerts on refresh
         knownNotifIdsRef.current = new Set(rawList.map(item => item.id));
-        if (isUserAdminRole) {
-          try {
-            const savedRead = JSON.parse(localStorage.getItem(`read_notifs_${currentUser.id}`) || '[]');
-            const unreadPending = rawList.find(item => item.type === 'pending_registration' && !savedRead.includes(item.id));
-            if (unreadPending) {
-              playNotificationChime();
-              setIncomingToast(unreadPending);
-            }
-          } catch (e) {}
-        }
       } else {
         const newlyAdded = rawList.filter(item => !knownNotifIdsRef.current.has(item.id));
         if (newlyAdded.length > 0) {
@@ -493,7 +483,7 @@ export default function App() {
                 <span className="font-extrabold text-xs text-amber-400 truncate">
                   {incomingToast.title}
                 </span>
-                <span className="text-[10px] text-slate-400 shrink-0">الآن</span>
+                <span className="text-[10px] text-slate-400 shrink-0">{formatNotificationTime(incomingToast)}</span>
               </div>
               <p className="text-[11px] text-slate-200 mt-1 line-clamp-2 leading-relaxed">
                 {(incomingToast.desc || '').replace(/،?\s*وتمت إضافة.*نقطة لرصيدك\.?/g, '').trim()}
@@ -645,7 +635,7 @@ export default function App() {
                               {(n.desc || '').replace(/،?\s*وتمت إضافة.*نقطة لرصيدك\.?/g, '').trim()}
                             </div>
                             <div className="flex items-center justify-between mt-1.5 pt-1 border-t border-slate-100 text-[10px] text-slate-400">
-                              <span>{n.time}</span>
+                              <span>{formatNotificationTime(n)}</span>
                               {n.type === 'pending_registration' && (
                                 <span className="text-[10px] bg-amber-600 text-white px-1.5 py-0.2 rounded font-bold">
                                   مراجعة 👈

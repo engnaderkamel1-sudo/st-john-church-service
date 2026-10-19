@@ -11,6 +11,12 @@ export default function UpdatesChangelogModal({ isOpen, onClose }) {
   // Recent system updates list (Curated changelog of major enhancements)
   const updatesList = [
     {
+      version: 'v2.7.1',
+      date: '2026-10-19 13:10',
+      title: 'إصلاح منظومة الإشعارات: التوقيت النسبي الحقيقي وإلغاء تنبيهات الطلبات المعتمدة',
+      details: 'حساب الوقت النسبي اللحظي الدقيق لكافة التنبيهات بدلاً من الكلمة الثابتة، حذف إشعارات طلبات الانضمام تلقائياً فور الاعتماد أو الرفض، وتطهير ذاتي لعدم تكرار التنبيهات القديمة عند فتح التطبيق.'
+    },
+    {
       version: 'v2.7.0',
       date: '2026-10-19 12:30',
       title: 'كشف رصد ومتابعة حل التاسكات الأسبوعية والرصد التراجعي للأسابيع السابقة',

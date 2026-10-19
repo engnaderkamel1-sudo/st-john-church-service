@@ -168,6 +168,34 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
     };
   }, [isAppAdmin, isServantLeader]);
 
+  // Self-healing: automatically purge any stale pending_registration notifications if the applicant is already active/rejected
+  useEffect(() => {
+    if (!isAppAdmin && !isServantLeader) return;
+    if (!allUsers || allUsers.length === 0) return;
+
+    const cleanupStaleRegistrationNotifs = async () => {
+      try {
+        const qNotifs = query(collection(db, 'notifications'), where('type', '==', 'pending_registration'));
+        const snap = await getDocs(qNotifs);
+        if (snap.empty) return;
+
+        const usersMap = new Map(allUsers.map(u => [u.id, u.status]));
+        for (const nDoc of snap.docs) {
+          const data = nDoc.data();
+          const applicantStatus = usersMap.get(data.applicantId);
+          // If applicant is active, approved, or rejected, delete the stale notification
+          if (applicantStatus && applicantStatus !== 'pending_approval') {
+            await deleteDoc(doc(db, 'notifications', nDoc.id));
+          }
+        }
+      } catch (err) {
+        console.warn('Error during stale notification cleanup:', err);
+      }
+    };
+
+    cleanupStaleRegistrationNotifs();
+  }, [allUsers, isAppAdmin, isServantLeader]);
+
   // Dynamic Service Start Time (Default: 10:30)
   const [serviceStartTime, setServiceStartTime] = useState('10:30');
   const [stageRegulations, setStageRegulations] = useState(DEFAULT_STAGE_REGULATIONS);
@@ -320,6 +348,21 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
       await updateDoc(userRef, updateData);
       setAllUsers(prev => prev.map(u => u.id === userId ? { ...u, ...updateData } : u));
 
+      // Clean up any pending registration notification for this applicant from Firestore
+      try {
+        const notifQ = query(
+          collection(db, 'notifications'),
+          where('type', '==', 'pending_registration'),
+          where('applicantId', '==', userId)
+        );
+        const notifSnap = await getDocs(notifQ);
+        for (const d of notifSnap.docs) {
+          await deleteDoc(doc(db, 'notifications', d.id));
+        }
+      } catch (cleanErr) {
+        console.warn('Could not clean pending registration notification:', cleanErr);
+      }
+
       // Send in-app notification to the approved user
       try {
         await addDoc(collection(db, 'notifications'), {
@@ -370,6 +413,21 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
 
       await updateDoc(userRef, updateData);
       setAllUsers(prev => prev.map(u => u.id === userId ? { ...u, ...updateData } : u));
+
+      // Clean up any pending registration notification for this applicant from Firestore
+      try {
+        const notifQ = query(
+          collection(db, 'notifications'),
+          where('type', '==', 'pending_registration'),
+          where('applicantId', '==', userId)
+        );
+        const notifSnap = await getDocs(notifQ);
+        for (const d of notifSnap.docs) {
+          await deleteDoc(doc(db, 'notifications', d.id));
+        }
+      } catch (cleanErr) {
+        console.warn('Could not clean pending registration notification:', cleanErr);
+      }
     } catch (err) {
       console.error('Error rejecting user:', err);
       alert('حدث خطأ أثناء رفض الحساب.');
@@ -401,6 +459,23 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
 
       await updateDoc(userRef, updateData);
       setAllUsers(prev => prev.map(u => u.id === userId ? { ...u, ...updateData } : u));
+
+      // Clean up pending registration notifications if active or rejected
+      if (newStatus === 'active' || newStatus === 'rejected') {
+        try {
+          const notifQ = query(
+            collection(db, 'notifications'),
+            where('type', '==', 'pending_registration'),
+            where('applicantId', '==', userId)
+          );
+          const notifSnap = await getDocs(notifQ);
+          for (const d of notifSnap.docs) {
+            await deleteDoc(doc(db, 'notifications', d.id));
+          }
+        } catch (cleanErr) {
+          console.warn('Could not clean pending registration notification:', cleanErr);
+        }
+      }
 
       if (newStatus === 'active') {
         try {

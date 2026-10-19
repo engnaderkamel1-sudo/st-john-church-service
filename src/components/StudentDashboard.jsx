@@ -16,6 +16,7 @@ import AppSupportToolsDrawerSection from './common/AppSupportToolsDrawerSection'
 import { triggerServerPush, registerServiceWorkerAndSubscribe } from '../services/webPushService';
 import { calculateAttendancePoints, DEFAULT_STAGE_REGULATIONS, getDiaryPointsConfig } from '../utils/regulationsService';
 import { getDailyServicePin, isValidServicePin } from '../utils/security';
+import { formatNotificationTime } from '../utils/notificationSystem';
 
 export default function StudentDashboard({ user, onLogout, onUpdateUser, externalMenuTrigger }) {
   // Tabs: 'home', 'attendance', 'spiritual_diary', 'curriculum', 'exams', 'tasks', 'announcements'
@@ -1330,7 +1331,7 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser, externa
                     <div className="flex items-center justify-between gap-2">
                       <span className="font-extrabold text-slate-900 text-sm">{item.title}</span>
                       <div className="flex items-center gap-2">
-                        <span className="text-[10px] text-slate-400 font-mono">{item.time || item.date || 'الآن'}</span>
+                        <span className="text-[10px] text-slate-400 font-mono">{formatNotificationTime(item)}</span>
                         <button
                           type="button"
                           onClick={(e) => handleDeleteAnnouncement(item.id, e)}

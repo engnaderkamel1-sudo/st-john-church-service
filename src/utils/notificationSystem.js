@@ -80,3 +80,57 @@ export function triggerBrowserNotification(title, options = {}) {
     console.warn('Browser notification trigger failed:', e);
   }
 }
+
+/**
+ * Formats notification creation date into a dynamic relative Arabic time string (e.g. 'الآن', 'منذ 5 دقائق', 'منذ ساعتين', 'أمس').
+ */
+export function formatNotificationTime(notif) {
+  if (!notif) return '';
+
+  let dateObj = null;
+  if (notif.createdAt) {
+    if (typeof notif.createdAt.toDate === 'function') {
+      dateObj = notif.createdAt.toDate();
+    } else if (typeof notif.createdAt === 'object' && notif.createdAt.seconds) {
+      dateObj = new Date(notif.createdAt.seconds * 1000);
+    } else if (typeof notif.createdAt === 'string') {
+      dateObj = new Date(notif.createdAt);
+    }
+  } else if (notif.date) {
+    dateObj = new Date(notif.date);
+  }
+
+  // If no valid timestamp, fallback to time string if it's not the static placeholder 'الآن'
+  if (!dateObj || isNaN(dateObj.getTime())) {
+    if (notif.time && notif.time !== 'الآن') return notif.time;
+    return 'الآن';
+  }
+
+  const now = new Date();
+  const diffSec = Math.floor((now.getTime() - dateObj.getTime()) / 1000);
+
+  // If within the last 45 seconds
+  if (diffSec < 45 && diffSec >= -30) return 'الآن';
+
+  const diffMin = Math.floor(diffSec / 60);
+  if (diffMin <= 1) return 'منذ دقيقة';
+  if (diffMin === 2) return 'منذ دقيقتين';
+  if (diffMin <= 10) return `منذ ${diffMin} دقائق`;
+  if (diffMin < 60) return `منذ ${diffMin} دقيقة`;
+
+  const diffHours = Math.floor(diffMin / 60);
+  if (diffHours === 1) return 'منذ ساعة';
+  if (diffHours === 2) return 'منذ ساعتين';
+  if (diffHours <= 10) return `منذ ${diffHours} ساعات`;
+  if (diffHours < 24) return `منذ ${diffHours} ساعة`;
+
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays === 1) return 'أمس';
+  if (diffDays === 2) return 'منذ يومين';
+  if (diffDays <= 10) return `منذ ${diffDays} أيام`;
+
+  return dateObj.toLocaleDateString('ar-EG-u-nu-latn', {
+    day: 'numeric',
+    month: 'short'
+  });
+}
