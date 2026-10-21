@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   X, Sparkles, Camera, Plus, Trash2, CheckCircle, HelpCircle, 
-  Clock, Calendar, BookOpen, AlertCircle, Loader2, ArrowRight, Save, Edit3
+  Clock, Calendar, BookOpen, AlertCircle, Loader2, ArrowRight, Save, Edit3,
+  UploadCloud, Link2, FileText
 } from 'lucide-react';
-import { transcribeHandwrittenQuizFromImage } from '../../services/geminiService';
+import { transcribeHandwrittenQuizFromImage, extractQuizQuestionsFromText } from '../../services/geminiService';
 import { compressImage } from '../../utils/imageCompressor';
 import { db } from '../../firebase';
 import { collection, addDoc, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
@@ -40,6 +41,9 @@ export default function ServantQuickQuizBuilderModal({
   const [isAiProcessing, setIsAiProcessing] = useState(false);
   const [aiError, setAiError] = useState('');
   const [isPublishing, setIsPublishing] = useState(false);
+  const [importMode, setImportMode] = useState('file'); // 'file' | 'link'
+  const [linkOrTextInput, setLinkOrTextInput] = useState('');
+  const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef(null);
 
   // Synchronize state when opening for edit or new quiz
@@ -81,50 +85,141 @@ export default function ServantQuickQuizBuilderModal({
 
   if (!isOpen) return null;
 
-  // Handle OCR AI from handwritten image
-  const handleImageUpload = async (e) => {
-    const file = e.target.files?.[0];
+  const readFileAsBase64 = (file) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = reader.result;
+        const base64 = typeof result === 'string' ? result.split(',')[1] : '';
+        resolve(base64);
+      };
+      reader.onerror = (err) => reject(err);
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const readFileAsText = (file) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = (err) => reject(err);
+      reader.readAsText(file);
+    });
+  };
+
+  const applyQuizResult = (result) => {
+    if (result && Array.isArray(result.questions) && result.questions.length > 0) {
+      if (result.quizTitle && !quizTitle.trim()) {
+        setQuizTitle(result.quizTitle);
+      }
+      if (result.subject) {
+        setSubject(result.subject);
+      }
+      setQuestions(result.questions.map((q, idx) => ({
+        id: `q_${Date.now()}_${idx}`,
+        questionText: q.questionText || '',
+        type: q.type || 'true_false',
+        options: q.options || (q.type === 'true_false' ? ['صح', 'خطأ'] : ['أ', 'ب', 'ج', 'د']),
+        correctAnswer: q.correctAnswer || (q.type === 'true_false' ? 'صح' : (q.options?.[0] || '')),
+        points: Number(q.points) || 2,
+        explanation: q.explanation || ''
+      })));
+      return true;
+    }
+    return false;
+  };
+
+  const processFile = async (file) => {
     if (!file) return;
 
     setIsAiProcessing(true);
     setAiError('');
 
     try {
-      // Compress with high fidelity (1600px, 0.85 quality) for OCR
-      const base64DataUrl = await compressImage(file, 1600, 0.85);
-      const pureBase64 = base64DataUrl.split(',')[1];
-      const mimeType = 'image/jpeg';
+      let result = null;
+      const isImage = file.type.startsWith('image/');
+      const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+      const isText = file.type.startsWith('text/') || file.name.toLowerCase().endsWith('.txt');
 
-      const result = await transcribeHandwrittenQuizFromImage({
-        fileBase64: pureBase64,
-        mimeType
-      });
-
-      if (result && Array.isArray(result.questions) && result.questions.length > 0) {
-        if (result.quizTitle && !quizTitle.trim()) {
-          setQuizTitle(result.quizTitle);
-        }
-        if (result.subject) {
-          setSubject(result.subject);
-        }
-        setQuestions(result.questions.map((q, idx) => ({
-          id: `q_${Date.now()}_${idx}`,
-          questionText: q.questionText || '',
-          type: q.type || 'true_false',
-          options: q.options || (q.type === 'true_false' ? ['صح', 'خطأ'] : ['أ', 'ب', 'ج', 'د']),
-          correctAnswer: q.correctAnswer || (q.type === 'true_false' ? 'صح' : (q.options?.[0] || '')),
-          points: Number(q.points) || 2,
-          explanation: q.explanation || ''
-        })));
+      if (isImage) {
+        const base64DataUrl = await compressImage(file, 1600, 0.85);
+        const pureBase64 = base64DataUrl.split(',')[1];
+        result = await transcribeHandwrittenQuizFromImage({
+          fileBase64: pureBase64,
+          mimeType: 'image/jpeg'
+        });
+      } else if (isPdf) {
+        const pureBase64 = await readFileAsBase64(file);
+        result = await transcribeHandwrittenQuizFromImage({
+          fileBase64: pureBase64,
+          mimeType: 'application/pdf'
+        });
+      } else if (isText) {
+        const textContent = await readFileAsText(file);
+        result = await extractQuizQuestionsFromText({ text: textContent });
       } else {
-        setAiError('تعذر استخراج أسئلة واضحة من الصورة، يرجى التأكد من وضوح الإضاءة والخط.');
+        const base64DataUrl = await compressImage(file, 1600, 0.85);
+        const pureBase64 = base64DataUrl.split(',')[1];
+        result = await transcribeHandwrittenQuizFromImage({
+          fileBase64: pureBase64,
+          mimeType: 'image/jpeg'
+        });
+      }
+
+      const ok = applyQuizResult(result);
+      if (!ok) {
+        setAiError('تعذر استخراج أسئلة واضحة من الملف، يرجى التأكد من وضوح المحتوى واحتوائه على أسئلة.');
       }
     } catch (err) {
-      console.error('AI Quiz OCR error:', err);
-      setAiError(err.message || 'حدث خطأ أثناء فك خط اليد بالذكاء الاصطناعي.');
+      console.error('File quiz AI extraction error:', err);
+      setAiError(err.message || 'حدث خطأ أثناء معالجة الملف بالذكاء الاصطناعي.');
     } finally {
       setIsAiProcessing(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const handleLinkOrTextSubmit = async () => {
+    const input = linkOrTextInput.trim();
+    if (!input) return;
+
+    setIsAiProcessing(true);
+    setAiError('');
+
+    try {
+      let textToAnalyze = input;
+
+      if (input.startsWith('http://') || input.startsWith('https://')) {
+        try {
+          const response = await fetch('/api/fetch-quiz-link', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url: input })
+          });
+          const resData = await response.json();
+          if (response.ok && resData.success && resData.text) {
+            textToAnalyze = resData.text;
+          } else {
+            throw new Error(resData.error || 'تعذر جلب محتوى الرابط');
+          }
+        } catch (fetchErr) {
+          console.warn('Backend proxy fetch failed:', fetchErr);
+          throw new Error(fetchErr.message || 'تعذر جلب النموذج من الرابط مباشرة، يمكنك نسخ نص الأسئلة ولصقه هنا مباشرة.');
+        }
+      }
+
+      const result = await extractQuizQuestionsFromText({ text: textToAnalyze });
+      const ok = applyQuizResult(result);
+      if (!ok) {
+        setAiError('لم يتم العثور على أسئلة واضحة في المحتوى المدخل.');
+      } else {
+        setLinkOrTextInput('');
+      }
+    } catch (err) {
+      console.error('Link/Text quiz AI extraction error:', err);
+      setAiError(err.message || 'حدث خطأ أثناء تحليل الرابط أو النص.');
+    } finally {
+      setIsAiProcessing(false);
     }
   };
 
@@ -267,7 +362,7 @@ export default function ServantQuickQuizBuilderModal({
             <p className="text-[11px] text-amber-200/90 mt-0.5">
               {editingQuiz 
                 ? 'قم بتعديل الأسئلة أو العنوان أو الدرجات وحفظ التغييرات فوراً' 
-                : 'صمم مسابقة تفاعلية لمرحلتك أو استخرج الأسئلة فوراً من صورة كشكول بالذكاء الاصطناعي'}
+                : 'صمم مسابقة تفاعلية لمرحلتك أو استورد الأسئلة تلقائياً بالذكاء الاصطناعي'}
             </p>
           </div>
           <button 
@@ -282,49 +377,161 @@ export default function ServantQuickQuizBuilderModal({
         {/* Scrollable Content */}
         <div className="p-4 sm:p-6 overflow-y-auto space-y-5 flex-1">
           
-          {/* AI Magic Scan Banner */}
-          <div className="p-4 rounded-2xl bg-gradient-to-l from-amber-500/15 via-gold-500/10 to-transparent border border-amber-300/80 flex flex-col sm:flex-row items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-amber-600 text-white flex items-center justify-center shrink-0 shadow-xs">
-                <Camera className="w-5 h-5" />
+          {/* AI Smart Import Section */}
+          <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-amber-500/10 via-amber-500/5 to-slate-50 border border-amber-300/80 space-y-3.5">
+            {/* Header with Title and Mode Switcher */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-amber-600 to-amber-700 text-white flex items-center justify-center shrink-0 shadow-xs">
+                  <Sparkles className="w-5 h-5 text-amber-200" />
+                </div>
+                <div>
+                  <h4 className="font-black text-xs sm:text-sm text-slate-900 flex items-center gap-1.5">
+                    <span>استيراد وتفريغ الأسئلة تلقائياً</span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-800 font-bold border border-amber-300/60">
+                      ذكاء اصطناعي
+                    </span>
+                  </h4>
+                  <p className="text-[11px] text-slate-500 mt-0.5">
+                    ارفع صورة، ملفاً، أو ضع رابط نموذج لتجهيز الأسئلة والخيارات فوراً
+                  </p>
+                </div>
               </div>
-              <div>
-                <span className="font-extrabold text-xs text-slate-900 block">
-                  مسح ورقة كشكول / كتاب بالذكاء الاصطناعي 🪄
-                </span>
-                <span className="text-[11px] text-slate-500">
-                  صوّر الأسئلة المكتوبة بخط اليد ليفكها الذكاء الاصطناعي ويفرغها فوراً في الخانات.
-                </span>
+
+              {/* Mode Toggle Tabs */}
+              <div className="flex items-center p-1 bg-amber-100/60 rounded-xl border border-amber-200/80 self-start sm:self-auto shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setImportMode('file')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                    importMode === 'file'
+                      ? 'bg-white text-amber-900 shadow-xs'
+                      : 'text-amber-800 hover:text-amber-950'
+                  }`}
+                >
+                  <UploadCloud className="w-3.5 h-3.5" />
+                  <span>رفع صورة أو ملف</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setImportMode('link')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                    importMode === 'link'
+                      ? 'bg-white text-amber-900 shadow-xs'
+                      : 'text-amber-800 hover:text-amber-950'
+                  }`}
+                >
+                  <Link2 className="w-3.5 h-3.5" />
+                  <span>رابط نموذج أو نص</span>
+                </button>
               </div>
             </div>
 
-            <input 
-              type="file" 
-              accept="image/*" 
-              capture="environment"
-              ref={fileInputRef}
-              onChange={handleImageUpload}
-              className="hidden" 
-            />
+            {/* Mode 1: File Upload with Drag & Drop */}
+            {importMode === 'file' && (
+              <div>
+                <input 
+                  type="file" 
+                  accept="image/*,application/pdf,.txt" 
+                  ref={fileInputRef}
+                  onChange={(e) => processFile(e.target.files?.[0])}
+                  className="hidden" 
+                />
 
-            <button
-              type="button"
-              disabled={isAiProcessing}
-              onClick={() => fileInputRef.current?.click()}
-              className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white text-xs font-bold shadow-xs flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-95 disabled:opacity-50"
-            >
-              {isAiProcessing ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin text-white" />
-                  <span>جاري فك خط اليد...</span>
-                </>
-              ) : (
-                <>
-                  <Sparkles className="w-4 h-4 text-gold-300" />
-                  <span>التقاط / رفع صورة كشكول 📷</span>
-                </>
-              )}
-            </button>
+                <div
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    setIsDragging(true);
+                  }}
+                  onDragLeave={(e) => {
+                    e.preventDefault();
+                    setIsDragging(false);
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    setIsDragging(false);
+                    if (e.dataTransfer.files?.[0]) {
+                      processFile(e.dataTransfer.files[0]);
+                    }
+                  }}
+                  onClick={() => {
+                    if (!isAiProcessing) fileInputRef.current?.click();
+                  }}
+                  className={`p-4 sm:p-5 rounded-xl border-2 border-dashed transition-all cursor-pointer flex flex-col items-center justify-center text-center gap-2 ${
+                    isDragging
+                      ? 'border-amber-600 bg-amber-100/50 scale-[1.01]'
+                      : 'border-amber-300 hover:border-amber-500 bg-white/70 hover:bg-white'
+                  } ${isAiProcessing ? 'opacity-60 pointer-events-none' : ''}`}
+                >
+                  {isAiProcessing ? (
+                    <div className="flex flex-col items-center gap-2 py-2">
+                      <Loader2 className="w-6 h-6 animate-spin text-amber-600" />
+                      <span className="text-xs font-bold text-slate-700">
+                        جاري فحص المستند واستخراج وتفريغ الأسئلة...
+                      </span>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="w-10 h-10 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center shadow-xs">
+                        <UploadCloud className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <span className="text-xs font-bold text-slate-800 block">
+                          اسحب وأفلت الصورة أو الملف هنا، أو انقر للاختيار
+                        </span>
+                        <span className="text-[10px] text-slate-500 mt-0.5 block">
+                          يدعم الصور بوضوح، ملفات PDF، والمستندات النصية
+                        </span>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Mode 2: Link / Text Input */}
+            {importMode === 'link' && (
+              <div className="space-y-2">
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <div className="relative flex-1">
+                    <input
+                      type="text"
+                      value={linkOrTextInput}
+                      onChange={(e) => setLinkOrTextInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !isAiProcessing) {
+                          e.preventDefault();
+                          handleLinkOrTextSubmit();
+                        }
+                      }}
+                      placeholder="ضع رابط Google Forms أو الصق نص المسابقة..."
+                      className="w-full bg-white border border-amber-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 font-bold placeholder:text-slate-400 focus:outline-none focus:border-amber-500"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    disabled={isAiProcessing || !linkOrTextInput.trim()}
+                    onClick={handleLinkOrTextSubmit}
+                    className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white text-xs font-bold shadow-xs flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-95 disabled:opacity-50 shrink-0"
+                  >
+                    {isAiProcessing ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin text-white" />
+                        <span>جاري الاستخراج...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-4 h-4 text-gold-300" />
+                        <span>استخراج الأسئلة</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+                <p className="text-[10px] text-slate-500">
+                  يمكنك وضع رابط استمارة Google Forms أو لصق أسئلة مكتوبة كنص مباشرة ليقوم الذكاء الاصطناعي بتنظيمها.
+                </p>
+              </div>
+            )}
           </div>
 
           {aiError && (

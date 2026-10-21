@@ -339,3 +339,49 @@ export async function transcribeHandwrittenQuizFromImage({ fileBase64, mimeType,
   const data = await callGemini({ prompt, fileBase64, mimeType });
   return data;
 }
+
+// 5. Extract Quiz Questions from Text or Fetched Web Form Content
+export async function extractQuizQuestionsFromText({ text, customInstructions = '' }) {
+  const prompt = `
+أنت خبير فائق الذكاء في استخراج وتنظيم أسئلة المسابقات التعليمية والدينية ومدارس الأحد وإعداد الخدام من النصوص والنماذج الإلكترونية (مثل Google Forms).
+
+المحتوى المدخل المأخوذ من النموذج أو النص:
+"""
+${text}
+"""
+
+المهمة الأساسية الصارمة:
+قم بتحليل المحتوى واستخراج كافة الأسئلة والخيارات والدرجات والعنوان بدقة متناهية 100%.
+
+القواعد الإرشادية:
+1. استخرج عنوان المسابقة من رأس النص أو النموذج المقترح.
+2. استخرج كل سؤال ونص السؤال الواضح بالترتيب الأصلي.
+3. حدد نوع السؤال:
+   - "true_false": إذا كان السؤال صح أو خطأ أو يحتوي على خيارين فقط متعارضين.
+   - "multiple_choice": إذا كان اختيار من متعدد، واستخرج كافة الخيارات المتاحة بدقة.
+4. حدد الإجابة النموذجية الصحيحة وفقاً للسياق، وضعها في correctAnswer.
+5. استخرج أو حدد الدرجة لكل سؤال (الافتراضي 2 أو 1 نقطة).
+6. حدد المادة التابعة لها المسابقة (مثل "كتاب مقدس" أو مادة كنسية أو عامة بحسب المحتوى).
+
+يجب أن يكون الرد بتنسيق JSON حصراً كـ Object يحتوي على:
+{
+  "quizTitle": "عنوان المسابقة",
+  "subject": "كتاب مقدس",
+  "questions": [
+    {
+      "id": "q_1",
+      "questionText": "نص السؤال هنا",
+      "type": "true_false",
+      "options": ["صح", "خطأ"],
+      "correctAnswer": "صح",
+      "points": 2,
+      "explanation": ""
+    }
+  ]
+}
+`;
+
+  const data = await callGemini({ prompt });
+  return data;
+}
+
