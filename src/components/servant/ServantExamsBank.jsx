@@ -8,6 +8,7 @@ import ServantQuickQuizBuilderModal from './ServantQuickQuizBuilderModal';
 import ServantQuizResponsesModal from './ServantQuizResponsesModal';
 import ServantTasksTotals from './ServantTasksTotals';
 import { genesisQuizData } from '../../data/genesisQuizData';
+import { triggerServerPush } from '../../services/webPushService';
 
 export default function ServantExamsBank({
   user,
@@ -211,6 +212,37 @@ export default function ServantExamsBank({
       } else {
         await updateDoc(doc(db, 'service_exams', exam.id), { status: newStatus });
         setCreatedExams(prev => prev.map(e => e.id === exam.id ? { ...e, status: newStatus } : e));
+      }
+
+      // If opened/activated, send notifications and Web Push to students and servants
+      if (newStatus === 'active') {
+        const notifTitle = `تم فتح تاسك جديدة: ${exam.title}`;
+        const notifBody = `تم نشر مسابقة جديدة لمرحلتكم. آخر موعد لتسليم التاسك الخميس الساعة 12 بالليل.`;
+
+        addDoc(collection(db, 'notifications'), {
+          targetUserId: exam.grade || 'ALL',
+          title: notifTitle,
+          desc: notifBody,
+          time: 'الآن',
+          type: 'new_task',
+          examId: exam.id,
+          createdAt: serverTimestamp()
+        }).catch(() => {});
+
+        triggerServerPush({
+          targetRole: 'students',
+          targetGrade: exam.grade || 'ALL',
+          title: notifTitle,
+          body: notifBody,
+          url: '/'
+        }).catch(() => {});
+
+        triggerServerPush({
+          targetRole: 'servants',
+          title: `📢 تم فتح مسابقة: ${exam.title}`,
+          body: `قام الخادم (${user?.fullName || 'المسؤول'}) بفتح المسابقة للطلبة. آخر موعد الخميس 12 بالليل.`,
+          url: '/'
+        }).catch(() => {});
       }
     } catch (err) {
       console.error('Error toggling exam status:', err);

@@ -7,6 +7,7 @@ import { transcribeHandwrittenQuizFromImage } from '../../services/geminiService
 import { compressImage } from '../../utils/imageCompressor';
 import { db } from '../../firebase';
 import { collection, addDoc, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { triggerServerPush } from '../../services/webPushService';
 
 export default function ServantQuickQuizBuilderModal({
   isOpen,
@@ -198,18 +199,37 @@ export default function ServantQuickQuizBuilderModal({
           onQuizPublished({ id: docRef.id, ...quizData });
         }
 
-        // Send in-app notification to students if published
-        if (targetStatus === 'published') {
+        // Send in-app notification & Web Push to students and servants if activated
+        if (targetStatus === 'active') {
           try {
+            const notifTitle = `تم فتح تاسك جديدة: ${quizTitle.trim()}`;
+            const notifBody = `تم نشر مسابقة جديدة لمرحلتكم. آخر موعد لتسليم التاسك الخميس الساعة 12 بالليل.`;
+
             await addDoc(collection(db, 'notifications'), {
-              targetUserId: targetGrade || 'ALL',
-              title: `🏆 مسابقة جديدة: ${quizTitle.trim()}`,
-              desc: `تم نشر مسابقة جديدة لمرحلتكم بواسطة الخادم (${user?.fullName || 'المسؤول'}). سارع بالمشاركة وإرسال إجاباتك وحصد النقاط!`,
+              targetUserId: grade || 'ALL',
+              title: notifTitle,
+              desc: notifBody,
               time: 'الآن',
               type: 'new_task',
               examId: docRef.id,
               createdAt: serverTimestamp()
             });
+
+            // Trigger background Web Push to students & servants (even when app is closed)
+            triggerServerPush({
+              targetRole: 'students',
+              targetGrade: grade || 'ALL',
+              title: notifTitle,
+              body: notifBody,
+              url: '/'
+            }).catch(() => {});
+
+            triggerServerPush({
+              targetRole: 'servants',
+              title: `📢 تم نشر مسابقة جديدة: ${quizTitle.trim()}`,
+              body: `قام الخادم (${user?.fullName || 'المسؤول'}) بنشر مسابقة وتفعيلها للطلبة. آخر موعد الخميس 12 بالليل.`,
+              url: '/'
+            }).catch(() => {});
           } catch (notifErr) {
             console.warn('Failed to send quiz notification:', notifErr);
           }

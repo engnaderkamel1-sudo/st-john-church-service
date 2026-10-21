@@ -1,4 +1,10 @@
 {
+  "crons": [
+    {
+      "path": "/api/cron-thursday-reminder",
+      "schedule": "0 6 * * 4"
+    }
+  ],
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/$1" },
     { "source": "/(.*)", "destination": "/index.html" }
