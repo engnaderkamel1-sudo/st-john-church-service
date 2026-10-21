@@ -7,6 +7,7 @@ import AiPresentationViewer from './AiPresentationViewer';
 import ServantQuickQuizBuilderModal from './ServantQuickQuizBuilderModal';
 import ServantQuizResponsesModal from './ServantQuizResponsesModal';
 import ServantTasksTotals from './ServantTasksTotals';
+import { genesisQuizData } from '../../data/genesisQuizData';
 
 export default function ServantExamsBank({
   user,
@@ -78,7 +79,18 @@ export default function ServantExamsBank({
   }, []);
 
   const currentGradeQuestions = (questionBank || []).filter(q => q.grade === selectedGrade);
-  const currentGradeExams = (createdExams || []).filter(ex => 
+  
+  // Merge loaded exams from Firestore with predefined system drafts if not already saved in db
+  const allMergedExams = React.useMemo(() => {
+    const list = [...(createdExams || [])];
+    const hasGenesisQuiz = list.some(ex => ex.id === genesisQuizData.id || ex.title === genesisQuizData.title);
+    if (!hasGenesisQuiz && selectedGrade !== 'elisha') {
+      list.unshift(genesisQuizData);
+    }
+    return list;
+  }, [createdExams, selectedGrade]);
+
+  const currentGradeExams = allMergedExams.filter(ex => 
     ex.grade === selectedGrade || 
     ex.grade === 'all' || 
     !ex.grade || 
@@ -188,8 +200,18 @@ export default function ServantExamsBank({
     if (!window.confirm(`هل تريد بالتأكيد ${actionLabel}؟`)) return;
 
     try {
-      await updateDoc(doc(db, 'service_exams', exam.id), { status: newStatus });
-      setCreatedExams(prev => prev.map(e => e.id === exam.id ? { ...e, status: newStatus } : e));
+      if (exam.id === genesisQuizData.id) {
+        // Predefined draft being activated or toggled for the first time
+        const docRef = await addDoc(collection(db, 'service_exams'), {
+          ...exam,
+          status: newStatus,
+          createdAt: serverTimestamp()
+        });
+        setCreatedExams(prev => [{ ...exam, id: docRef.id, status: newStatus }, ...(prev || [])]);
+      } else {
+        await updateDoc(doc(db, 'service_exams', exam.id), { status: newStatus });
+        setCreatedExams(prev => prev.map(e => e.id === exam.id ? { ...e, status: newStatus } : e));
+      }
     } catch (err) {
       console.error('Error toggling exam status:', err);
       alert('حدث خطأ أثناء تعديل حالة المسابقة.');

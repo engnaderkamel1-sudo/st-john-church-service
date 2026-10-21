@@ -1599,23 +1599,23 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
                 <button
                   type="button"
                   onClick={() => {
-                    setTasksHubSubSection('totals');
+                    setTasksHubSubSection('assign');
                     setMainTab('exams_bank_hub');
                     setActiveSubject(null);
                     setMobileSidebarOpen(false);
                   }}
                   className={`w-full text-right py-2 px-3 rounded-xl flex items-center justify-between text-xs font-bold transition-all cursor-pointer ${
-                    mainTab === 'exams_bank_hub' && tasksHubSubSection === 'totals'
+                    mainTab === 'exams_bank_hub'
                       ? 'bg-maroon-800 text-white shadow-xs'
                       : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
                   }`}
                 >
                   <div className="flex items-center gap-2.5">
-                    <FileSpreadsheet className={`w-4 h-4 ${mainTab === 'exams_bank_hub' && tasksHubSubSection === 'totals' ? 'text-gold-300' : 'text-amber-600'}`} />
-                    <span>التاسكات (رصد ومتابعة)</span>
+                    <FileSpreadsheet className={`w-4 h-4 ${mainTab === 'exams_bank_hub' ? 'text-gold-300' : 'text-amber-600'}`} />
+                    <span>التاسكات والمسابقات</span>
                   </div>
                   <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-md bg-slate-100 text-slate-600 font-bold">
-                    Sheet
+                    Hub
                   </span>
                 </button>
 
@@ -1707,25 +1707,6 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
 
                 {/* Divider */}
                 <div className="my-1 border-t border-slate-100" />
-
-                {/* 5. Tasks & Competitions Hub */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setTasksHubSubSection('assign');
-                    setMainTab('exams_bank_hub');
-                    setActiveSubject(null);
-                    setMobileSidebarOpen(false);
-                  }}
-                  className={`w-full text-right py-2 px-3 rounded-xl flex items-center gap-2.5 text-xs font-bold transition-all cursor-pointer ${
-                    mainTab === 'exams_bank_hub' && tasksHubSubSection !== 'totals'
-                      ? 'bg-maroon-800 text-white shadow-xs'
-                      : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
-                  }`}
-                >
-                  <FileText className={`w-4 h-4 ${mainTab === 'exams_bank_hub' ? 'text-gold-300' : 'text-slate-500'}`} />
-                  <span>تاسكات ومسابقات المخدومين</span>
-                </button>
 
                 {/* 5.1 Subject Exams Hub */}
                 <button
