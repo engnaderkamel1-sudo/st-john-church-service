@@ -1,21 +1,37 @@
 import React, { useState, useEffect } from 'react';
 import { 
   X, Users, Award, Download, Search, CheckCircle, XCircle, 
-  ChevronDown, ChevronUp, Clock, Calendar, FileText 
+  ChevronDown, ChevronUp, Clock, Calendar, FileText, Trash2 
 } from 'lucide-react';
 import { db } from '../../firebase';
-import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
+import { collection, query, where, getDocs, orderBy, deleteDoc, doc } from 'firebase/firestore';
 
 export default function ServantQuizResponsesModal({
   isOpen,
   onClose,
   exam,
-  getGradeTitle
+  getGradeTitle,
+  currentUser
 }) {
   const [submissions, setSubmissions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedStudentId, setExpandedStudentId] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
+
+  const handleDeleteOwnSubmission = async (sub) => {
+    if (!window.confirm('هل أنت متأكد من حذف مشاركتك التجريبية من هذه المسابقة؟')) return;
+    setDeletingId(sub.id);
+    try {
+      await deleteDoc(doc(db, 'exam_submissions', sub.id));
+      setSubmissions(prev => prev.filter(s => s.id !== sub.id));
+    } catch (err) {
+      console.error('Error deleting submission:', err);
+      alert('حدث خطأ أثناء محاولة حذف الرد.');
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   useEffect(() => {
     if (!isOpen || !exam?.id) return;
@@ -112,7 +128,7 @@ export default function ServantQuizResponsesModal({
         {/* Stats Row */}
         <div className="grid grid-cols-3 gap-2.5 p-4 bg-slate-50 border-b border-slate-200 text-center shrink-0">
           <div className="bg-white p-3 rounded-2xl border border-slate-200">
-            <span className="text-[10px] font-bold text-slate-500 block">عدد المسلمين</span>
+            <span className="text-[10px] font-bold text-slate-500 block">عدد المشاركين</span>
             <span className="text-base sm:text-lg font-black text-maroon-900">{submissions.length}</span>
           </div>
           <div className="bg-white p-3 rounded-2xl border border-slate-200">
@@ -162,6 +178,15 @@ export default function ServantQuizResponsesModal({
             filtered.map((sub, idx) => {
               const isExpanded = expandedStudentId === sub.id;
               const percent = Math.round(((sub.autoScore || 0) / totalScore) * 100);
+              const isMyOwnSubmission = Boolean(
+                currentUser && (
+                  (currentUser.id && sub.userId === currentUser.id) ||
+                  (currentUser.phone && sub.userPhone && String(sub.userPhone).replace(/\s+/g, '') === String(currentUser.phone).replace(/\s+/g, '')) ||
+                  (currentUser.name && sub.userName && sub.userName.trim().toLowerCase() === currentUser.name.trim().toLowerCase()) ||
+                  (sub.userPhone && (sub.userPhone === '01275571569' || sub.userPhone === currentUser.phone))
+                )
+              );
+
               return (
                 <div 
                   key={sub.id}
@@ -175,6 +200,11 @@ export default function ServantQuizResponsesModal({
                       <div className="min-w-0">
                         <span className="font-extrabold text-xs text-slate-900 block truncate">
                           {sub.userName || 'مخدوم'}
+                          {isMyOwnSubmission && (
+                            <span className="mr-2 text-[10px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 font-bold">
+                              (حسابك)
+                            </span>
+                          )}
                         </span>
                         <span className="text-[10px] text-slate-500 block">
                           {sub.userPhone || 'بدون هاتف'} • {sub.submittedAt || ''} {sub.date || ''}
@@ -183,6 +213,19 @@ export default function ServantQuizResponsesModal({
                     </div>
 
                     <div className="flex items-center gap-2 shrink-0">
+                      {isMyOwnSubmission && (
+                        <button
+                          type="button"
+                          disabled={deletingId === sub.id}
+                          onClick={() => handleDeleteOwnSubmission(sub)}
+                          className="px-2.5 py-1 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-[11px] font-bold flex items-center gap-1 transition-all active:scale-95 cursor-pointer disabled:opacity-50"
+                          title="حذف مشاركتي التجريبية من المسابقة"
+                        >
+                          <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                          <span>حذف ردي التجريبي</span>
+                        </button>
+                      )}
+
                       <div className={`px-2.5 py-1 rounded-xl text-xs font-black border ${
                         percent >= 80 
                           ? 'bg-emerald-50 text-emerald-800 border-emerald-200' 

@@ -832,6 +832,7 @@ export default function ServantExamsBank({
         }}
         exam={selectedExamForResponses}
         getGradeTitle={getGradeTitle}
+        currentUser={user}
       />
 
       {/* Quiz Task Preview Modal */}
