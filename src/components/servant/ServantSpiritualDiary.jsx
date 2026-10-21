@@ -405,6 +405,7 @@ export default function ServantSpiritualDiary({
                 onChange={(e) => setStudentTrackingGrade(e.target.value)}
                 className="bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-800 focus:outline-none focus:border-maroon-800"
               >
+                <option value="all">جميع المراحل والمخدومين</option>
                 <option value="first">سنة أولى إعداد خدام</option>
                 <option value="second">سنة ثانية إعداد خدام</option>
                 <option value="third">سنة ثالثة إعداد خدام</option>
@@ -416,6 +417,7 @@ export default function ServantSpiritualDiary({
                 onChange={(e) => setStudentTrackingMonth(e.target.value)}
                 className="bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-800 focus:outline-none focus:border-maroon-800"
               >
+                <option value="all">الإجمالي التراكمي العام (كافة الشهور)</option>
                 {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map(offset => {
                   const d = new Date(new Date().getFullYear(), new Date().getMonth() - offset, 1);
                   const val = d.toISOString().substring(0, 7);
@@ -428,7 +430,18 @@ export default function ServantSpiritualDiary({
 
           {/* Students Table with Spiritual Commitment Metrics */}
           {(() => {
-            const gradeStudents = allUsers.filter(u => u.role === 'student' && (u.grade || 'first') === studentTrackingGrade);
+            const GRADE_LABELS = {
+              first: 'سنة أولى',
+              second: 'سنة ثانية',
+              third: 'سنة ثالثة',
+              elisha: 'فصل أليشع'
+            };
+
+            const gradeStudents = allUsers.filter(u => {
+              if (u.role !== 'student') return false;
+              if (!studentTrackingGrade || studentTrackingGrade === 'all') return true;
+              return (u.grade || 'first') === studentTrackingGrade;
+            });
 
             if (gradeStudents.length === 0) {
               return (
@@ -438,88 +451,202 @@ export default function ServantSpiritualDiary({
               );
             }
 
+            // Calculate aggregated statistics for each student & cohort totals
+            let cohortTotalDiaries = 0;
+            let cohortTotalBaker = 0;
+            let cohortTotalGhoroub = 0;
+            let cohortTotalNowm = 0;
+            let cohortTotalBible = 0;
+            let cohortTotalComm = 0;
+            let cohortTotalConf = 0;
+
+            const studentStatsMap = {};
+            gradeStudents.forEach(st => {
+              const entries = studentsDiariesList.filter(d => d.userId === st.id);
+              let b = 0, g = 0, n = 0, bib = 0, com = 0, cnf = 0;
+              entries.forEach(en => {
+                if (en.baker) b++;
+                if (en.ghoroub) g++;
+                if (en.nowm) n++;
+                if (en.bible) bib++;
+                if (en.communion) com++;
+                if (en.confession) cnf++;
+              });
+              cohortTotalDiaries += entries.length;
+              cohortTotalBaker += b;
+              cohortTotalGhoroub += g;
+              cohortTotalNowm += n;
+              cohortTotalBible += bib;
+              cohortTotalComm += com;
+              cohortTotalConf += cnf;
+
+              studentStatsMap[st.id] = {
+                entries,
+                daysCount: entries.length,
+                bakerCount: b,
+                ghoroubCount: g,
+                nowmCount: n,
+                totalPrayers: b + g + n,
+                totalBible: bib,
+                totalComm: com,
+                totalConf: cnf
+              };
+            });
+            const cohortTotalPrayers = cohortTotalBaker + cohortTotalGhoroub + cohortTotalNowm;
+
             return (
-              <div className="overflow-x-auto border border-slate-200 rounded-2xl">
-                <table className="w-full text-right text-xs">
-                  <thead className="bg-slate-50 border-b border-slate-200 text-slate-600">
-                    <tr>
-                      <th className="py-3 px-3">المخدوم</th>
-                      <th className="py-3 px-3 text-center">أيام التسجيل</th>
-                      <th className="py-3 px-3 text-center">صلوات الأجبية</th>
-                      <th className="py-3 px-3 text-center">الإنجيل</th>
-                      <th className="py-3 px-3 text-center">الأسرار (تناول/اعتراف)</th>
-                      <th className="py-3 px-3 text-center">مستوى الالتزام</th>
-                      <th className="py-3 px-3 text-center">تقرير كامل</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {gradeStudents.map((st) => {
-                      const studentEntries = studentsDiariesList.filter(d => d.userId === st.id);
-                      const daysCount = studentEntries.length;
+              <div className="space-y-4">
+                {/* Cohort Executive Totals Bar */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-2.5">
+                  <div className="bg-slate-50 border border-slate-200 p-3 rounded-2xl text-center">
+                    <span className="text-[11px] font-bold text-slate-500 block">إجمالي المخدومين</span>
+                    <strong className="text-base font-extrabold text-slate-900">{gradeStudents.length} مخدوم</strong>
+                  </div>
+                  <div className="bg-slate-50 border border-slate-200 p-3 rounded-2xl text-center">
+                    <span className="text-[11px] font-bold text-slate-500 block">
+                      {studentTrackingMonth === 'all' ? 'إجمالي النوتات المسجلة' : 'أيام التسجيل بالشهر'}
+                    </span>
+                    <strong className="text-base font-extrabold text-slate-800">{cohortTotalDiaries} تدوينة</strong>
+                  </div>
+                  <div className="bg-amber-50/70 border border-amber-200 p-3 rounded-2xl text-center col-span-2 sm:col-span-2 lg:col-span-1">
+                    <span className="text-[11px] font-bold text-amber-800 block">إجمالي صلوات الأجبية</span>
+                    <strong className="text-base font-extrabold text-amber-900">{cohortTotalPrayers} صلاة</strong>
+                    <div className="flex items-center justify-center gap-1.5 mt-1 text-[10px] font-bold text-amber-800">
+                      <span>باكر: {cohortTotalBaker}</span>
+                      <span>•</span>
+                      <span>غروب: {cohortTotalGhoroub}</span>
+                      <span>•</span>
+                      <span>نوم: {cohortTotalNowm}</span>
+                    </div>
+                  </div>
+                  <div className="bg-maroon-50/60 border border-maroon-200 p-3 rounded-2xl text-center">
+                    <span className="text-[11px] font-bold text-maroon-800 block">قراءات الإنجيل</span>
+                    <strong className="text-base font-extrabold text-maroon-900">{cohortTotalBible} أصحاح</strong>
+                  </div>
+                  <div className="bg-emerald-50/60 border border-emerald-200 p-3 rounded-2xl text-center col-span-2 sm:col-span-4 lg:col-span-1">
+                    <span className="text-[11px] font-bold text-emerald-800 block">التناول والاعتراف</span>
+                    <div className="text-xs font-extrabold text-emerald-900 mt-0.5">
+                      <span>تناول ({cohortTotalComm})</span>
+                      <span className="text-purple-800 mr-2">• اعتراف ({cohortTotalConf})</span>
+                    </div>
+                  </div>
+                </div>
 
-                      let totalPrayers = 0, totalBible = 0, totalComm = 0, totalConf = 0;
-                      studentEntries.forEach(en => {
-                        if (en.baker) totalPrayers++;
-                        if (en.ghoroub) totalPrayers++;
-                        if (en.nowm) totalPrayers++;
-                        if (en.bible) totalBible++;
-                        if (en.communion) totalComm++;
-                        if (en.confession) totalConf++;
-                      });
+                {/* Table */}
+                <div className="overflow-x-auto border border-slate-200 rounded-2xl">
+                  <table className="w-full text-right text-xs">
+                    <thead className="bg-slate-50 border-b border-slate-200 text-slate-600">
+                      <tr>
+                        <th className="py-3 px-3">المخدوم</th>
+                        <th className="py-3 px-3 text-center">
+                          {studentTrackingMonth === 'all' ? 'إجمالي النوتات' : 'أيام التسجيل'}
+                        </th>
+                        <th className="py-3 px-3 text-center">صلوات الأجبية (باكر / غروب / نوم)</th>
+                        <th className="py-3 px-3 text-center">الإنجيل</th>
+                        <th className="py-3 px-3 text-center">الأسرار (تناول/اعتراف)</th>
+                        <th className="py-3 px-3 text-center">مستوى الالتزام</th>
+                        <th className="py-3 px-3 text-center">تقرير كامل</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {gradeStudents.map((st) => {
+                        const stats = studentStatsMap[st.id] || {
+                          entries: [],
+                          daysCount: 0,
+                          bakerCount: 0,
+                          ghoroubCount: 0,
+                          nowmCount: 0,
+                          totalPrayers: 0,
+                          totalBible: 0,
+                          totalComm: 0,
+                          totalConf: 0
+                        };
 
-                      let statusLabel = 'يحتاج افتقاد ⚠️';
-                      let statusClass = 'bg-rose-50 text-rose-700 border-rose-200';
-                      if (daysCount >= 15) {
-                        statusLabel = 'ممتاز ومواظب 🌟';
-                        statusClass = 'bg-emerald-50 text-emerald-800 border-emerald-200';
-                      } else if (daysCount >= 7) {
-                        statusLabel = 'متوسط 🔄';
-                        statusClass = 'bg-amber-50 text-amber-800 border-amber-200';
-                      }
+                        const isAllTime = studentTrackingMonth === 'all';
+                        const highThreshold = isAllTime ? 30 : 15;
+                        const midThreshold = isAllTime ? 10 : 7;
 
-                      return (
-                        <tr key={st.id} className="hover:bg-slate-50/80">
-                          <td className="py-3 px-3 font-bold text-slate-900">
-                            <div>
-                              <span>{st.fullName || 'بدون اسم'}</span>
-                              <span className="text-[10px] text-slate-400 block font-normal font-mono" dir="ltr">{st.phone}</span>
-                            </div>
-                          </td>
-                          <td className="py-3 px-3 text-center font-bold text-slate-800">{daysCount} يوم</td>
-                          <td className="py-3 px-3 text-center font-bold text-amber-700">{totalPrayers} صلاة</td>
-                          <td className="py-3 px-3 text-center font-bold text-maroon-800">{totalBible} أصحاح</td>
-                          <td className="py-3 px-3 text-center text-slate-600 font-bold">
-                            {totalComm > 0 && <span className="text-emerald-700">تناول ({totalComm}) </span>}
-                            {totalConf > 0 && <span className="text-maroon-800">• اعتراف ({totalConf})</span>}
-                            {totalComm === 0 && totalConf === 0 && <span className="text-slate-400">لم يسجل</span>}
-                          </td>
-                          <td className="py-3 px-3 text-center">
-                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${statusClass}`}>
-                              {statusLabel}
-                            </span>
-                          </td>
-                          <td className="py-3 px-3 text-center">
-                            <button
-                              type="button"
-                              onClick={() => setSelectedStudentDetail({
-                                student: st,
-                                entries: studentEntries,
-                                daysCount,
-                                totalPrayers,
-                                totalBible,
-                                totalComm,
-                                totalConf
-                              })}
-                              className="bg-maroon-50 hover:bg-maroon-100 text-maroon-900 border border-maroon-200 font-bold px-2.5 py-1 rounded-lg text-[11px] transition-colors"
-                            >
-                              عرض التقرير 📄
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                        let statusLabel = 'يحتاج افتقاد ⚠️';
+                        let statusClass = 'bg-rose-50 text-rose-700 border-rose-200';
+                        if (stats.daysCount >= highThreshold) {
+                          statusLabel = 'ممتاز ومواظب 🌟';
+                          statusClass = 'bg-emerald-50 text-emerald-800 border-emerald-200';
+                        } else if (stats.daysCount >= midThreshold) {
+                          statusLabel = 'متوسط 🔄';
+                          statusClass = 'bg-amber-50 text-amber-800 border-amber-200';
+                        }
+
+                        return (
+                          <tr key={st.id} className="hover:bg-slate-50/80">
+                            <td className="py-3 px-3 font-bold text-slate-900">
+                              <div>
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <span>{st.fullName || 'بدون اسم'}</span>
+                                  {(!studentTrackingGrade || studentTrackingGrade === 'all') && (
+                                    <span className="text-[10px] font-bold text-slate-600 bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded-md">
+                                      {GRADE_LABELS[st.grade] || 'سنة أولى'}
+                                    </span>
+                                  )}
+                                </div>
+                                <span className="text-[10px] text-slate-400 block font-normal font-mono" dir="ltr">{st.phone}</span>
+                              </div>
+                            </td>
+                            <td className="py-3 px-3 text-center font-bold text-slate-800">
+                              {stats.daysCount} يوم
+                            </td>
+                            <td className="py-3 px-3 text-center">
+                              <div className="font-extrabold text-amber-900 text-xs mb-1">
+                                {stats.totalPrayers} صلاة
+                              </div>
+                              <div className="flex items-center justify-center gap-1 flex-wrap text-[10px]">
+                                <span className={`px-1.5 py-0.5 rounded font-bold ${stats.bakerCount > 0 ? 'bg-amber-100 text-amber-900 border border-amber-200' : 'bg-slate-100 text-slate-400'}`}>
+                                  باكر: {stats.bakerCount}
+                                </span>
+                                <span className={`px-1.5 py-0.5 rounded font-bold ${stats.ghoroubCount > 0 ? 'bg-amber-100 text-amber-900 border border-amber-200' : 'bg-slate-100 text-slate-400'}`}>
+                                  غروب: {stats.ghoroubCount}
+                                </span>
+                                <span className={`px-1.5 py-0.5 rounded font-bold ${stats.nowmCount > 0 ? 'bg-indigo-100 text-indigo-900 border border-indigo-200' : 'bg-slate-100 text-slate-400'}`}>
+                                  نوم: {stats.nowmCount}
+                                </span>
+                              </div>
+                            </td>
+                            <td className="py-3 px-3 text-center font-bold text-maroon-800">{stats.totalBible} أصحاح</td>
+                            <td className="py-3 px-3 text-center text-slate-600 font-bold">
+                              {stats.totalComm > 0 && <span className="text-emerald-700">تناول ({stats.totalComm}) </span>}
+                              {stats.totalConf > 0 && <span className="text-maroon-800">• اعتراف ({stats.totalConf})</span>}
+                              {stats.totalComm === 0 && stats.totalConf === 0 && <span className="text-slate-400">لم يسجل</span>}
+                            </td>
+                            <td className="py-3 px-3 text-center">
+                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${statusClass}`}>
+                                {statusLabel}
+                              </span>
+                            </td>
+                            <td className="py-3 px-3 text-center">
+                              <button
+                                type="button"
+                                onClick={() => setSelectedStudentDetail({
+                                  student: st,
+                                  entries: stats.entries,
+                                  daysCount: stats.daysCount,
+                                  bakerCount: stats.bakerCount,
+                                  ghoroubCount: stats.ghoroubCount,
+                                  nowmCount: stats.nowmCount,
+                                  totalPrayers: stats.totalPrayers,
+                                  totalBible: stats.totalBible,
+                                  totalComm: stats.totalComm,
+                                  totalConf: stats.totalConf
+                                })}
+                                className="bg-maroon-50 hover:bg-maroon-100 text-maroon-900 border border-maroon-200 font-bold px-2.5 py-1 rounded-lg text-[11px] transition-colors cursor-pointer"
+                              >
+                                عرض التقرير 📄
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             );
           })()}
@@ -531,37 +658,73 @@ export default function ServantSpiritualDiary({
                 <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                   <div>
                     <h4 className="font-extrabold text-slate-900 text-base">{selectedStudentDetail.student.fullName}</h4>
-                    <span className="text-xs text-slate-500">تقرير النوتة الروحية لشهر ({studentTrackingMonth})</span>
+                    <span className="text-xs text-slate-500">
+                      {studentTrackingMonth === 'all'
+                        ? 'تقرير النوتة الروحية (الإجمالي التراكمي العام)'
+                        : `تقرير النوتة الروحية لشهر (${studentTrackingMonth})`}
+                    </span>
                   </div>
                   <button
                     type="button"
                     onClick={() => setSelectedStudentDetail(null)}
-                    className="text-slate-400 hover:text-slate-600 p-1"
+                    className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
                   >
                     <X className="w-5 h-5" />
                   </button>
                 </div>
 
-                <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs">
                   <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200">
-                    <span className="text-slate-400 block text-[10px] font-bold">أيام التسجيل</span>
+                    <span className="text-slate-500 block text-[10px] font-bold">أيام التسجيل</span>
                     <strong className="text-slate-900 text-sm">{selectedStudentDetail.daysCount} يوم</strong>
                   </div>
-                  <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200">
-                    <span className="text-slate-400 block text-[10px] font-bold">صلوات الأجبية</span>
-                    <strong className="text-amber-800 text-sm">{selectedStudentDetail.totalPrayers} صلاة</strong>
+                  <div className="bg-amber-50/70 p-2.5 rounded-xl border border-amber-200">
+                    <span className="text-amber-800 block text-[10px] font-bold">صلوات الأجبية</span>
+                    <strong className="text-amber-900 text-sm">{selectedStudentDetail.totalPrayers} صلاة</strong>
                   </div>
-                  <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200">
-                    <span className="text-slate-400 block text-[10px] font-bold">قراءات الإنجيل</span>
-                    <strong className="text-maroon-800 text-sm">{selectedStudentDetail.totalBible} أصحاح</strong>
+                  <div className="bg-maroon-50/60 p-2.5 rounded-xl border border-maroon-200">
+                    <span className="text-maroon-800 block text-[10px] font-bold">قراءات الإنجيل</span>
+                    <strong className="text-maroon-900 text-sm">{selectedStudentDetail.totalBible} أصحاح</strong>
                   </div>
+                  <div className="bg-emerald-50/60 p-2.5 rounded-xl border border-emerald-200">
+                    <span className="text-emerald-800 block text-[10px] font-bold">الأسرار المقدسة</span>
+                    <strong className="text-emerald-900 text-[11px] block mt-0.5">
+                      تناول ({selectedStudentDetail.totalComm || 0}) • اعتراف ({selectedStudentDetail.totalConf || 0})
+                    </strong>
+                  </div>
+                </div>
+
+                {/* Agpeya Breakdown */}
+                <div className="bg-amber-50/40 border border-amber-200 p-3 rounded-2xl space-y-2">
+                  <h5 className="font-extrabold text-xs text-amber-950">تفصيل صلوات الأجبية لمتابعة الافتقاد:</h5>
+                  <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                    <div className="bg-white p-2 rounded-xl border border-amber-200">
+                      <span className="text-slate-500 block text-[10px] font-bold">صلاة باكر</span>
+                      <strong className="text-amber-900 text-sm font-extrabold">{selectedStudentDetail.bakerCount || 0} صلاة</strong>
+                    </div>
+                    <div className="bg-white p-2 rounded-xl border border-amber-200">
+                      <span className="text-slate-500 block text-[10px] font-bold">صلاة الغروب</span>
+                      <strong className="text-amber-900 text-sm font-extrabold">{selectedStudentDetail.ghoroubCount || 0} صلاة</strong>
+                    </div>
+                    <div className={`p-2 rounded-xl border ${(!selectedStudentDetail.nowmCount || selectedStudentDetail.nowmCount === 0) ? 'bg-rose-50 border-rose-200' : 'bg-white border-amber-200'}`}>
+                      <span className="text-slate-500 block text-[10px] font-bold">صلاة النوم</span>
+                      <strong className={`text-sm font-extrabold ${(!selectedStudentDetail.nowmCount || selectedStudentDetail.nowmCount === 0) ? 'text-rose-700' : 'text-indigo-900'}`}>
+                        {selectedStudentDetail.nowmCount || 0} صلاة
+                      </strong>
+                    </div>
+                  </div>
+                  {(!selectedStudentDetail.nowmCount || selectedStudentDetail.nowmCount === 0) && (
+                    <div className="text-[11px] text-rose-700 font-bold bg-rose-50 p-2 rounded-xl border border-rose-100 flex items-center gap-1.5">
+                      <span>⚠️ تنبيه رعوي: لم يسجل المخدوم صلاة النوم، يرجى تشجيعه وافتقاده بخصوصها.</span>
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-2">
                   <h5 className="font-bold text-xs text-slate-800">سجل الأيام المسجلة لهذا المخدوم:</h5>
                   {selectedStudentDetail.entries.length === 0 ? (
                     <div className="text-center py-6 text-slate-400 text-xs bg-slate-50 rounded-xl">
-                      لم يسجل المخدوم أي نوتة في هذا الشهر بعد.
+                      لم يسجل المخدوم أي نوتة بعد.
                     </div>
                   ) : (
                     <div className="divide-y divide-slate-100 max-h-56 overflow-y-auto border border-slate-200 rounded-xl">

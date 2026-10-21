@@ -777,8 +777,8 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
   const [spiritualDiaryTab, setSpiritualDiaryTab] = useState('my_diary'); // 'my_diary' | 'students_tracking'
   const [myDiarySubTab, setMyDiarySubTab] = useState('entry'); // 'entry' | 'history'
   const [selectedDiaryMonth, setSelectedDiaryMonth] = useState(currentMonthStr);
-  const [studentTrackingGrade, setStudentTrackingGrade] = useState('first');
-  const [studentTrackingMonth, setStudentTrackingMonth] = useState(currentMonthStr);
+  const [studentTrackingGrade, setStudentTrackingGrade] = useState('all');
+  const [studentTrackingMonth, setStudentTrackingMonth] = useState('all');
   const [studentsDiariesList, setStudentsDiariesList] = useState([]);
   const [selectedStudentDetail, setSelectedStudentDetail] = useState(null);
   const [student360Profile, setStudent360Profile] = useState(null);
@@ -818,11 +818,19 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
 
   // Sync students' spiritual diaries for pastoral care and tracking
   useEffect(() => {
-    const q = query(
-      collection(db, 'spiritual_diaries'),
-      where('userRole', '==', 'student'),
-      where('month', '==', studentTrackingMonth)
-    );
+    let q;
+    if (studentTrackingMonth === 'all') {
+      q = query(
+        collection(db, 'spiritual_diaries'),
+        where('userRole', '==', 'student')
+      );
+    } else {
+      q = query(
+        collection(db, 'spiritual_diaries'),
+        where('userRole', '==', 'student'),
+        where('month', '==', studentTrackingMonth)
+      );
+    }
     const unsub = onSnapshot(q, (snapshot) => {
       const list = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
       setStudentsDiariesList(list);
@@ -838,11 +846,19 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
       setServantsDiariesList([]);
       return;
     }
-    const q = query(
-      collection(db, 'spiritual_diaries'),
-      where('userRole', 'in', ['servant', 'servant_leader']),
-      where('month', '==', studentTrackingMonth)
-    );
+    let q;
+    if (studentTrackingMonth === 'all') {
+      q = query(
+        collection(db, 'spiritual_diaries'),
+        where('userRole', 'in', ['servant', 'servant_leader'])
+      );
+    } else {
+      q = query(
+        collection(db, 'spiritual_diaries'),
+        where('userRole', 'in', ['servant', 'servant_leader']),
+        where('month', '==', studentTrackingMonth)
+      );
+    }
     const unsub = onSnapshot(q, (snapshot) => {
       const list = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
       setServantsDiariesList(list);
