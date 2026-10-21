@@ -19,10 +19,17 @@ export default function ServantExamsBank({
   setCreatedExams,
   allUsers = [],
   fetchAllUsers,
-  onSelectStudent
+  onSelectStudent,
+  initialSubSection = 'assign'
 }) {
   const safeGradeTitle = (g) => (getGradeTitle ? getGradeTitle(g) : (g || 'المرحلة'));
-  const [examSubSection, setExamSubSection] = useState('assign'); // 'assign' | 'totals' | 'bank' | 'paper'
+  const [examSubSection, setExamSubSection] = useState(initialSubSection || 'assign'); // 'assign' | 'totals' | 'bank' | 'paper'
+  
+  useEffect(() => {
+    if (initialSubSection) {
+      setExamSubSection(initialSubSection);
+    }
+  }, [initialSubSection]);
   const [showQuickQuizModal, setShowQuickQuizModal] = useState(false);
   const [editingQuiz, setEditingQuiz] = useState(null);
   const [showResponsesModal, setShowResponsesModal] = useState(false);
@@ -238,7 +245,7 @@ export default function ServantExamsBank({
           className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-600 via-amber-500 to-gold-500 hover:from-amber-700 hover:to-amber-600 text-maroon-950 font-black text-xs shadow-xs flex items-center justify-center gap-1.5 transition-all active:scale-95 cursor-pointer shrink-0"
         >
           <Sparkles className="w-4 h-4 text-maroon-950" />
-          <span>+ إنشاء مسابقة سريعة (Google Forms) 📝✨</span>
+          <span>+ إنشاء مسابقة سريعة (من صورة أو ملف أو Google Form) 📝✨</span>
         </button>
       </div>
 
@@ -367,65 +374,20 @@ export default function ServantExamsBank({
         <div className="space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
-              <h4 className="font-extrabold text-slate-900 text-base">تكليف ونشر امتحان (Assign Exam)</h4>
-              <p className="text-xs text-slate-500 mt-0.5">نشر امتحان لمخدومي {safeGradeTitle(selectedGrade)}.</p>
+              <h4 className="font-extrabold text-slate-900 text-base">تكليف ونشر تاسك (Assign Task)</h4>
+              <p className="text-xs text-slate-500 mt-0.5">تجهيز ومتابعة ونشر التاسكات لمخدومي {safeGradeTitle(selectedGrade)}.</p>
             </div>
             <button
-              onClick={() => setShowCreateExamModal(true)}
-              className="bg-maroon-800 hover:bg-maroon-700 text-white font-bold text-xs py-2 px-4 rounded-xl transition-all shadow-xs flex items-center justify-center gap-1.5"
+              onClick={() => {
+                setEditingQuiz(null);
+                setShowQuickQuizModal(true);
+              }}
+              className="bg-maroon-800 hover:bg-maroon-700 text-white font-bold text-xs py-2 px-4 rounded-xl transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer"
             >
               <Plus className="w-4 h-4" />
-              <span>تجهيز وتكليف امتحان</span>
+              <span>تجهيز تاسك جديد ➕</span>
             </button>
           </div>
-
-          {showCreateExamModal && (
-            <form onSubmit={handleCreateExamSubmit} className="bg-slate-50 border border-slate-200 p-5 rounded-2xl space-y-3">
-              <h5 className="font-extrabold text-xs text-maroon-900">نشر امتحان جديد لـ ({safeGradeTitle(selectedGrade)})</h5>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-700 mb-1">المادة</label>
-                  <select
-                    value={newExamSubject}
-                    onChange={(e) => setNewExamSubject(e.target.value)}
-                    className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs"
-                  >
-                    {currentGradeSubjects.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-700 mb-1">عنوان الامتحان</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="مثال: امتحان أعمال شهر أكتوبر"
-                    value={newExamTitle}
-                    onChange={(e) => setNewExamTitle(e.target.value)}
-                    className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-700 mb-1">المدة (بالدقائق)</label>
-                  <input
-                    type="number"
-                    min="5"
-                    max="120"
-                    value={newExamDuration}
-                    onChange={(e) => setNewExamDuration(e.target.value)}
-                    className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs"
-                  />
-                </div>
-              </div>
-              <div className="flex justify-end gap-2 pt-2 border-t border-slate-200">
-                <button type="button" onClick={() => setShowCreateExamModal(false)} className="bg-white border border-slate-200 text-slate-600 text-xs px-3 py-1.5 rounded-xl font-bold">
-                  إلغاء
-                </button>
-                <button type="submit" className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-4 py-1.5 rounded-xl">
-                  تأكيد النشر للمخدومين
-                </button>
-              </div>
-            </form>
-          )}
 
           {currentGradeExams.length === 0 ? (
             <div className="text-center py-12 bg-slate-50 border border-dashed border-slate-200 rounded-2xl p-6">

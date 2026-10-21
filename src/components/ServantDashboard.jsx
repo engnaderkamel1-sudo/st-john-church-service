@@ -66,6 +66,7 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
     }
   }, [navTarget]);
   const [selectedGrade, setSelectedGrade] = useState('cycle_1');
+  const [tasksHubSubSection, setTasksHubSubSection] = useState('assign');
   const [showRegulationsModal, setShowRegulationsModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [previewPhotoModal, setPreviewPhotoModal] = useState(null);
@@ -1598,18 +1599,19 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
                 <button
                   type="button"
                   onClick={() => {
-                    setMainTab('tasks_totals');
+                    setTasksHubSubSection('totals');
+                    setMainTab('exams_bank_hub');
                     setActiveSubject(null);
                     setMobileSidebarOpen(false);
                   }}
                   className={`w-full text-right py-2 px-3 rounded-xl flex items-center justify-between text-xs font-bold transition-all cursor-pointer ${
-                    mainTab === 'tasks_totals'
+                    mainTab === 'exams_bank_hub' && tasksHubSubSection === 'totals'
                       ? 'bg-maroon-800 text-white shadow-xs'
                       : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
                   }`}
                 >
                   <div className="flex items-center gap-2.5">
-                    <FileSpreadsheet className={`w-4 h-4 ${mainTab === 'tasks_totals' ? 'text-gold-300' : 'text-amber-600'}`} />
+                    <FileSpreadsheet className={`w-4 h-4 ${mainTab === 'exams_bank_hub' && tasksHubSubSection === 'totals' ? 'text-gold-300' : 'text-amber-600'}`} />
                     <span>التاسكات (رصد ومتابعة)</span>
                   </div>
                   <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-md bg-slate-100 text-slate-600 font-bold">
@@ -1710,12 +1712,13 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
                 <button
                   type="button"
                   onClick={() => {
+                    setTasksHubSubSection('assign');
                     setMainTab('exams_bank_hub');
                     setActiveSubject(null);
                     setMobileSidebarOpen(false);
                   }}
                   className={`w-full text-right py-2 px-3 rounded-xl flex items-center gap-2.5 text-xs font-bold transition-all cursor-pointer ${
-                    mainTab === 'exams_bank_hub'
+                    mainTab === 'exams_bank_hub' && tasksHubSubSection !== 'totals'
                       ? 'bg-maroon-800 text-white shadow-xs'
                       : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
                   }`}
@@ -2148,6 +2151,7 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
           allUsers={allUsers}
           fetchAllUsers={fetchAllUsers}
           onSelectStudent={(st) => setStudent360Profile(st)}
+          initialSubSection={tasksHubSubSection}
         />
       )}
 

@@ -582,25 +582,51 @@ export default function ServantQuickQuizBuilderModal({
 
           <div className="flex items-center gap-2 w-full sm:w-auto">
             {editingQuiz ? (
-              <button
-                type="button"
-                disabled={Boolean(isPublishing)}
-                onClick={() => handlePublishQuiz(editingQuiz.status || 'active')}
-                className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white font-black text-xs shadow-md transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-1.5 cursor-pointer"
-                title="تأكيد وحفظ تعديلات المسابقة"
-              >
-                {isPublishing ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin text-white" />
-                    <span>جاري حفظ التعديلات...</span>
-                  </>
-                ) : (
-                  <>
-                    <Save className="w-4 h-4 text-gold-300" />
-                    <span>💾 حفظ التعديلات الآن</span>
-                  </>
-                )}
-              </button>
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <button
+                  type="button"
+                  disabled={Boolean(isPublishing)}
+                  onClick={() => handlePublishQuiz('draft')}
+                  className={`flex-1 sm:flex-none px-4 py-2.5 rounded-xl border font-black text-xs shadow-2xs transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-1.5 cursor-pointer ${
+                    editingQuiz.status === 'draft' 
+                      ? 'bg-amber-100 text-amber-950 border-amber-400 ring-2 ring-amber-300' 
+                      : 'bg-amber-50 hover:bg-amber-100 text-amber-950 border-amber-300'
+                  }`}
+                  title="حفظ التعديلات كمسودة مغلقة (غير متاحة للمخدومين)"
+                >
+                  {isPublishing === 'draft' ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin text-amber-800" />
+                      <span>جاري الحفظ...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-4 h-4 text-amber-700" />
+                      <span>💾 حفظ كمسودة (مغلقة)</span>
+                    </>
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  disabled={Boolean(isPublishing)}
+                  onClick={() => handlePublishQuiz('active')}
+                  className="flex-1 sm:flex-none px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white font-black text-xs shadow-md transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-1.5 cursor-pointer"
+                  title="حفظ التعديلات وتفعيل التاسك للمخدومين فوراً"
+                >
+                  {isPublishing === 'active' ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin text-white" />
+                      <span>جاري الحفظ والنشر...</span>
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle className="w-4 h-4 text-gold-300" />
+                      <span>🚀 حفظ ونشر للمخدومين</span>
+                    </>
+                  )}
+                </button>
+              </div>
             ) : (
               <>
                 <button
