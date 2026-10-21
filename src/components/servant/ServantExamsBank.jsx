@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, FileText, Sparkles, Presentation, PenTool, CheckCircle, Award, UserCheck, Trash2, Users, Eye, Calendar, Lock, Unlock, Edit3, FileSpreadsheet } from 'lucide-react';
 import { db } from '../../firebase';
-import { collection, addDoc, doc, updateDoc, deleteDoc, getDocs, query, where, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, doc, updateDoc, deleteDoc, getDocs, query, where, serverTimestamp, onSnapshot } from 'firebase/firestore';
 import ServantAiStudioModal from './ServantAiStudioModal';
 import AiPresentationViewer from './AiPresentationViewer';
 import ServantQuickQuizBuilderModal from './ServantQuickQuizBuilderModal';
 import ServantQuizResponsesModal from './ServantQuizResponsesModal';
+import ServantTaskPreviewModal from './ServantTaskPreviewModal';
 import ServantTasksTotals from './ServantTasksTotals';
 import { genesisQuizData } from '../../data/genesisQuizData';
 import { triggerServerPush } from '../../services/webPushService';
@@ -36,6 +37,33 @@ export default function ServantExamsBank({
   const [editingQuiz, setEditingQuiz] = useState(null);
   const [showResponsesModal, setShowResponsesModal] = useState(false);
   const [selectedExamForResponses, setSelectedExamForResponses] = useState(null);
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const [previewExam, setPreviewExam] = useState(null);
+  const [submissionCounts, setSubmissionCounts] = useState({});
+
+  // Real-time listener for task submissions count
+  useEffect(() => {
+    try {
+      const q = collection(db, 'exam_submissions');
+      const unsub = onSnapshot(q, (snap) => {
+        const counts = {};
+        snap.docs.forEach(d => {
+          const data = d.data();
+          const exId = data?.examId;
+          if (exId) {
+            counts[exId] = (counts[exId] || 0) + 1;
+          }
+        });
+        setSubmissionCounts(counts);
+      }, (err) => {
+        console.warn('Error listening to exam submissions count:', err);
+      });
+      return () => unsub();
+    } catch (err) {
+      console.warn('Could not setup submissions listener:', err);
+    }
+  }, []);
+
   const [showAddQuestionModal, setShowAddQuestionModal] = useState(false);
   const [showAiStudioModal, setShowAiStudioModal] = useState(false);
   const [activePresentation, setActivePresentation] = useState(null);
@@ -494,16 +522,35 @@ export default function ServantExamsBank({
                       )}
                     </button>
 
+                    {/* Preview Task Button */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPreviewExam(ex);
+                        setShowPreviewModal(true);
+                      }}
+                      className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 text-xs font-bold flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer active:scale-95"
+                      title="فتح واستعراض أسئلة التاسك كما يراها الطالب"
+                    >
+                      <Eye className="w-3.5 h-3.5 text-slate-700" />
+                      <span>معاينة التاسك 👁️</span>
+                    </button>
+
+                    {/* Responses Button with Real-time Count */}
                     <button
                       type="button"
                       onClick={() => {
                         setSelectedExamForResponses(ex);
                         setShowResponsesModal(true);
                       }}
-                      className="px-3.5 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-900 border border-indigo-200 text-xs font-bold flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer active:scale-95"
+                      className="px-3 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-900 border border-indigo-200 text-xs font-bold flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer active:scale-95"
+                      title="عرض إجابات وردود الطلاب"
                     >
                       <Users className="w-3.5 h-3.5 text-indigo-700" />
                       <span>الردود (Responses)</span>
+                      <span className="px-1.5 py-0.5 rounded-full bg-indigo-200/90 text-indigo-950 text-[10px] font-black">
+                        {submissionCounts[ex.id] || 0}
+                      </span>
                     </button>
 
                     <button
@@ -785,6 +832,20 @@ export default function ServantExamsBank({
         }}
         exam={selectedExamForResponses}
         getGradeTitle={getGradeTitle}
+      />
+
+      {/* Quiz Task Preview Modal */}
+      <ServantTaskPreviewModal
+        isOpen={showPreviewModal}
+        onClose={() => {
+          setShowPreviewModal(false);
+          setPreviewExam(null);
+        }}
+        exam={previewExam}
+        onEditQuiz={(quizToEdit) => {
+          setEditingQuiz(quizToEdit);
+          setShowQuickQuizModal(true);
+        }}
       />
     </div>
   );
