@@ -74,7 +74,13 @@ export default async function handler(req, res) {
 
         let shouldSend = false;
 
-        if (targetUserId) {
+        if (targetUserId === 'ALL' || targetRole === 'all') {
+          shouldSend = true;
+        } else if (targetUserId === 'common_hall' || targetUserId === 'cycle_1') {
+          if (grade === 'first' || grade === 'second') shouldSend = true;
+        } else if (targetUserId === 'elisha') {
+          if (grade === 'elisha') shouldSend = true;
+        } else if (targetUserId) {
           if (targetUserId === docId || (targetUserId === 'SUPER_ADMIN' && isSuperAdmin)) {
             shouldSend = true;
           }
@@ -85,7 +91,7 @@ export default async function handler(req, res) {
           if (targetRole === 'leadership' && isLeader) shouldSend = true;
           if (targetRole === 'servants' && isServant) shouldSend = true;
           if (targetRole === 'students' && role === 'student') {
-            if (!targetGrade || targetGrade === 'ALL' || targetGrade === grade) {
+            if (!targetGrade || targetGrade === 'ALL' || targetGrade === grade || (targetGrade === 'common_hall' && (grade === 'first' || grade === 'second'))) {
               shouldSend = true;
             }
           }

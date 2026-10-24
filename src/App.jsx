@@ -108,12 +108,28 @@ export default function App() {
       } else {
         const newlyAdded = rawList.filter(item => !knownNotifIdsRef.current.has(item.id));
         if (newlyAdded.length > 0) {
-          playNotificationChime();
-          const latest = newlyAdded[0];
-          triggerBrowserNotification(latest.title, {
-            body: latest.desc || 'لديك إشعار جديد في الخدمة'
+          const nowMs = Date.now();
+          const freshItems = newlyAdded.filter(item => {
+            let itemTimeMs = null;
+            if (item.createdAt?.toMillis) {
+              itemTimeMs = item.createdAt.toMillis();
+            } else if (item.createdAt?.seconds) {
+              itemTimeMs = item.createdAt.seconds * 1000;
+            } else if (typeof item.createdAt === 'string') {
+              itemTimeMs = new Date(item.createdAt).getTime();
+            }
+            // Only trigger alert for notifications created within the last 2 minutes
+            return itemTimeMs && !isNaN(itemTimeMs) && (nowMs - itemTimeMs) < 120000;
           });
-          setIncomingToast(latest);
+
+          if (freshItems.length > 0) {
+            playNotificationChime();
+            const latest = freshItems[0];
+            triggerBrowserNotification(latest.title, {
+              body: latest.desc || 'لديك إشعار جديد في الخدمة'
+            });
+            setIncomingToast(latest);
+          }
           newlyAdded.forEach(item => knownNotifIdsRef.current.add(item.id));
         }
       }

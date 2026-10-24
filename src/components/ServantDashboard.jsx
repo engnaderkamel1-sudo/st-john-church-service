@@ -721,6 +721,13 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
           createdAt: serverTimestamp()
         });
 
+        triggerServerPush({
+          targetUserId: 'ALL',
+          title: '📢 تم فتح تسجيل الحضور الآن لجميع المخدومين!',
+          body: `أتاح الخادم (${user.fullName || 'المسؤول'}) تسجيل الحضور بالكود (${numericPin}). سارع بتسجيل حضورك الآن.`,
+          url: '/'
+        }).catch(() => {});
+
         setRemoteAccessMessage('تم فتح التسجيل لجميع المخدومين بنجاح وإرسال إشعار عام للكل! 📢');
       } else {
         // Open for specific student
@@ -753,6 +760,13 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
           time: 'الآن',
           createdAt: serverTimestamp()
         });
+
+        triggerServerPush({
+          targetUserId: selectedStudentForAccess,
+          title: '🎯 تم فتح تسجيل الحضور الاستثنائي لحسابك!',
+          body: `كود الحضور الرقمي هو: (${numericPin}). افتح صفحة الحضور للتسجيل فوراً.`,
+          url: '/'
+        }).catch(() => {});
 
         setRemoteAccessMessage(`تم فتح التسجيل الاستثنائي وإرسال إشعار مباشر لـ (${stName}) بنجاح! 🎯`);
       }

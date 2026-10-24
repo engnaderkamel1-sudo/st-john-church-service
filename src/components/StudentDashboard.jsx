@@ -40,7 +40,7 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser, externa
       const perm = await Notification.requestPermission();
       if (perm === 'granted') {
         setHasNotifPermission(true);
-        await registerServiceWorkerAndSubscribe(user);
+        await registerServiceWorkerAndSubscribe(user, { sendWelcomePush: true });
       }
     } catch (e) {
       console.warn('Error enabling notifications:', e);

@@ -30,7 +30,7 @@ export default function AppSupportToolsDrawerSection({ user, onCloseDrawer }) {
     if (Notification.permission === 'granted') {
       setHasNotificationPermission(true);
       playNotificationChime();
-      await registerServiceWorkerAndSubscribe(user);
+      await registerServiceWorkerAndSubscribe(user, { sendWelcomePush: true });
       return;
     }
     try {
@@ -39,7 +39,7 @@ export default function AppSupportToolsDrawerSection({ user, onCloseDrawer }) {
       setHasNotificationPermission(isGranted);
       if (isGranted) {
         playNotificationChime();
-        await registerServiceWorkerAndSubscribe(user);
+        await registerServiceWorkerAndSubscribe(user, { sendWelcomePush: true });
       }
     } catch {
       // quiet fail

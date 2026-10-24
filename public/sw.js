@@ -37,7 +37,8 @@ self.addEventListener('push', (event) => {
     dir: 'rtl',
     lang: 'ar',
     requireInteraction: true,
-    tag: data.tag || 'st-john-notification'
+    tag: data.tag || ('st-john-notif-' + Date.now()),
+    renotify: true
   };
 
   event.waitUntil(

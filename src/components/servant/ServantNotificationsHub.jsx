@@ -9,6 +9,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { formatNotificationTime } from '../../utils/notificationSystem';
+import { triggerServerPush } from '../../services/webPushService';
 
 export default function ServantNotificationsHub({ currentUser, allStudents = [] }) {
   const [notifications, setNotifications] = useState([]);
@@ -160,7 +161,7 @@ export default function ServantNotificationsHub({ currentUser, allStudents = [] 
         });
         setSuccessMsg('تم تعديل التنبيه بنجاح وتحديثه لدى المخدومين ✓');
       } else {
-        // Create new notification
+        // Create new notification in Firestore
         await addDoc(collection(db, 'notifications'), {
           title: title.trim(),
           desc: desc.trim(),
@@ -171,6 +172,15 @@ export default function ServantNotificationsHub({ currentUser, allStudents = [] 
           senderId: currentUser?.id || 'admin',
           createdAt: serverTimestamp()
         });
+
+        // Broadcast Web Push to target user devices (even when app is closed)
+        triggerServerPush({
+          targetUserId: finalTargetUserId,
+          title: title.trim(),
+          body: desc.trim(),
+          url: '/'
+        }).catch(err => console.warn('Push dispatch error:', err));
+
         setSuccessMsg('تم إرسال التنبيه فوراً بنجاح لجميع المعنيين 🚀');
       }
 

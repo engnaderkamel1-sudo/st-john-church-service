@@ -23,7 +23,7 @@ function urlBase64ToUint8Array(base64String) {
  * Registers service worker /sw.js, subscribes device to Web Push,
  * and saves the subscription to user profile in Firestore.
  */
-export async function registerServiceWorkerAndSubscribe(user) {
+export async function registerServiceWorkerAndSubscribe(user, options = {}) {
   if (typeof window === 'undefined') return null;
   if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
     console.warn('Web Push is not supported by this browser.');
@@ -36,12 +36,14 @@ export async function registerServiceWorkerAndSubscribe(user) {
 
     let subscription = await registration.pushManager.getSubscription();
 
+    let isNewSubscription = false;
     if (!subscription) {
       const convertedVapidKey = urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
       subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: convertedVapidKey
       });
+      isNewSubscription = true;
     }
 
     if (subscription && user?.id) {
@@ -52,12 +54,14 @@ export async function registerServiceWorkerAndSubscribe(user) {
         pushUpdatedAt: new Date().toISOString()
       }).catch(err => console.warn('Could not save push subscription to Firestore:', err));
 
-      // Test push to verify device receives it
-      triggerServerPush({
-        subscription: subJson,
-        title: 'تم تفعيل التنبيهات بنجاح 🔔',
-        body: 'ستصلك كافة إشعارات الخدمة حتى وإن كان التطبيق أو المتصفح مغلقاً تماماً!'
-      }).catch(() => {});
+      // Only send welcome push once when explicitly requested (e.g. manual toggle click), never on passive app open
+      if (options.sendWelcomePush && isNewSubscription) {
+        triggerServerPush({
+          subscription: subJson,
+          title: 'تم تفعيل التنبيهات بنجاح 🔔',
+          body: 'ستصلك كافة إشعارات الخدمة حتى وإن كان التطبيق أو المتصفح مغلقاً تماماً!'
+        }).catch(() => {});
+      }
     }
 
     return subscription;
