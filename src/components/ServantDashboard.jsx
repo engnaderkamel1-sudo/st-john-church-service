@@ -500,6 +500,29 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
     }
   };
 
+  // Permanently Delete User from Firestore (خاص بأمين الخدمة والمشرف العام)
+  const handleDeleteUserPermanently = async (userId, userName) => {
+    if (!isServantLeader) {
+      alert('عفواً، ميزة الحذف النهائي للحسابات مقتصرة على أمين الخدمة ومشرف المنظومة.');
+      return;
+    }
+    if (!window.confirm(`تحذير نهائي: هل أنت متأكد تماماً من حذف حساب (${userName || 'المستخدم'}) نهائياً من قاعدة البيانات؟\nلن يمكن استعادة هذا الحساب مرة أخرى.`)) {
+      return;
+    }
+
+    setRoleUpdatingId(userId);
+    try {
+      await deleteDoc(doc(db, 'users', userId));
+      setAllUsers(prev => prev.filter(u => u.id !== userId));
+      alert(`تم حذف حساب (${userName || 'المستخدم'}) نهائياً بنجاح ✓`);
+    } catch (err) {
+      console.error('Error permanently deleting user:', err);
+      alert('حدث خطأ أثناء حذف الحساب من قاعدة البيانات.');
+    } finally {
+      setRoleUpdatingId(null);
+    }
+  };
+
   // Dynamic QR & Numeric PIN Code
   const todayStr = new Date().toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
   const [qrCodeData, setQrCodeData] = useState(`STJOHN-ATTENDANCE-${new Date().toISOString().split('T')[0]}`);
@@ -1065,7 +1088,7 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
 
   const studentsByGrade = React.useMemo(() => {
     const grouped = { first: [], second: [], third: [], elisha: [] };
-    const students = (allUsers || []).filter(u => u.role === 'student');
+    const students = (allUsers || []).filter(u => u.role === 'student' && u.status !== 'inactive' && u.status !== 'suspended' && u.status !== 'rejected');
     students.forEach(st => {
       const g = st.grade || 'first';
       if (!grouped[g]) grouped[g] = [];
@@ -1670,7 +1693,7 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
                   <span className={`text-[10px] min-w-5 text-center px-1.5 py-0.2 rounded-md font-bold ${
                     mainTab === 'students_hub' ? 'bg-gold-400 text-maroon-950' : 'bg-slate-100 text-slate-600'
                   }`}>
-                    {(allUsers || []).filter(u => u.role === 'student').length}
+                    {(allUsers || []).filter(u => u.role === 'student' && u.status !== 'inactive' && u.status !== 'suspended' && u.status !== 'rejected').length}
                   </span>
                 </button>
 
@@ -2042,7 +2065,7 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
       {mainTab === 'notifications_hub' && (
         <ServantNotificationsHub
           currentUser={user}
-          allStudents={(allUsers || []).filter(u => u.role === 'student')}
+          allStudents={(allUsers || []).filter(u => u.role === 'student' && u.status !== 'inactive' && u.status !== 'suspended' && u.status !== 'rejected')}
         />
       )}
 
@@ -2113,6 +2136,7 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
           handleApproveUser={handleApproveUser}
           handleRejectUser={handleRejectUser}
           handleUpdateUserStatus={handleUpdateUserStatus}
+          handleDeleteUserPermanently={handleDeleteUserPermanently}
           roleUpdatingId={roleUpdatingId}
           onSelectStudent={(st) => setStudent360Profile(st)}
         />

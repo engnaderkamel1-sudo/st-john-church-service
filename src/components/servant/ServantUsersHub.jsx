@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Users, History, RefreshCw, Activity, UserPlus, UserX, Check, Sparkles, Key, ExternalLink, Save, Eye, EyeOff, Lock, X, CheckCircle2, ShieldAlert, UserCheck, AlertCircle, PauseCircle, Ban, RotateCcw, Calendar, MessageCircle, Send } from 'lucide-react';
+import { Users, History, RefreshCw, Activity, UserPlus, UserX, Check, Sparkles, Key, ExternalLink, Save, Eye, EyeOff, Lock, X, CheckCircle2, ShieldAlert, UserCheck, AlertCircle, PauseCircle, Ban, RotateCcw, Calendar, MessageCircle, Send, Trash2 } from 'lucide-react';
 import { getGeminiApiKey, saveGeminiApiKey } from '../../services/geminiService';
 import { db } from '../../firebase';
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
@@ -30,6 +30,7 @@ export default function ServantUsersHub({
   handleApproveUser,
   handleRejectUser,
   handleUpdateUserStatus,
+  handleDeleteUserPermanently,
   roleUpdatingId,
   onSelectStudent
 }) {
@@ -160,10 +161,12 @@ https://st-john-church-service-rust.vercel.app/
   };
 
   const pendingUsers = allUsers.filter(u => u.status === 'pending_approval');
+  const inactiveOrSuspendedUsers = allUsers.filter(u => u.status === 'suspended' || u.status === 'inactive' || u.status === 'rejected');
+  const activeApprovedUsers = allUsers.filter(u => u.status !== 'pending_approval' && u.status !== 'suspended' && u.status !== 'inactive' && u.status !== 'rejected');
 
   return (
     <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-6">
-      {/* Subtabs Switcher: الحسابات والأدوار vs طلبات الاعتماد vs سجل دخول المستخدمين vs إعدادات الذكاء الاصطناعي */}
+      {/* Subtabs Switcher */}
       <div className="flex items-center gap-2 border-b border-slate-100 pb-3 flex-wrap">
         <button
           type="button"
@@ -175,7 +178,7 @@ https://st-john-church-service-rust.vercel.app/
           }`}
         >
           <Users className="w-4 h-4" />
-          <span>الحسابات والأدوار ({allUsers.length})</span>
+          <span>الحسابات المعتمدة ({activeApprovedUsers.length})</span>
         </button>
 
         {/* Tab for Pending Approvals with pulsating badge if there are any */}
@@ -197,6 +200,29 @@ https://st-john-church-service-rust.vercel.app/
               userHubSubTab === 'pending_approvals' ? 'bg-white text-amber-900' : 'bg-amber-600 text-white animate-pulse'
             }`}>
               {pendingUsers.length}
+            </span>
+          )}
+        </button>
+
+        {/* Tab for Suspended & Inactive Accounts (تاب منفصلة للحسابات المعلقة والمعطلة) */}
+        <button
+          type="button"
+          onClick={() => setUserHubSubTab('suspended_accounts')}
+          className={`py-2 px-4 rounded-xl font-bold text-xs transition-all flex items-center gap-1.5 ${
+            userHubSubTab === 'suspended_accounts'
+              ? 'bg-rose-700 text-white shadow-xs'
+              : inactiveOrSuspendedUsers.length > 0
+              ? 'bg-rose-50 text-rose-800 hover:bg-rose-100 border border-rose-200'
+              : 'bg-slate-100 text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          <Ban className="w-4 h-4 text-rose-500" />
+          <span>الحسابات المعلقة والمعطلة</span>
+          {inactiveOrSuspendedUsers.length > 0 && (
+            <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+              userHubSubTab === 'suspended_accounts' ? 'bg-white text-rose-900' : 'bg-rose-600 text-white'
+            }`}>
+              {inactiveOrSuspendedUsers.length}
             </span>
           )}
         </button>
@@ -439,13 +465,10 @@ https://st-john-church-service-rust.vercel.app/
                 onChange={(e) => setUserRoleFilter(e.target.value)}
                 className="bg-slate-50 border border-slate-200 text-xs font-bold rounded-xl px-3 py-2 text-slate-700"
               >
-                <option value="all">عرض الكل ({allUsers.length})</option>
-                <option value="pending">بانتظار الاعتماد ⏳ ({allUsers.filter(u => u.status === 'pending_approval').length})</option>
-                <option value="student">المخدومين فقط ({allUsers.filter(u => u.role === 'student' && u.status !== 'pending_approval').length})</option>
-                <option value="servant">الخدام فقط ({allUsers.filter(u => u.role === 'servant' && u.status !== 'pending_approval').length})</option>
-                <option value="servant_leader">أمناء الخدمة فقط ({allUsers.filter(u => u.role === 'servant_leader').length})</option>
-                <option value="suspended">المعلقين مؤقتاً ⏸️ ({allUsers.filter(u => u.status === 'suspended').length})</option>
-                <option value="inactive">المعطلين 🚫 ({allUsers.filter(u => u.status === 'inactive' || u.status === 'rejected').length})</option>
+                <option value="all">عرض المعتمدين النشطين ({activeApprovedUsers.length})</option>
+                <option value="student">المخدومين فقط ({activeApprovedUsers.filter(u => u.role === 'student').length})</option>
+                <option value="servant">الخدام فقط ({activeApprovedUsers.filter(u => u.role === 'servant').length})</option>
+                <option value="servant_leader">أمناء الخدمة فقط ({activeApprovedUsers.filter(u => u.role === 'servant_leader').length})</option>
               </select>
 
               <button
@@ -462,20 +485,20 @@ https://st-john-church-service-rust.vercel.app/
           {/* Quick Metrics */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div className="bg-slate-50 border border-slate-200 p-4 rounded-2xl text-center">
-              <span className="text-[11px] text-slate-500 font-bold block">إجمالي المسجلين</span>
-              <span className="text-xl font-extrabold text-slate-900">{allUsers.length}</span>
+              <span className="text-[11px] text-slate-500 font-bold block">إجمالي النشطين</span>
+              <span className="text-xl font-extrabold text-slate-900">{activeApprovedUsers.length}</span>
             </div>
             <div className="bg-amber-50 border border-amber-200 p-4 rounded-2xl text-center">
               <span className="text-[11px] text-amber-800 font-bold block">المخدومين</span>
-              <span className="text-xl font-extrabold text-amber-700">{allUsers.filter(u => u.role === 'student').length}</span>
+              <span className="text-xl font-extrabold text-amber-700">{activeApprovedUsers.filter(u => u.role === 'student').length}</span>
             </div>
             <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-2xl text-center">
               <span className="text-[11px] text-emerald-800 font-bold block">الخدام المعتمدين</span>
-              <span className="text-xl font-extrabold text-emerald-700">{allUsers.filter(u => u.role === 'servant').length}</span>
+              <span className="text-xl font-extrabold text-emerald-700">{activeApprovedUsers.filter(u => u.role === 'servant').length}</span>
             </div>
             <div className="bg-purple-50 border border-purple-200 p-4 rounded-2xl text-center">
-              <span className="text-[11px] text-purple-800 font-bold block">فصل أليشع</span>
-              <span className="text-xl font-extrabold text-purple-700">{allUsers.filter(u => u.grade === 'elisha').length}</span>
+              <span className="text-[11px] text-purple-800 font-bold block">أمناء الخدمة</span>
+              <span className="text-xl font-extrabold text-purple-700">{activeApprovedUsers.filter(u => u.role === 'servant_leader').length}</span>
             </div>
           </div>
 
@@ -485,7 +508,7 @@ https://st-john-church-service-rust.vercel.app/
               <RefreshCw className="w-5 h-5 animate-spin text-maroon-800" />
               <span>جاري تحميل قائمة المستخدمين من قاعدة البيانات...</span>
             </div>
-          ) : allUsers.length === 0 ? (
+          ) : activeApprovedUsers.length === 0 ? (
             <div className="text-center py-12 bg-slate-50 border border-dashed border-slate-200 rounded-2xl p-6">
               <Users className="w-10 h-10 text-slate-300 mx-auto mb-2" />
               <p className="text-xs font-bold text-slate-700">لم يسجل أي مستخدم جديد حتى الآن.</p>
@@ -495,13 +518,10 @@ https://st-john-church-service-rust.vercel.app/
             <div className="space-y-4">
               {/* Mobile Responsive Cards (Visible on screens < md) */}
               <div className="md:hidden space-y-3">
-                {allUsers
+                {activeApprovedUsers
                   .filter(u => {
                     if (userRoleFilter === 'all') return true;
-                    if (userRoleFilter === 'pending') return u.status === 'pending_approval';
-                    if (userRoleFilter === 'suspended') return u.status === 'suspended';
-                    if (userRoleFilter === 'inactive') return u.status === 'inactive' || u.status === 'rejected';
-                    return u.role === userRoleFilter && u.status !== 'pending_approval' && u.status !== 'suspended' && u.status !== 'inactive' && u.status !== 'rejected';
+                    return u.role === userRoleFilter;
                   })
                   .map((item) => (
                     <div key={`m-${item.id}`} className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs space-y-3">
@@ -756,13 +776,10 @@ https://st-john-church-service-rust.vercel.app/
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {allUsers
+                    {activeApprovedUsers
                       .filter(u => {
                         if (userRoleFilter === 'all') return true;
-                        if (userRoleFilter === 'pending') return u.status === 'pending_approval';
-                        if (userRoleFilter === 'suspended') return u.status === 'suspended';
-                        if (userRoleFilter === 'inactive') return u.status === 'inactive' || u.status === 'rejected';
-                        return u.role === userRoleFilter && u.status !== 'pending_approval' && u.status !== 'suspended' && u.status !== 'inactive' && u.status !== 'rejected';
+                        return u.role === userRoleFilter;
                       })
                       .map((item) => (
                         <tr key={item.id} className="hover:bg-slate-50/80 transition-colors">
@@ -1000,6 +1017,185 @@ https://st-john-church-service-rust.vercel.app/
                           </td>
                         </tr>
                       ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* SUSPENDED & INACTIVE ACCOUNTS TAB VIEW (تاب منفصلة للحسابات المعلقة والمعطلة) */}
+      {userHubSubTab === 'suspended_accounts' && (
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="font-extrabold text-slate-900 text-base">الحسابات المعلقة والمعطلة</h3>
+                <span className="text-[11px] bg-rose-100 text-rose-900 font-bold px-2 py-0.5 rounded-full border border-rose-300">
+                  {inactiveOrSuspendedUsers.length} حسابات موقوفة
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 mt-1">
+                قائمة الحسابات التي تم تعليقها مؤقتاً أو تعطيلها، مع إمكانية إعادة تفعيلها فوراً أو مسحها نهائياً من قاعدة البيانات.
+              </p>
+            </div>
+
+            <button
+              onClick={fetchAllUsers}
+              disabled={usersLoading}
+              className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition-colors self-start sm:self-auto"
+              title="تحديث القائمة"
+            >
+              <RefreshCw className={`w-4 h-4 ${usersLoading ? 'animate-spin text-maroon-800' : ''}`} />
+            </button>
+          </div>
+
+          {usersLoading ? (
+            <div className="py-12 text-center text-slate-400 text-xs flex items-center justify-center gap-2">
+              <RefreshCw className="w-5 h-5 animate-spin text-maroon-800" />
+              <span>جاري تحميل البيانات من قاعدة البيانات...</span>
+            </div>
+          ) : inactiveOrSuspendedUsers.length === 0 ? (
+            <div className="text-center py-12 bg-emerald-50/50 border border-dashed border-emerald-200 rounded-2xl p-6">
+              <CheckCircle2 className="w-10 h-10 text-emerald-500 mx-auto mb-2" />
+              <p className="text-xs font-bold text-slate-800">لا توجد أي حسابات معلقة أو معطلة حالياً ✓</p>
+              <p className="text-[11px] text-slate-500 mt-1">كافة حسابات المنظومة تعمل بنشاط وبشكل معتمد.</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {/* Mobile Cards (Visible on screens < md) */}
+              <div className="md:hidden space-y-3">
+                {inactiveOrSuspendedUsers.map((item) => (
+                  <div key={`susp-m-${item.id}`} className="bg-white border border-rose-100 rounded-2xl p-4 shadow-2xs space-y-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-rose-100 text-rose-800 border border-rose-300 flex items-center justify-center font-bold text-sm shrink-0">
+                          {item.fullName ? item.fullName[0] : '؟'}
+                        </div>
+                        <div>
+                          <div className="font-extrabold text-slate-900 text-sm">{item.fullName || 'بدون اسم'}</div>
+                          <div className="text-xs text-slate-500 dir-ltr text-right">{item.phone}</div>
+                        </div>
+                      </div>
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-extrabold ${
+                        item.status === 'suspended'
+                          ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                          : 'bg-rose-100 text-rose-800 border border-rose-300'
+                      }`}>
+                        {item.status === 'suspended' ? 'معلق مؤقتاً ⏸️' : 'معطل 🚫'}
+                      </span>
+                    </div>
+
+                    <div className="text-xs bg-slate-50 p-2.5 rounded-xl border border-slate-100 flex items-center justify-between">
+                      <span className="text-slate-500 font-medium">الصفة / المرحلة:</span>
+                      <span className="font-bold text-slate-800">
+                        {item.role === 'student' ? 'مخدوم' : item.role === 'servant' ? 'خادم' : 'أمين خدمة'}
+                        {item.role === 'student' && item.grade && ` (${getGradeTitle ? getGradeTitle(item.grade) : item.grade})`}
+                      </span>
+                    </div>
+
+                    {item.statusUpdatedBy && (
+                      <div className="text-[11px] text-slate-400">
+                        تم الإيقاف بواسطة: <span className="font-bold text-slate-600">{item.statusUpdatedBy}</span>
+                      </div>
+                    )}
+
+                    <div className="grid grid-cols-2 gap-2 pt-1 border-t border-slate-100">
+                      <button
+                        type="button"
+                        disabled={roleUpdatingId === item.id}
+                        onClick={() => handleUpdateUserStatus(item.id, 'active')}
+                        className="min-h-[44px] bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-3 py-2 rounded-xl transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 disabled:opacity-50"
+                      >
+                        <RotateCcw className="w-4 h-4" />
+                        <span>إعادة تفعيل 🔄</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        disabled={roleUpdatingId === item.id}
+                        onClick={() => handleDeleteUserPermanently(item.id, item.fullName)}
+                        className="min-h-[44px] bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-300 font-bold text-xs px-3 py-2 rounded-xl transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 disabled:opacity-50"
+                      >
+                        <Trash2 className="w-4 h-4 text-rose-700" />
+                        <span>حذف نهائي 🗑️</span>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Desktop Table (Visible on screens >= md) */}
+              <div className="hidden md:block overflow-x-auto border border-slate-200 rounded-2xl">
+                <table className="w-full text-right text-xs">
+                  <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold">
+                    <tr>
+                      <th className="py-3 px-3">المستخدم</th>
+                      <th className="py-3 px-3">الهاتف</th>
+                      <th className="py-3 px-3">الصفة والمرحلة</th>
+                      <th className="py-3 px-3">حالة الإيقاف</th>
+                      <th className="py-3 px-3">مسؤول الإيقاف</th>
+                      <th className="py-3 px-3 text-center">الإجراءات</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {inactiveOrSuspendedUsers.map((item) => (
+                      <tr key={`susp-d-${item.id}`} className="hover:bg-slate-50/80 transition-colors">
+                        <td className="py-3 px-3 font-bold text-slate-900">
+                          <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 rounded-lg bg-rose-100 text-rose-800 border border-rose-300 flex items-center justify-center font-bold text-xs">
+                              {item.fullName ? item.fullName[0] : '؟'}
+                            </div>
+                            <span>{item.fullName || 'بدون اسم'}</span>
+                          </div>
+                        </td>
+                        <td className="py-3 px-3 text-slate-600 dir-ltr text-right font-mono">{item.phone}</td>
+                        <td className="py-3 px-3">
+                          <span className="font-bold text-slate-700">
+                            {item.role === 'student' ? 'مخدوم' : item.role === 'servant' ? 'خادم' : 'أمين خدمة'}
+                            {item.role === 'student' && item.grade && ` (${getGradeTitle ? getGradeTitle(item.grade) : item.grade})`}
+                          </span>
+                        </td>
+                        <td className="py-3 px-3">
+                          <span className={`text-[10px] px-2 py-0.5 rounded-full font-extrabold ${
+                            item.status === 'suspended'
+                              ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                              : 'bg-rose-100 text-rose-800 border border-rose-300'
+                          }`}>
+                            {item.status === 'suspended' ? 'معلق مؤقتاً ⏸️' : 'معطل 🚫'}
+                          </span>
+                        </td>
+                        <td className="py-3 px-3 text-slate-500 text-[11px]">
+                          {item.statusUpdatedBy || '—'}
+                        </td>
+                        <td className="py-3 px-3 text-center">
+                          <div className="flex items-center justify-center gap-2">
+                            <button
+                              type="button"
+                              disabled={roleUpdatingId === item.id}
+                              onClick={() => handleUpdateUserStatus(item.id, 'active')}
+                              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs shadow-2xs flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50 active:scale-95"
+                              title="إعادة تنشيط الحساب"
+                            >
+                              <RotateCcw className="w-3.5 h-3.5" />
+                              <span>إعادة تفعيل 🔄</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              disabled={roleUpdatingId === item.id}
+                              onClick={() => handleDeleteUserPermanently(item.id, item.fullName)}
+                              className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-300 rounded-xl font-bold text-xs shadow-2xs flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50 active:scale-95"
+                              title="حذف الحساب نهائياً من قاعدة البيانات"
+                            >
+                              <Trash2 className="w-3.5 h-3.5 text-rose-700" />
+                              <span>حذف نهائي 🗑️</span>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>
