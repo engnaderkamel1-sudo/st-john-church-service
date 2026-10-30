@@ -9,6 +9,7 @@ import ServantQuizResponsesModal from './ServantQuizResponsesModal';
 import ServantTaskPreviewModal from './ServantTaskPreviewModal';
 import ServantTasksTotals from './ServantTasksTotals';
 import { genesisQuizData } from '../../data/genesisQuizData';
+import { genesisQuizPart2Data } from '../../data/genesisQuizPart2Data';
 import { triggerServerPush } from '../../services/webPushService';
 
 export default function ServantExamsBank({
@@ -112,6 +113,10 @@ export default function ServantExamsBank({
   // Merge loaded exams from Firestore with predefined system drafts if not already saved in db
   const allMergedExams = React.useMemo(() => {
     const list = [...(createdExams || [])];
+    const hasGenesisQuiz2 = list.some(ex => ex.id === genesisQuizPart2Data.id || ex.title === genesisQuizPart2Data.title);
+    if (!hasGenesisQuiz2 && selectedGrade !== 'elisha') {
+      list.unshift(genesisQuizPart2Data);
+    }
     const hasGenesisQuiz = list.some(ex => ex.id === genesisQuizData.id || ex.title === genesisQuizData.title);
     if (!hasGenesisQuiz && selectedGrade !== 'elisha') {
       list.unshift(genesisQuizData);
@@ -229,7 +234,7 @@ export default function ServantExamsBank({
     if (!window.confirm(`هل تريد بالتأكيد ${actionLabel}؟`)) return;
 
     try {
-      if (exam.id === genesisQuizData.id) {
+      if (exam.id === genesisQuizData.id || exam.id === genesisQuizPart2Data.id) {
         // Predefined draft being activated or toggled for the first time
         const docRef = await addDoc(collection(db, 'service_exams'), {
           ...exam,

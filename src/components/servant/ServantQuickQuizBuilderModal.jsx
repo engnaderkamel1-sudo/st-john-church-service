@@ -115,15 +115,19 @@ export default function ServantQuickQuizBuilderModal({
       if (result.subject) {
         setSubject(result.subject);
       }
-      setQuestions(result.questions.map((q, idx) => ({
-        id: `q_${Date.now()}_${idx}`,
-        questionText: q.questionText || '',
-        type: q.type || 'true_false',
-        options: q.options || (q.type === 'true_false' ? ['صح', 'خطأ'] : ['أ', 'ب', 'ج', 'د']),
-        correctAnswer: q.correctAnswer || (q.type === 'true_false' ? 'صح' : (q.options?.[0] || '')),
-        points: Number(q.points) || 2,
-        explanation: q.explanation || ''
-      })));
+      setQuestions(result.questions.map((q, idx) => {
+        const rawType = (q.type || '').toLowerCase();
+        const normalizedType = (rawType === 'multiple_choice' || rawType === 'mcq') ? 'mcq' : (rawType === 'essay' ? 'essay' : 'true_false');
+        return {
+          id: `q_${Date.now()}_${idx}`,
+          questionText: q.questionText || '',
+          type: normalizedType,
+          options: q.options || (normalizedType === 'true_false' ? ['صح', 'خطأ'] : ['اختيار 1', 'اختيار 2', 'اختيار 3', 'اختيار 4']),
+          correctAnswer: q.correctAnswer || (normalizedType === 'true_false' ? 'صح' : (q.options?.[0] || '')),
+          points: Number(q.points) || 2,
+          explanation: q.explanation || ''
+        };
+      }));
       return true;
     }
     return false;

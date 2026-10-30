@@ -26,6 +26,7 @@ export default function ServantAiStudioModal({
   const [activeMode, setActiveMode] = useState(initialMode); // 'questions' | 'presentation' | 'study_guide'
   const [selectedGrade, setSelectedGrade] = useState(initialGrade);
   const [questionCount, setQuestionCount] = useState(5);
+  const [questionTypesFilter, setQuestionTypesFilter] = useState('auto'); // 'auto' | 'mcq_and_tf' | 'mcq' | 'true_false' | 'essay'
   const [slideCount, setSlideCount] = useState(6);
   
   // Input File, Text & Custom Prompt State
@@ -90,7 +91,14 @@ export default function ServantAiStudioModal({
   // Question Edit Handlers
   const handleStartEditQuestion = (q, idx) => {
     setEditingQuestionIdx(idx);
-    setEditQuestionData({ ...q, options: [...(q.options || [])] });
+    setEditQuestionData({
+      ...q,
+      type: q.type || 'mcq',
+      options: [...(q.options || [])],
+      correctAnswer: q.correctAnswer || '',
+      explanation: q.explanation || '',
+      points: q.points || 5
+    });
   };
 
   const handleSaveEditQuestion = (idx) => {
@@ -312,12 +320,19 @@ export default function ServantAiStudioModal({
 
     try {
       if (activeMode === 'questions') {
+        let qTypes = ['auto'];
+        if (questionTypesFilter === 'mcq_and_tf') qTypes = ['mcq', 'true_false'];
+        else if (questionTypesFilter === 'mcq') qTypes = ['mcq'];
+        else if (questionTypesFilter === 'true_false') qTypes = ['true_false'];
+        else if (questionTypesFilter === 'essay') qTypes = ['essay'];
+
         const questions = await generateChurchQuestions({
           fileBase64,
           mimeType: fileMimeType,
           textContent: manualText,
           grade: selectedGrade,
           count: questionCount,
+          questionTypes: qTypes,
           customInstructions: customInstructions.trim()
         });
         setGeneratedQuestions(questions || []);
@@ -440,7 +455,7 @@ export default function ServantAiStudioModal({
           </div>
 
           {/* Configuration Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className={activeMode === 'questions' ? "grid grid-cols-1 sm:grid-cols-3 gap-3" : "grid grid-cols-1 sm:grid-cols-2 gap-4"}>
             <div>
               <label className="text-xs font-bold text-slate-700 block mb-1.5">المرحلة الدراسية المستهدفة:</label>
               <select
@@ -456,19 +471,36 @@ export default function ServantAiStudioModal({
             </div>
 
             {activeMode === 'questions' ? (
-              <div>
-                <label className="text-xs font-bold text-slate-700 block mb-1.5">عدد الأسئلة المطلوب استخراجها:</label>
-                <select
-                  value={questionCount}
-                  onChange={(e) => setQuestionCount(Number(e.target.value))}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-800 focus:outline-none focus:border-maroon-800"
-                >
-                  <option value={3}>3 أسئلة سريعة</option>
-                  <option value={5}>5 أسئلة نموذجية</option>
-                  <option value={10}>10 أسئلة متكاملة</option>
-                  <option value={15}>15 سؤال شامل</option>
-                </select>
-              </div>
+              <>
+                <div>
+                  <label className="text-xs font-bold text-slate-700 block mb-1.5">نوعية الأسئلة المطلوبة:</label>
+                  <select
+                    value={questionTypesFilter}
+                    onChange={(e) => setQuestionTypesFilter(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-800 focus:outline-none focus:border-maroon-800"
+                  >
+                    <option value="auto">مطابق تماماً للملف (تلقائي)</option>
+                    <option value="mcq_and_tf">اختيار من متعدد وصح/خطأ (حظر المقالي)</option>
+                    <option value="mcq">اختيار من متعدد فقط</option>
+                    <option value="true_false">صح وخطأ فقط</option>
+                    <option value="essay">أسئلة مقالية فقط</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-slate-700 block mb-1.5">عدد الأسئلة المطلوب استخراجها:</label>
+                  <select
+                    value={questionCount}
+                    onChange={(e) => setQuestionCount(Number(e.target.value))}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-800 focus:outline-none focus:border-maroon-800"
+                  >
+                    <option value={3}>3 أسئلة سريعة</option>
+                    <option value={5}>5 أسئلة نموذجية</option>
+                    <option value={10}>10 أسئلة متكاملة</option>
+                    <option value={15}>15 سؤال شامل</option>
+                    <option value={21}>21 سؤال (كامل المسابقة)</option>
+                  </select>
+                </div>
+              </>
             ) : activeMode === 'presentation' ? (
               <div>
                 <label className="text-xs font-bold text-slate-700 block mb-1.5">عدد شرائح العرض:</label>
@@ -669,7 +701,79 @@ export default function ServantAiStudioModal({
                       <div key={idx} className="bg-white border-2 border-maroon-800 p-4 rounded-2xl space-y-3 shadow-md">
                         <div className="flex items-center justify-between border-b border-slate-100 pb-2">
                           <span className="font-extrabold text-xs text-maroon-900">تعديل السؤال {idx + 1}</span>
-                          <span className="text-[10px] text-slate-500">حدد الإجابة الصحيحة بالضغط على الدائرة</span>
+                          <span className="text-[10px] text-slate-500">
+                            {editQuestionData.type === 'true_false' 
+                              ? 'حدد صواب أو خطأ بالأسفل' 
+                              : editQuestionData.type === 'essay'
+                              ? 'اكتب الإجابة النموذجية المعتمدة'
+                              : 'حدد الإجابة الصحيحة بالضغط على الدائرة'}
+                          </span>
+                        </div>
+
+                        {/* نوع السؤال (Question Type Switcher) */}
+                        <div>
+                          <label className="block text-[11px] font-bold text-slate-700 mb-1.5">تغيير نوع السؤال:</label>
+                          <div className="grid grid-cols-3 gap-2">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const baseOpts = (editQuestionData.options && editQuestionData.options.length >= 2 && !editQuestionData.options.includes('صح'))
+                                  ? editQuestionData.options
+                                  : ['خيار 1', 'خيار 2', 'خيار 3', 'خيار 4'];
+                                setEditQuestionData({
+                                  ...editQuestionData,
+                                  type: 'mcq',
+                                  options: baseOpts,
+                                  correctAnswer: baseOpts.includes(editQuestionData.correctAnswer) ? editQuestionData.correctAnswer : baseOpts[0]
+                                });
+                              }}
+                              className={`py-1.5 px-2 rounded-xl font-bold text-[11px] border transition-all ${
+                                (!editQuestionData.type || editQuestionData.type === 'mcq')
+                                  ? 'bg-maroon-800 text-white border-maroon-800 shadow-xs'
+                                  : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                              }`}
+                            >
+                              اختيار من متعدد
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const tfOpts = ['صح', 'خطأ'];
+                                const curr = editQuestionData.correctAnswer === 'خطأ' ? 'خطأ' : 'صح';
+                                setEditQuestionData({
+                                  ...editQuestionData,
+                                  type: 'true_false',
+                                  options: tfOpts,
+                                  correctAnswer: curr
+                                });
+                              }}
+                              className={`py-1.5 px-2 rounded-xl font-bold text-[11px] border transition-all ${
+                                editQuestionData.type === 'true_false'
+                                  ? 'bg-maroon-800 text-white border-maroon-800 shadow-xs'
+                                  : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                              }`}
+                            >
+                              صح وخطأ
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditQuestionData({
+                                  ...editQuestionData,
+                                  type: 'essay',
+                                  options: [],
+                                  correctAnswer: editQuestionData.correctAnswer || ''
+                                });
+                              }}
+                              className={`py-1.5 px-2 rounded-xl font-bold text-[11px] border transition-all ${
+                                editQuestionData.type === 'essay'
+                                  ? 'bg-maroon-800 text-white border-maroon-800 shadow-xs'
+                                  : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                              }`}
+                            >
+                              مقالي
+                            </button>
+                          </div>
                         </div>
 
                         <div>
@@ -682,18 +786,35 @@ export default function ServantAiStudioModal({
                           />
                         </div>
 
-                        {editQuestionData.options && editQuestionData.options.length > 0 && (
+                        {/* تحكم الخيارات لاختيار من متعدد */}
+                        {(!editQuestionData.type || editQuestionData.type === 'mcq') && (
                           <div className="space-y-2">
-                            <label className="block text-[11px] font-bold text-slate-700">خيارات الإجابة:</label>
+                            <div className="flex items-center justify-between">
+                              <label className="block text-[11px] font-bold text-slate-700">خيارات الإجابة:</label>
+                              {(editQuestionData.options || []).length < 6 && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const opts = [...(editQuestionData.options || [])];
+                                    opts.push(`خيار ${opts.length + 1}`);
+                                    setEditQuestionData({ ...editQuestionData, options: opts });
+                                  }}
+                                  className="text-maroon-800 hover:text-maroon-900 text-[11px] font-bold flex items-center gap-1 hover:underline"
+                                >
+                                  <Plus className="w-3.5 h-3.5" />
+                                  <span>إضافة خيار</span>
+                                </button>
+                              )}
+                            </div>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                              {editQuestionData.options.map((opt, oIdx) => (
+                              {(editQuestionData.options || []).map((opt, oIdx) => (
                                 <div key={oIdx} className="flex items-center gap-2 bg-slate-50 p-2 rounded-xl border border-slate-200">
                                   <input
                                     type="radio"
                                     name={`correct_${idx}`}
                                     checked={editQuestionData.correctAnswer === opt}
                                     onChange={() => setEditQuestionData({ ...editQuestionData, correctAnswer: opt })}
-                                    className="accent-maroon-800"
+                                    className="accent-maroon-800 cursor-pointer"
                                     title="تحديد كإجابة صحيحة"
                                   />
                                   <input
@@ -708,21 +829,95 @@ export default function ServantAiStudioModal({
                                     }}
                                     className="flex-1 bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-xs text-slate-800 focus:outline-none focus:border-maroon-800"
                                   />
+                                  {(editQuestionData.options || []).length > 2 && (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const newOpts = editQuestionData.options.filter((_, i) => i !== oIdx);
+                                        const newCorrect = editQuestionData.correctAnswer === opt ? (newOpts[0] || '') : editQuestionData.correctAnswer;
+                                        setEditQuestionData({ ...editQuestionData, options: newOpts, correctAnswer: newCorrect });
+                                      }}
+                                      className="text-slate-400 hover:text-red-500 p-1 rounded transition-colors"
+                                      title="حذف هذا الخيار"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  )}
                                 </div>
                               ))}
                             </div>
                           </div>
                         )}
 
-                        <div>
-                          <label className="block text-[11px] font-bold text-slate-700 mb-1">الشاهد والشرح:</label>
-                          <input
-                            type="text"
-                            value={editQuestionData.explanation || ''}
-                            onChange={(e) => setEditQuestionData({ ...editQuestionData, explanation: e.target.value })}
-                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs text-slate-800 focus:outline-none focus:border-maroon-800"
-                            placeholder="مثال: يوحنا 15: 16"
-                          />
+                        {/* تحكم الصح والخطأ */}
+                        {editQuestionData.type === 'true_false' && (
+                          <div className="space-y-1.5">
+                            <label className="block text-[11px] font-bold text-slate-700">حدد الإجابة الصحيحة:</label>
+                            <div className="grid grid-cols-2 gap-3">
+                              <button
+                                type="button"
+                                onClick={() => setEditQuestionData({ ...editQuestionData, correctAnswer: 'صح', options: ['صح', 'خطأ'] })}
+                                className={`py-2 px-3 rounded-xl font-extrabold text-xs border flex items-center justify-center gap-2 transition-all ${
+                                  editQuestionData.correctAnswer === 'صح'
+                                    ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
+                                    : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                                }`}
+                              >
+                                <span>صح (صواب)</span>
+                                {editQuestionData.correctAnswer === 'صح' && <Check className="w-4 h-4" />}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setEditQuestionData({ ...editQuestionData, correctAnswer: 'خطأ', options: ['صح', 'خطأ'] })}
+                                className={`py-2 px-3 rounded-xl font-extrabold text-xs border flex items-center justify-center gap-2 transition-all ${
+                                  editQuestionData.correctAnswer === 'خطأ'
+                                    ? 'bg-rose-600 text-white border-rose-600 shadow-sm'
+                                    : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                                }`}
+                              >
+                                <span>خطأ</span>
+                                {editQuestionData.correctAnswer === 'خطأ' && <Check className="w-4 h-4" />}
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* تحكم السؤال المقالي */}
+                        {editQuestionData.type === 'essay' && (
+                          <div className="space-y-1.5">
+                            <label className="block text-[11px] font-bold text-slate-700">الإجابة النموذجية المقترحة للمقالي:</label>
+                            <textarea
+                              rows={2}
+                              value={editQuestionData.correctAnswer || ''}
+                              onChange={(e) => setEditQuestionData({ ...editQuestionData, correctAnswer: e.target.value })}
+                              className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-900 font-bold focus:outline-none focus:border-maroon-800"
+                              placeholder="اكتب الإجابة النموذجية المتوقعة من المخدوم..."
+                            />
+                          </div>
+                        )}
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-[11px] font-bold text-slate-700 mb-1">الشاهد والشرح:</label>
+                            <input
+                              type="text"
+                              value={editQuestionData.explanation || ''}
+                              onChange={(e) => setEditQuestionData({ ...editQuestionData, explanation: e.target.value })}
+                              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs text-slate-800 focus:outline-none focus:border-maroon-800"
+                              placeholder="مثال: يوحنا 15: 16"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[11px] font-bold text-slate-700 mb-1">الدرجة:</label>
+                            <input
+                              type="number"
+                              min={1}
+                              max={20}
+                              value={editQuestionData.points || 5}
+                              onChange={(e) => setEditQuestionData({ ...editQuestionData, points: Number(e.target.value) || 5 })}
+                              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs text-slate-800 focus:outline-none focus:border-maroon-800"
+                            />
+                          </div>
                         </div>
 
                         <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
@@ -783,6 +978,12 @@ export default function ServantAiStudioModal({
                               {opt} {opt === q.correctAnswer ? '✓ (صحيحة)' : ''}
                             </div>
                           ))}
+                        </div>
+                      )}
+
+                      {q.type === 'essay' && q.correctAnswer && (
+                        <div className="text-[11px] text-maroon-900 bg-maroon-50/60 p-2.5 rounded-xl border border-maroon-200 mt-1">
+                          📝 <strong>الإجابة النموذجية المعتمدة:</strong> {q.correctAnswer}
                         </div>
                       )}
 
