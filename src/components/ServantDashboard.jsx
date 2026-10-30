@@ -1046,18 +1046,7 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
     points: 5
   });
 
-  const [createdExams, setCreatedExams] = useState([
-    {
-      id: 'ex-1',
-      title: 'امتحان أعمال شهر أكتوبر (عقيدة وطقس)',
-      subject: 'عقيدة',
-      grade: 'first',
-      durationMinutes: 20,
-      totalScore: 30,
-      questionsCount: 3,
-      status: 'active'
-    }
-  ]);
+  const [createdExams, setCreatedExams] = useState([]);
   const [showCreateExamModal, setShowCreateExamModal] = useState(false);
   const [newExamTitle, setNewExamTitle] = useState('');
   const [newExamSubject, setNewExamSubject] = useState('');
@@ -1116,10 +1105,8 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
     }, (err) => console.log('Questions fetch info:', err));
 
     const unsubEx = onSnapshot(collection(db, 'service_exams'), (snap) => {
-      if (!snap.empty) {
-        const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        setCreatedExams(list);
-      }
+      const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      setCreatedExams(list);
     }, (err) => console.log('Exams fetch info:', err));
 
     return () => {

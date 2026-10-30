@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { 
   CheckSquare, CheckCircle, Clock, Calendar, Send, 
-  HelpCircle, AlertCircle, BookOpen, Trophy, ArrowRight, Eye, ChevronDown, ChevronUp 
+  HelpCircle, AlertCircle, BookOpen, Trophy, ArrowRight, Eye, ChevronDown, ChevronUp, UserCheck 
 } from 'lucide-react';
 
 export default function StudentTasks({
@@ -20,7 +20,20 @@ export default function StudentTasks({
 
   const now = new Date();
 
-  // Separate tasks into Active (Current) vs Past (Archive)
+  const getQuizTime = (q) => {
+    if (q.createdAt?.seconds) return q.createdAt.seconds * 1000;
+    if (q.createdAt instanceof Date) return q.createdAt.getTime();
+    if (typeof q.createdAt === 'string') {
+      const parsed = Date.parse(q.createdAt);
+      if (!isNaN(parsed)) return parsed;
+    }
+    if (q.publishedAt?.seconds) return q.publishedAt.seconds * 1000;
+    if (q.id === 'quiz_genesis_22_28') return 1730270000000;
+    if (q.id === 'quiz_genesis_15_21') return 1729000000000;
+    return 0;
+  };
+
+  // Separate tasks into Active (Current) vs Past (Archive) - sorted newest first
   const activeTasksList = (allQuizzes || []).filter(q => {
     if (!q) return false;
     const isCompleted = Boolean(completedTasks && completedTasks[q.id]);
@@ -28,7 +41,7 @@ export default function StudentTasks({
     if (q.status !== 'active') return false;
     if (q.deadline && new Date(q.deadline) < now) return false;
     return true;
-  });
+  }).sort((a, b) => getQuizTime(b) - getQuizTime(a));
 
   const archiveTasksList = (allQuizzes || []).filter(q => {
     if (!q) return false;
@@ -37,7 +50,7 @@ export default function StudentTasks({
     if (q.status === 'closed' || q.status === 'draft') return true;
     if (q.deadline && new Date(q.deadline) < now) return true;
     return false;
-  });
+  }).sort((a, b) => getQuizTime(b) - getQuizTime(a));
 
   const handleStartTask = (task, practice = false) => {
     setActiveTask(task);
@@ -158,6 +171,20 @@ export default function StudentTasks({
                         )}
                       </div>
                       <h4 className="font-black text-slate-900 text-sm sm:text-base">{task.title}</h4>
+                      <div className="flex items-center gap-3 text-[11px] text-slate-500 flex-wrap pt-0.5">
+                        {task.createdBy && (
+                          <span className="bg-slate-200/70 text-slate-700 px-2 py-0.5 rounded-md font-bold text-[10px] flex items-center gap-1">
+                            <UserCheck className="w-3 h-3 text-maroon-800" />
+                            <span>الخادم: {task.createdBy}</span>
+                          </span>
+                        )}
+                        {task.createdAt && (
+                          <span className="text-slate-400 text-[10px] font-medium flex items-center gap-1">
+                            <Clock className="w-3 h-3" />
+                            <span>تاريخ الرفع: {new Date(task.createdAt?.seconds ? task.createdAt.seconds * 1000 : task.createdAt).toLocaleDateString('ar-EG', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                          </span>
+                        )}
+                      </div>
                     </div>
 
                     <button
@@ -203,6 +230,20 @@ export default function StudentTasks({
                             </span>
                           </div>
                           <h4 className="font-extrabold text-slate-900 text-sm sm:text-base">{task.title}</h4>
+                          <div className="flex items-center gap-3 text-[11px] text-slate-500 flex-wrap">
+                            {task.createdBy && (
+                              <span className="bg-slate-200/70 text-slate-700 px-2 py-0.5 rounded-md font-bold text-[10px] flex items-center gap-1">
+                                <UserCheck className="w-3 h-3 text-maroon-800" />
+                                <span>الخادم: {task.createdBy}</span>
+                              </span>
+                            )}
+                            {task.createdAt && (
+                              <span className="text-slate-400 text-[10px] font-medium flex items-center gap-1">
+                                <Clock className="w-3 h-3" />
+                                <span>{new Date(task.createdAt?.seconds ? task.createdAt.seconds * 1000 : task.createdAt).toLocaleDateString('ar-EG', { month: 'short', day: 'numeric' })}</span>
+                              </span>
+                            )}
+                          </div>
                         </div>
 
                         {completed ? (

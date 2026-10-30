@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, FileText, Sparkles, Presentation, PenTool, CheckCircle, Award, UserCheck, Trash2, Users, Eye, Calendar, Lock, Unlock, Edit3, FileSpreadsheet } from 'lucide-react';
+import { Plus, FileText, Sparkles, Presentation, PenTool, CheckCircle, Award, UserCheck, Trash2, Users, Eye, Calendar, Lock, Unlock, Edit3, FileSpreadsheet, Clock } from 'lucide-react';
 import { db } from '../../firebase';
-import { collection, addDoc, doc, updateDoc, deleteDoc, getDocs, query, where, serverTimestamp, onSnapshot } from 'firebase/firestore';
+import { collection, addDoc, doc, updateDoc, setDoc, deleteDoc, getDocs, query, where, serverTimestamp, onSnapshot } from 'firebase/firestore';
 import ServantAiStudioModal from './ServantAiStudioModal';
 import AiPresentationViewer from './AiPresentationViewer';
 import ServantQuickQuizBuilderModal from './ServantQuickQuizBuilderModal';
@@ -112,16 +112,79 @@ export default function ServantExamsBank({
   
   // Merge loaded exams from Firestore with predefined system drafts if not already saved in db
   const allMergedExams = React.useMemo(() => {
-    const list = [...(createdExams || [])];
-    const hasGenesisQuiz2 = list.some(ex => ex.id === genesisQuizPart2Data.id || ex.title === genesisQuizPart2Data.title);
-    if (!hasGenesisQuiz2 && selectedGrade !== 'elisha') {
-      list.unshift(genesisQuizPart2Data);
+    // 1. استبعاد أي كائنات وهمية قديمة (مثل ex-1)
+    const rawList = (createdExams || []).filter(ex => ex && ex.id !== 'ex-1');
+
+    // 2. فحص هل مسابقة 15-21 أو 22-28 موجودة بالفعل في Firestore
+    const isGen1Match = (ex) => {
+      if (ex.id === genesisQuizData.id) return true;
+      const t = (ex.title || '').trim();
+      return (t.includes('15') && t.includes('21')) || t.includes(genesisQuizData.title);
+    };
+
+    const isGen2Match = (ex) => {
+      if (ex.id === genesisQuizPart2Data.id) return true;
+      const t = (ex.title || '').trim();
+      return (t.includes('22') && t.includes('28')) || t.includes(genesisQuizPart2Data.title);
+    };
+
+    const hasGenesis1 = rawList.some(isGen1Match);
+    const hasGenesis2 = rawList.some(isGen2Match);
+
+    const merged = [...rawList];
+
+    // إضافة مسابقة الأصحاحات 22 إلى 28 كمسابقة أساسية إن لم تكن مسجلة مسبقاً
+    if (!hasGenesis2 && selectedGrade !== 'elisha') {
+      merged.push({
+        ...genesisQuizPart2Data,
+        createdBy: genesisQuizPart2Data.createdBy || 'الخادم المسؤول',
+        createdAt: genesisQuizPart2Data.createdAt || { seconds: Math.floor(Date.now() / 1000) }
+      });
     }
-    const hasGenesisQuiz = list.some(ex => ex.id === genesisQuizData.id || ex.title === genesisQuizData.title);
-    if (!hasGenesisQuiz && selectedGrade !== 'elisha') {
-      list.unshift(genesisQuizData);
+
+    // إضافة مسابقة الأصحاحات 15 إلى 21 بحالتها المغلقة إن لم تكن مسجلة مسبقاً
+    if (!hasGenesis1 && selectedGrade !== 'elisha') {
+      merged.push({
+        ...genesisQuizData,
+        status: 'closed',
+        createdBy: genesisQuizData.createdBy || 'الخادم المسؤول',
+        createdAt: genesisQuizData.createdAt || { seconds: Math.floor((Date.now() - 86400000 * 3) / 1000) }
+      });
     }
-    return list;
+
+    // 3. منع التكرار تماماً (Deduplication)
+    const seenKeys = new Set();
+    const uniqueList = [];
+    for (const ex of merged) {
+      const normTitle = (ex.title || '').trim().replace(/\s+/g, ' ');
+      const idKey = ex.id ? `id_${ex.id}` : null;
+      const titleKey = `title_${normTitle}`;
+
+      if (idKey && seenKeys.has(idKey)) continue;
+      if (normTitle && seenKeys.has(titleKey)) continue;
+
+      if (idKey) seenKeys.add(idKey);
+      if (normTitle) seenKeys.add(titleKey);
+      uniqueList.push(ex);
+    }
+
+    // 4. ترتيب التاسكات تنازلياً حسب توقيت الرفع (الأحدث أولاً)
+    const getExamTime = (ex) => {
+      if (ex.createdAt?.seconds) return ex.createdAt.seconds * 1000;
+      if (ex.createdAt instanceof Date) return ex.createdAt.getTime();
+      if (typeof ex.createdAt === 'string') {
+        const parsed = Date.parse(ex.createdAt);
+        if (!isNaN(parsed)) return parsed;
+      }
+      if (ex.publishedAt?.seconds) return ex.publishedAt.seconds * 1000;
+      if (ex.id === 'quiz_genesis_22_28') return 1730270000000;
+      if (ex.id === 'quiz_genesis_15_21') return 1729000000000;
+      return 0;
+    };
+
+    uniqueList.sort((a, b) => getExamTime(b) - getExamTime(a));
+
+    return uniqueList;
   }, [createdExams, selectedGrade]);
 
   const currentGradeExams = allMergedExams.filter(ex => 
@@ -235,13 +298,22 @@ export default function ServantExamsBank({
 
     try {
       if (exam.id === genesisQuizData.id || exam.id === genesisQuizPart2Data.id) {
-        // Predefined draft being activated or toggled for the first time
-        const docRef = await addDoc(collection(db, 'service_exams'), {
+        // حفظ وتحديث الحالة المحددة في قاعدة البيانات بنفس المعرف الثابت لمنع أي تكرار
+        await setDoc(doc(db, 'service_exams', exam.id), {
           ...exam,
           status: newStatus,
-          createdAt: serverTimestamp()
+          createdBy: exam.createdBy || user?.fullName || 'الخادم المسؤول',
+          createdAt: exam.createdAt || serverTimestamp()
+        }, { merge: true });
+
+        setCreatedExams(prev => {
+          const list = prev || [];
+          const exists = list.some(e => e.id === exam.id);
+          if (exists) {
+            return list.map(e => e.id === exam.id ? { ...e, status: newStatus } : e);
+          }
+          return [{ ...exam, status: newStatus }, ...list];
         });
-        setCreatedExams(prev => [{ ...exam, id: docRef.id, status: newStatus }, ...(prev || [])]);
       } else {
         await updateDoc(doc(db, 'service_exams', exam.id), { status: newStatus });
         setCreatedExams(prev => prev.map(e => e.id === exam.id ? { ...e, status: newStatus } : e));
@@ -497,9 +569,23 @@ export default function ServantExamsBank({
                         </span>
                       )}
                     </div>
-                    <span className="text-[11px] text-slate-500 block">
-                      {ex.questions?.length ? `${ex.questions.length} أسئلة` : `${ex.questionsCount || 0} أسئلة`} • {ex.durationMinutes ? `${ex.durationMinutes} دقيقة` : 'وقت مفتوح'} • الدرجة الكلية: {ex.totalScore || 20} نقطة
-                    </span>
+                    <div className="flex items-center gap-2 text-[11px] text-slate-500 flex-wrap">
+                      <span>
+                        {ex.questions?.length ? `${ex.questions.length} أسئلة` : `${ex.questionsCount || 0} أسئلة`} • {ex.durationMinutes ? `${ex.durationMinutes} دقيقة` : 'وقت مفتوح'} • الدرجة الكلية: {ex.totalScore || 20} نقطة
+                      </span>
+                      {ex.createdBy && (
+                        <span className="bg-slate-200/70 text-slate-700 px-2 py-0.5 rounded-md font-bold text-[10px] flex items-center gap-1">
+                          <UserCheck className="w-3 h-3 text-maroon-800" />
+                          <span>الخادم: {ex.createdBy}</span>
+                        </span>
+                      )}
+                      {ex.createdAt && (
+                        <span className="text-slate-400 text-[10px] font-medium flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          <span>تاريخ الرفع: {new Date(ex.createdAt?.seconds ? ex.createdAt.seconds * 1000 : ex.createdAt).toLocaleDateString('ar-EG', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   <div className="flex items-center gap-2 shrink-0 flex-wrap sm:flex-nowrap">

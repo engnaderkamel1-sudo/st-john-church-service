@@ -7,6 +7,7 @@ export const genesisQuizData = {
   "deadline": "",
   "totalScore": 70,
   "questionsCount": 35,
+  "status": "closed",
   "questions": [
     {
       "id": "gen_1",
