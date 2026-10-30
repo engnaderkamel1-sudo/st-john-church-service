@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { 
   CheckSquare, CheckCircle, Clock, Calendar, Send, 
-  HelpCircle, AlertCircle, BookOpen, Trophy, ArrowRight, Eye, ChevronDown, ChevronUp, UserCheck 
+  HelpCircle, AlertCircle, BookOpen, Trophy, ArrowRight, Eye, ChevronDown, ChevronUp 
 } from 'lucide-react';
 
 export default function StudentTasks({
@@ -171,20 +171,12 @@ export default function StudentTasks({
                         )}
                       </div>
                       <h4 className="font-black text-slate-900 text-sm sm:text-base">{task.title}</h4>
-                      <div className="flex items-center gap-3 text-[11px] text-slate-500 flex-wrap pt-0.5">
-                        {task.createdBy && (
-                          <span className="bg-slate-200/70 text-slate-700 px-2 py-0.5 rounded-md font-bold text-[10px] flex items-center gap-1">
-                            <UserCheck className="w-3 h-3 text-maroon-800" />
-                            <span>الخادم: {task.createdBy}</span>
-                          </span>
-                        )}
-                        {task.createdAt && (
-                          <span className="text-slate-400 text-[10px] font-medium flex items-center gap-1">
-                            <Clock className="w-3 h-3" />
-                            <span>تاريخ الرفع: {new Date(task.createdAt?.seconds ? task.createdAt.seconds * 1000 : task.createdAt).toLocaleDateString('ar-EG', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
-                          </span>
-                        )}
-                      </div>
+                      {task.createdAt && (
+                        <div className="flex items-center gap-1.5 text-[11px] text-slate-400 font-medium pt-0.5">
+                          <Clock className="w-3 h-3" />
+                          <span>تاريخ النشر: {new Date(task.createdAt?.seconds ? task.createdAt.seconds * 1000 : task.createdAt).toLocaleDateString('ar-EG', { month: 'short', day: 'numeric' })}</span>
+                        </div>
+                      )}
                     </div>
 
                     <button
@@ -230,20 +222,12 @@ export default function StudentTasks({
                             </span>
                           </div>
                           <h4 className="font-extrabold text-slate-900 text-sm sm:text-base">{task.title}</h4>
-                          <div className="flex items-center gap-3 text-[11px] text-slate-500 flex-wrap">
-                            {task.createdBy && (
-                              <span className="bg-slate-200/70 text-slate-700 px-2 py-0.5 rounded-md font-bold text-[10px] flex items-center gap-1">
-                                <UserCheck className="w-3 h-3 text-maroon-800" />
-                                <span>الخادم: {task.createdBy}</span>
-                              </span>
-                            )}
-                            {task.createdAt && (
-                              <span className="text-slate-400 text-[10px] font-medium flex items-center gap-1">
-                                <Clock className="w-3 h-3" />
-                                <span>{new Date(task.createdAt?.seconds ? task.createdAt.seconds * 1000 : task.createdAt).toLocaleDateString('ar-EG', { month: 'short', day: 'numeric' })}</span>
-                              </span>
-                            )}
-                          </div>
+                          {task.createdAt && (
+                            <div className="flex items-center gap-1.5 text-[11px] text-slate-400 font-medium">
+                              <Clock className="w-3 h-3" />
+                              <span>تاريخ النشر: {new Date(task.createdAt?.seconds ? task.createdAt.seconds * 1000 : task.createdAt).toLocaleDateString('ar-EG', { month: 'short', day: 'numeric' })}</span>
+                            </div>
+                          )}
                         </div>
 
                         {completed ? (
