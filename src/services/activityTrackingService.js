@@ -8,15 +8,52 @@ const _recordingLocks = {};
  * التعرف الذكي على نوع جهاز المستخدم ونظام التشغيل
  */
 export function detectDevice() {
-  if (typeof navigator === 'undefined') return 'جهاز كمبيوتر 💻';
+  if (typeof navigator === 'undefined') return 'كمبيوتر (ويندوز) 💻';
   const ua = navigator.userAgent || '';
   if (/iphone/i.test(ua)) return 'هاتف آيفون 🍏';
-  if (/ipad/i.test(ua)) return 'جهاز آيباد 🍏';
-  if (/android/i.test(ua)) return 'هاتف أندرويد 📱';
+  if (/ipad/i.test(ua)) return 'جهاز لوحي (آيباد) 🍏';
+  if (/android/i.test(ua)) {
+    if (/tablet/i.test(ua)) return 'جهاز لوحي (أندرويد) 📱';
+    return 'هاتف أندرويد 📱';
+  }
   if (/mobile/i.test(ua)) return 'هاتف ذكي 📱';
-  if (/macintosh|mac os x/i.test(ua)) return 'ماك 💻';
-  if (/windows/i.test(ua)) return 'ويندوز 💻';
-  return 'جهاز كمبيوتر 💻';
+  if (/macintosh|mac os x/i.test(ua)) return 'كمبيوتر (ماك) 💻';
+  if (/windows/i.test(ua)) return 'كمبيوتر (ويندوز) 💻';
+  return 'كمبيوتر 💻';
+}
+
+/**
+ * تنسيق التوقيت والتاريخ بالأرقام الإنجليزية الصريحة
+ * DD/MM/YYYY - hh:mm AM/PM
+ */
+export function formatLogTimestamp(log) {
+  if (!log) return '';
+  let dateObj = null;
+  if (log.timestamp && typeof log.timestamp.toDate === 'function') {
+    dateObj = log.timestamp.toDate();
+  } else if (log.timestamp && log.timestamp.seconds) {
+    dateObj = new Date(log.timestamp.seconds * 1000);
+  } else if (log.timestamp) {
+    dateObj = new Date(log.timestamp);
+  }
+
+  if (dateObj && !isNaN(dateObj.getTime())) {
+    const day = String(dateObj.getDate()).padStart(2, '0');
+    const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+    const year = dateObj.getFullYear();
+    let hours = dateObj.getHours();
+    const minutes = String(dateObj.getMinutes()).padStart(2, '0');
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12;
+    hours = hours ? hours : 12;
+    const hoursStr = String(hours).padStart(2, '0');
+    return `${day}/${month}/${year} - ${hoursStr}:${minutes} ${ampm}`;
+  }
+
+  if (log.dateStr && log.timeStr) {
+    return `${log.dateStr} - ${log.timeStr}`;
+  }
+  return log.timeStr || log.dateStr || '—';
 }
 
 /**
@@ -53,6 +90,17 @@ export async function recordUserSession(currentUser, customAction = 'session_ope
 
     const deviceName = detectDevice();
 
+    const nowDate = new Date();
+    const day = String(nowDate.getDate()).padStart(2, '0');
+    const month = String(nowDate.getMonth() + 1).padStart(2, '0');
+    const year = nowDate.getFullYear();
+    let hours = nowDate.getHours();
+    const minutes = String(nowDate.getMinutes()).padStart(2, '0');
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12;
+    hours = hours ? hours : 12;
+    const hoursStr = String(hours).padStart(2, '0');
+
     // 3. كتابة وثيقة في سجل الدخول والنشاط
     await addDoc(collection(db, 'login_logs'), {
       userId: userId,
@@ -64,8 +112,8 @@ export async function recordUserSession(currentUser, customAction = 'session_ope
       device: deviceName,
       action: customAction,
       timestamp: serverTimestamp(),
-      timeStr: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }),
-      dateStr: new Date().toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
+      timeStr: `${hoursStr}:${minutes} ${ampm}`,
+      dateStr: `${day}/${month}/${year}`
     });
 
     // 4. تحديث وثيقة المستخدم برفع عداد الزيارات وتسجيل آخر ظهور

@@ -4,7 +4,7 @@ import { getGeminiApiKey, saveGeminiApiKey } from '../../services/geminiService'
 import { db } from '../../firebase';
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { hashPassword, checkIsAppAdmin } from '../../utils/security';
-import { getRelativeActivityInfo } from '../../services/activityTrackingService';
+import { getRelativeActivityInfo, formatLogTimestamp } from '../../services/activityTrackingService';
 
 export default function ServantUsersHub({
   user,
@@ -18,6 +18,8 @@ export default function ServantUsersHub({
   setUserRoleFilter,
   fetchAllUsers,
   fetchLoginLogs,
+  handleLoadMoreLogs,
+  logsLimit = 100,
   usersLoading,
   logsLoading,
   getGradeTitle,
@@ -1446,22 +1448,24 @@ https://st-john-church-service-rust.vercel.app/
                             <Activity className="w-3 h-3" />
                             <span>
                               {log.action === 'register_pending_approval'
-                                ? 'طلب حساب جديد'
+                                ? 'إنشاء حساب جديد ⏳'
                                 : log.action === 'session_open'
-                                ? 'فتح جلسة 🟢'
+                                ? 'فتح التطبيق 📱'
                                 : 'تسجيل دخول 🔑'}
                             </span>
                           </span>
 
-                          {log.device && (
+                          {log.device ? (
                             <span className="text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md text-[10px] font-medium">
                               {log.device}
                             </span>
+                          ) : (
+                            <span className="text-slate-400 font-mono text-[10px]">—</span>
                           )}
                         </div>
 
-                        <span className="text-slate-400 font-mono text-[10px]">
-                          {log.timeStr} • {log.dateStr}
+                        <span className="text-slate-500 font-mono text-[11px]" dir="ltr">
+                          {formatLogTimestamp(log)}
                         </span>
                       </div>
                     </div>
@@ -1507,9 +1511,13 @@ https://st-john-church-service-rust.vercel.app/
                             </span>
                           </td>
                           <td className="py-3 px-3">
-                            <span className="text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md text-[11px] font-medium">
-                              {log.device || 'كمبيوتر 💻'}
-                            </span>
+                            {log.device ? (
+                              <span className="text-slate-700 bg-slate-100 px-2 py-0.5 rounded-md text-[11px] font-medium">
+                                {log.device}
+                              </span>
+                            ) : (
+                              <span className="text-slate-400 font-mono text-[11px]">—</span>
+                            )}
                           </td>
                           <td className="py-3 px-3">
                             <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full ${
@@ -1524,19 +1532,34 @@ https://st-john-church-service-rust.vercel.app/
                                 {log.action === 'register_pending_approval'
                                   ? 'إنشاء حساب جديد ⏳'
                                   : log.action === 'session_open'
-                                  ? 'فتح جلسة تلقائية 🟢'
-                                  : 'تسجيل دخول يدوي 🔑'}
+                                  ? 'فتح التطبيق 📱'
+                                  : 'تسجيل دخول 🔑'}
                               </span>
                             </span>
                           </td>
-                          <td className="py-3 px-3 text-slate-500 font-mono text-[11px]">
-                            {log.timeStr || 'الآن'} • {log.dateStr || 'اليوم'}
+                          <td className="py-3 px-3 text-slate-600 font-mono text-[11px]" dir="ltr">
+                            {formatLogTimestamp(log)}
                           </td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 </div>
+
+                {/* Load More Logs Button */}
+                {typeof handleLoadMoreLogs === 'function' && (
+                  <div className="text-center pt-2">
+                    <button
+                      type="button"
+                      onClick={handleLoadMoreLogs}
+                      disabled={logsLoading}
+                      className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-xs transition-colors inline-flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                    >
+                      <RefreshCw className={`w-3.5 h-3.5 ${logsLoading ? 'animate-spin text-maroon-800' : ''}`} />
+                      <span>تحميل المزيد من السجلات السابقة ⏬</span>
+                    </button>
+                  </div>
+                )}
               </div>
             );
           })()}

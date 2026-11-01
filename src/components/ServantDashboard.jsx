@@ -90,6 +90,7 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
   // User Login Logs History State (سجل دخول المستخدمين)
   const [loginLogs, setLoginLogs] = useState([]);
   const [logsLoading, setLogsLoading] = useState(false);
+  const [logsLimit, setLogsLimit] = useState(100);
 
   // Fetch registered users from Firestore
   const fetchAllUsers = async () => {
@@ -107,10 +108,10 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
   };
 
   // Fetch Login Logs History
-  const fetchLoginLogs = async () => {
+  const fetchLoginLogs = async (customLimit = logsLimit) => {
     setLogsLoading(true);
     try {
-      const q = query(collection(db, 'login_logs'), orderBy('timestamp', 'desc'), limit(50));
+      const q = query(collection(db, 'login_logs'), orderBy('timestamp', 'desc'), limit(customLimit));
       const snap = await getDocs(q);
       const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       setLoginLogs(list);
@@ -119,6 +120,12 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
     } finally {
       setLogsLoading(false);
     }
+  };
+
+  const handleLoadMoreLogs = () => {
+    const nextLimit = logsLimit + 50;
+    setLogsLimit(nextLimit);
+    fetchLoginLogs(nextLimit);
   };
 
   useEffect(() => {
@@ -2120,6 +2127,8 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
           setUserRoleFilter={setUserRoleFilter}
           fetchAllUsers={fetchAllUsers}
           fetchLoginLogs={fetchLoginLogs}
+          handleLoadMoreLogs={handleLoadMoreLogs}
+          logsLimit={logsLimit}
           usersLoading={usersLoading}
           logsLoading={logsLoading}
           getGradeTitle={getGradeTitle}
