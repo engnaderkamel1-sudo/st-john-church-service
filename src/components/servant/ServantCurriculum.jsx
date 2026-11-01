@@ -66,6 +66,47 @@ export const LECTURE_NUMBERS = [
 
 export const DRIVE_WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbzhFwJ7JEk2L9-OwFI4GF07tCVHOvWtG7yFLR4h9YyI47Lg2WNJtZ1dR5AhAtvDfkaF/exec';
 
+export const formatContentCounts = (lecsCount, refsCount, isServant = false) => {
+  const parts = [];
+
+  if (lecsCount > 0) {
+    if (lecsCount === 1) parts.push('محاضرة واحدة');
+    else if (lecsCount === 2) parts.push('محاضرتان');
+    else if (lecsCount >= 3 && lecsCount <= 10) parts.push(`${lecsCount} محاضرات`);
+    else parts.push(`${lecsCount} محاضرة`);
+  }
+
+  if (refsCount > 0) {
+    if (refsCount === 1) parts.push('1 مرجع');
+    else if (refsCount === 2) parts.push('مرجعان');
+    else if (refsCount >= 3 && refsCount <= 10) parts.push(`${refsCount} مراجع`);
+    else parts.push(`${refsCount} مرجع`);
+  }
+
+  if (parts.length === 0) {
+    return {
+      topLabel: 'لا توجد محتويات بعد',
+      bottomLabel: isServant ? 'إدارة المادة (فارغة)' : 'تصفح المادة (فارغة)'
+    };
+  }
+
+  const combined = parts.join(' و ');
+  return {
+    topLabel: combined,
+    bottomLabel: isServant
+      ? (parts.length === 1 && lecsCount > 0
+          ? `إدارة محاضرات المادة (${lecsCount})`
+          : parts.length === 1 && refsCount > 0
+            ? `إدارة مراجع المادة (${refsCount})`
+            : `إدارة محتوى المادة (${combined})`)
+      : (parts.length === 1 && lecsCount > 0
+          ? `تصفح محاضرات المادة (${lecsCount})`
+          : parts.length === 1 && refsCount > 0
+            ? `تصفح مراجع المادة (${refsCount})`
+            : `تصفح محتوى المادة (${combined})`)
+  };
+};
+
 export default function ServantCurriculum({
   user,
   isAppAdmin = false,
@@ -1610,10 +1651,13 @@ export default function ServantCurriculum({
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {currentGradeSubjects.map((sub) => {
-                const lecs = normalizeLectures(sub);
-                const lecsCount = lecs.length;
-                const totalRefsCount = (sub.references || []).length || lecs.flatMap(l => l.files || []).length || lecsCount;
                 const isServantMode = curriculumTarget === 'servants';
+                const lecs = normalizeLectures(sub);
+                const lecsCount = isServantMode ? 0 : lecs.length;
+                const refsCount = (sub.references || []).length;
+                const counts = isServantMode
+                  ? formatContentCounts(0, refsCount, true)
+                  : formatContentCounts(lecs.length, refsCount, true);
 
                 return (
                   <div
@@ -1636,10 +1680,7 @@ export default function ServantCurriculum({
                             <Pencil className="w-3.5 h-3.5" />
                           </button>
                           <span className="text-xs text-slate-400 font-bold">
-                            {isServantMode
-                              ? `${totalRefsCount} ${totalRefsCount === 1 ? 'مرجع' : (totalRefsCount >= 3 && totalRefsCount <= 10) ? 'مراجع' : 'مرجع'}`
-                              : `${lecsCount} ${lecsCount === 1 ? 'محاضرة' : (lecsCount >= 3 && lecsCount <= 10) ? 'محاضرات' : 'محاضرة'}`
-                            }
+                            {counts.topLabel}
                           </span>
                           <button
                             onClick={(e) => handleDeleteSubject(sub.id, e)}
@@ -1659,7 +1700,7 @@ export default function ServantCurriculum({
                       </p>
                     </div>
                     <div className="flex items-center justify-between text-xs font-bold text-maroon-800 pt-3 border-t border-slate-200/60">
-                      <span>{isServantMode ? `إدارة مراجع المادة (${totalRefsCount})` : `إدارة محاضرات المادة (${lecsCount})`}</span>
+                      <span>{counts.bottomLabel}</span>
                       <ChevronLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
                     </div>
                   </div>

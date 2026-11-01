@@ -33,6 +33,47 @@ const normalizeLectures = (subject) => {
   return [];
 };
 
+export const formatContentCounts = (lecsCount, refsCount, isServant = false) => {
+  const parts = [];
+
+  if (lecsCount > 0) {
+    if (lecsCount === 1) parts.push('محاضرة واحدة');
+    else if (lecsCount === 2) parts.push('محاضرتان');
+    else if (lecsCount >= 3 && lecsCount <= 10) parts.push(`${lecsCount} محاضرات`);
+    else parts.push(`${lecsCount} محاضرة`);
+  }
+
+  if (refsCount > 0) {
+    if (refsCount === 1) parts.push('1 مرجع');
+    else if (refsCount === 2) parts.push('مرجعان');
+    else if (refsCount >= 3 && refsCount <= 10) parts.push(`${refsCount} مراجع`);
+    else parts.push(`${refsCount} مرجع`);
+  }
+
+  if (parts.length === 0) {
+    return {
+      topLabel: 'لا توجد محتويات بعد',
+      bottomLabel: isServant ? 'إدارة المادة (فارغة)' : 'تصفح المادة (فارغة)'
+    };
+  }
+
+  const combined = parts.join(' و ');
+  return {
+    topLabel: combined,
+    bottomLabel: isServant
+      ? (parts.length === 1 && lecsCount > 0
+          ? `إدارة محاضرات المادة (${lecsCount})`
+          : parts.length === 1 && refsCount > 0
+            ? `إدارة مراجع المادة (${refsCount})`
+            : `إدارة محتوى المادة (${combined})`)
+      : (parts.length === 1 && lecsCount > 0
+          ? `تصفح محاضرات المادة (${lecsCount})`
+          : parts.length === 1 && refsCount > 0
+            ? `تصفح مراجع المادة (${refsCount})`
+            : `تصفح محتوى المادة (${combined})`)
+  };
+};
+
 export default function StudentCurriculum({
   user,
   getGradeTitle,
@@ -98,6 +139,9 @@ export default function StudentCurriculum({
             {subjectsData.map((sub) => {
               const publishedLecs = normalizeLectures(sub).filter(l => l.isPublishedForStudents !== false);
               const lecsCount = publishedLecs.length;
+              const refsCount = (sub.references || []).filter(r => r && r.isPublishedForStudents !== false && r.targetAudience !== 'servants').length;
+              const counts = formatContentCounts(lecsCount, refsCount, false);
+
               return (
                 <div
                   key={sub.id}
@@ -109,7 +153,7 @@ export default function StudentCurriculum({
                       <span className="text-[10px] bg-maroon-100 text-maroon-900 font-extrabold px-2.5 py-0.5 rounded-full">
                         {sub.teacher || 'خادم المادة'}
                       </span>
-                      <span className="text-xs text-slate-400 font-bold">{lecsCount} {lecsCount === 1 ? 'محاضرة' : (lecsCount >= 3 && lecsCount <= 10) ? 'محاضرات' : 'محاضرة'}</span>
+                      <span className="text-xs text-slate-400 font-bold">{counts.topLabel}</span>
                     </div>
                     <h4 className="font-extrabold text-slate-900 text-base group-hover:text-maroon-800 transition-colors mb-1">
                       {sub.name}
@@ -119,7 +163,7 @@ export default function StudentCurriculum({
                     </p>
                   </div>
                   <div className="flex items-center justify-between text-xs font-bold text-maroon-800 pt-3 border-t border-slate-200/60">
-                    <span>تصفح محاضرات المادة ({lecsCount})</span>
+                    <span>{counts.bottomLabel}</span>
                     <ChevronLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
                   </div>
                 </div>
