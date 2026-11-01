@@ -6,7 +6,7 @@ import {
   Calendar, User, FolderPlus, Pencil, X, Share2
 } from 'lucide-react';
 import { db } from '../../firebase';
-import { collection, doc, addDoc, updateDoc, deleteDoc, serverTimestamp, onSnapshot } from 'firebase/firestore';
+import { collection, doc, addDoc, updateDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import ServantAiStudioModal from './ServantAiStudioModal';
 import AiPresentationViewer from './AiPresentationViewer';
 import { triggerServerPush } from '../../services/webPushService';
@@ -157,21 +157,8 @@ export default function ServantCurriculum({
   const [shareIsSaving, setShareIsSaving] = useState(false);
   const [shareSuccessMsg, setShareSuccessMsg] = useState('');
 
-  // Active Academic Cycle Real-time Listener (cycle_1 -> first | cycle_2 -> second)
-  const [activeAcademicCycle, setActiveAcademicCycle] = useState('first');
-
-  useEffect(() => {
-    const unsubCycle = onSnapshot(doc(db, 'service_settings', 'academic_cycle'), (docSnap) => {
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        if (data.activeCycle) {
-          const cycleKey = (data.activeCycle === 'cycle_2' || data.activeCycle === 'second') ? 'second' : 'first';
-          setActiveAcademicCycle(cycleKey);
-        }
-      }
-    });
-    return () => unsubCycle();
-  }, []);
+  // Resolved current cycle grade ('first' or 'second') based on activeAcademicCycle prop
+  const currentCycleGrade = (activeAcademicCycle === 'cycle_2' || activeAcademicCycle === 'second') ? 'second' : 'first';
 
   // Sync activeLecture whenever activeSubject changes
   useEffect(() => {
@@ -1071,7 +1058,7 @@ export default function ServantCurriculum({
     setShareTargetGrade('current');
     setShareSuccessMsg('');
 
-    const effectiveGrade = activeAcademicCycle || 'first';
+    const effectiveGrade = currentCycleGrade;
     const gradeSubs = (subjectsByGrade[effectiveGrade] || []).filter(
       s => (s.targetAudience || 'students') === 'students'
     );
@@ -1092,7 +1079,7 @@ export default function ServantCurriculum({
 
   const handleGradeChangeForShare = (newGrade) => {
     setShareTargetGrade(newGrade);
-    const effectiveGrade = newGrade === 'current' ? (activeAcademicCycle || 'first') : newGrade;
+    const effectiveGrade = newGrade === 'current' ? currentCycleGrade : newGrade;
     const gradeSubs = (subjectsByGrade[effectiveGrade] || []).filter(
       s => (s.targetAudience || 'students') === 'students'
     );
@@ -1119,7 +1106,7 @@ export default function ServantCurriculum({
     setShareSuccessMsg('');
 
     try {
-      const effectiveGrade = shareTargetGrade === 'current' ? (activeAcademicCycle || 'first') : shareTargetGrade;
+      const effectiveGrade = shareTargetGrade === 'current' ? currentCycleGrade : shareTargetGrade;
       const finalSubjectName = shareTargetSubjectName.trim() || activeSubject?.name || 'مادة دراسية';
       let targetSubId = shareTargetSubjectId;
       let targetSubDoc = null;
@@ -2969,7 +2956,7 @@ export default function ServantCurriculum({
                     { 
                       key: 'current', 
                       label: 'منهج السنة الحالية', 
-                      sub: activeAcademicCycle === 'second' ? 'منهج سنة ثانية حالياً' : 'منهج سنة أولى حالياً',
+                      sub: currentCycleGrade === 'second' ? 'منهج سنة ثانية حالياً' : 'منهج سنة أولى حالياً',
                       badge: 'النشط الآن 🌟'
                     },
                     { 
@@ -3015,7 +3002,7 @@ export default function ServantCurriculum({
                   المادة الدراسية لدى المخدومين *
                 </label>
                 {(() => {
-                  const effectiveGrade = shareTargetGrade === 'current' ? (activeAcademicCycle || 'first') : shareTargetGrade;
+                  const effectiveGrade = shareTargetGrade === 'current' ? currentCycleGrade : shareTargetGrade;
                   const gradeSubs = (subjectsByGrade[effectiveGrade] || []).filter(
                     s => (s.targetAudience || 'students') === 'students'
                   );
