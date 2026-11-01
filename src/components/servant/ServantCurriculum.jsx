@@ -2142,7 +2142,7 @@ export default function ServantCurriculum({
                                     type="button"
                                     onClick={(e) => handleDeleteLecture(lec.id, e)}
                                     className="text-slate-400 hover:text-red-600 p-1 rounded-lg hover:bg-red-50 transition-colors"
-                                    title="حذف هذا الكارت المجمّع بكافة ملفاته"
+                                    title={isAppAdmin ? "حذف هذا الكارت المجمّع بكافة ملفاته" : "حذف الكارت (متاح خلال أول 30 دقيقة فقط)"}
                                   >
                                     <Trash2 className="w-3.5 h-3.5" />
                                   </button>
@@ -2236,7 +2236,7 @@ export default function ServantCurriculum({
                                   type="button"
                                   onClick={(e) => handleDeleteLecture(lec.id, e)}
                                   className="text-slate-400 hover:text-red-600 p-1 rounded-lg hover:bg-red-50 transition-colors"
-                                  title="حذف المحاضرة بكافة ملفاتها"
+                                  title={isAppAdmin ? "حذف المحاضرة بكافة ملفاتها" : "حذف المحاضرة (متاح خلال أول 30 دقيقة فقط)"}
                                 >
                                   <Trash2 className="w-3.5 h-3.5" />
                                 </button>
@@ -2952,7 +2952,7 @@ export default function ServantCurriculum({
                             type="button"
                             onClick={() => handleDeleteReference(rf.id)}
                             className="text-slate-400 hover:text-red-600 p-1.5 rounded-lg hover:bg-red-50 transition-colors cursor-pointer"
-                            title="حذف هذا الملف"
+                            title={isAppAdmin ? "حذف هذا الملف" : "حذف الملف (مقتصر على مشرف التطبيق)"}
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
