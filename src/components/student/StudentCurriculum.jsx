@@ -139,7 +139,18 @@ export default function StudentCurriculum({
             {subjectsData.map((sub) => {
               const publishedLecs = normalizeLectures(sub).filter(l => l.isPublishedForStudents !== false);
               const lecsCount = publishedLecs.length;
-              const refsCount = (sub.references || []).filter(r => r && r.isPublishedForStudents !== false && r.targetAudience !== 'servants').length;
+              const lectureFileKeys = new Set(
+                publishedLecs.flatMap(l => (l.files || []).map(f => f.id || f.url || f.fileId || f.title).filter(Boolean))
+              );
+              const refsCount = (sub.references || []).filter(r => 
+                r && 
+                r.isPublishedForStudents !== false && 
+                r.targetAudience !== 'servants' &&
+                !lectureFileKeys.has(r.id) &&
+                !lectureFileKeys.has(r.url) &&
+                !lectureFileKeys.has(r.fileId) &&
+                !lectureFileKeys.has(r.title)
+              ).length;
               const counts = formatContentCounts(lecsCount, refsCount, false);
 
               return (
@@ -201,9 +212,20 @@ export default function StudentCurriculum({
 
                 const subjectReferences = (() => {
                   const map = new Map();
+                  const lectureFileKeys = new Set(
+                    visibleLectures.flatMap(l => (l.files || []).map(f => f.id || f.url || f.fileId || f.title).filter(Boolean))
+                  );
                   if (Array.isArray(selectedSubject.references)) {
                     selectedSubject.references.forEach((rf, idx) => {
-                      if (rf && rf.isPublishedForStudents !== false && rf.targetAudience !== 'servants') {
+                      if (
+                        rf && 
+                        rf.isPublishedForStudents !== false && 
+                        rf.targetAudience !== 'servants' &&
+                        !lectureFileKeys.has(rf.id) &&
+                        !lectureFileKeys.has(rf.url) &&
+                        !lectureFileKeys.has(rf.fileId) &&
+                        !lectureFileKeys.has(rf.title)
+                      ) {
                         const key = rf.id || rf.url || `${rf.title}-${idx}`;
                         if (!map.has(key)) map.set(key, rf);
                       }

@@ -1654,7 +1654,18 @@ export default function ServantCurriculum({
                 const isServantMode = curriculumTarget === 'servants';
                 const lecs = normalizeLectures(sub);
                 const lecsCount = isServantMode ? 0 : lecs.length;
-                const refsCount = (sub.references || []).length;
+                const lectureFileKeys = new Set(
+                  lecs.flatMap(l => (l.files || []).map(f => f.id || f.url || f.fileId || f.title).filter(Boolean))
+                );
+                const refsCount = isServantMode
+                  ? (sub.references || []).length
+                  : (sub.references || []).filter(r => 
+                      r && 
+                      !lectureFileKeys.has(r.id) &&
+                      !lectureFileKeys.has(r.url) &&
+                      !lectureFileKeys.has(r.fileId) &&
+                      !lectureFileKeys.has(r.title)
+                    ).length;
                 const counts = isServantMode
                   ? formatContentCounts(0, refsCount, true)
                   : formatContentCounts(lecs.length, refsCount, true);
@@ -1810,23 +1821,40 @@ export default function ServantCurriculum({
                   </span>
                 </button>
 
-                <button
-                  type="button"
-                  onClick={() => setServantSubjectTab('references')}
-                  className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 cursor-pointer ${
-                    servantSubjectTab === 'references'
-                      ? 'bg-maroon-800 text-white shadow-sm'
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                  }`}
-                >
-                  <FileText className="w-3.5 h-3.5" />
-                  <span>مراجع وكتب المادة</span>
-                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
-                    servantSubjectTab === 'references' ? 'bg-maroon-700 text-white' : 'bg-slate-200 text-slate-700'
-                  }`}>
-                    {(activeSubject.references || []).length}
-                  </span>
-                </button>
+                {(() => {
+                  const subLecs = normalizeLectures(activeSubject);
+                  const subLecKeys = new Set(
+                    subLecs.flatMap(l => (l.files || []).map(f => f.id || f.url || f.fileId || f.title).filter(Boolean))
+                  );
+                  const activeRefs = curriculumTarget === 'servants'
+                    ? (activeSubject.references || [])
+                    : (activeSubject.references || []).filter(r =>
+                        r &&
+                        !subLecKeys.has(r.id) &&
+                        !subLecKeys.has(r.url) &&
+                        !subLecKeys.has(r.fileId) &&
+                        !subLecKeys.has(r.title)
+                      );
+                  return (
+                    <button
+                      type="button"
+                      onClick={() => setServantSubjectTab('references')}
+                      className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 cursor-pointer ${
+                        servantSubjectTab === 'references'
+                          ? 'bg-maroon-800 text-white shadow-sm'
+                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                      }`}
+                    >
+                      <FileText className="w-3.5 h-3.5" />
+                      <span>مراجع وكتب المادة</span>
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                        servantSubjectTab === 'references' ? 'bg-maroon-700 text-white' : 'bg-slate-200 text-slate-700'
+                      }`}>
+                        {activeRefs.length}
+                      </span>
+                    </button>
+                  );
+                })()}
               </div>
 
               {/* Add Lecture Modal */}
