@@ -6,7 +6,7 @@ import {
   Calendar, User, FolderPlus, Pencil, X, Share2
 } from 'lucide-react';
 import { db } from '../../firebase';
-import { collection, doc, addDoc, updateDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, doc, addDoc, updateDoc, deleteDoc, serverTimestamp, onSnapshot } from 'firebase/firestore';
 import ServantAiStudioModal from './ServantAiStudioModal';
 import AiPresentationViewer from './AiPresentationViewer';
 import { triggerServerPush } from '../../services/webPushService';
@@ -156,6 +156,22 @@ export default function ServantCurriculum({
   const [shareTargetSubjectName, setShareTargetSubjectName] = useState('');
   const [shareIsSaving, setShareIsSaving] = useState(false);
   const [shareSuccessMsg, setShareSuccessMsg] = useState('');
+
+  // Active Academic Cycle Real-time Listener (cycle_1 -> first | cycle_2 -> second)
+  const [activeAcademicCycle, setActiveAcademicCycle] = useState('first');
+
+  useEffect(() => {
+    const unsubCycle = onSnapshot(doc(db, 'service_settings', 'academic_cycle'), (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        if (data.activeCycle) {
+          const cycleKey = (data.activeCycle === 'cycle_2' || data.activeCycle === 'second') ? 'second' : 'first';
+          setActiveAcademicCycle(cycleKey);
+        }
+      }
+    });
+    return () => unsubCycle();
+  }, []);
 
   // Sync activeLecture whenever activeSubject changes
   useEffect(() => {
@@ -1052,11 +1068,11 @@ export default function ServantCurriculum({
 
   const handleOpenShareModal = (rf) => {
     setSharingRefData(rf);
-    const defaultGrade = (selectedGrade === 'servants' || selectedGrade === 'elisha') ? 'first' : selectedGrade;
-    setShareTargetGrade(defaultGrade);
+    setShareTargetGrade('current');
     setShareSuccessMsg('');
 
-    const gradeSubs = (subjectsByGrade[defaultGrade] || []).filter(
+    const effectiveGrade = activeAcademicCycle || 'first';
+    const gradeSubs = (subjectsByGrade[effectiveGrade] || []).filter(
       s => (s.targetAudience || 'students') === 'students'
     );
     const match = gradeSubs.find(
@@ -1076,7 +1092,8 @@ export default function ServantCurriculum({
 
   const handleGradeChangeForShare = (newGrade) => {
     setShareTargetGrade(newGrade);
-    const gradeSubs = (subjectsByGrade[newGrade] || []).filter(
+    const effectiveGrade = newGrade === 'current' ? (activeAcademicCycle || 'first') : newGrade;
+    const gradeSubs = (subjectsByGrade[effectiveGrade] || []).filter(
       s => (s.targetAudience || 'students') === 'students'
     );
     const match = gradeSubs.find(
@@ -1102,12 +1119,13 @@ export default function ServantCurriculum({
     setShareSuccessMsg('');
 
     try {
+      const effectiveGrade = shareTargetGrade === 'current' ? (activeAcademicCycle || 'first') : shareTargetGrade;
       const finalSubjectName = shareTargetSubjectName.trim() || activeSubject?.name || 'مادة دراسية';
       let targetSubId = shareTargetSubjectId;
       let targetSubDoc = null;
 
       if (targetSubId && targetSubId !== 'new') {
-        const gradeList = subjectsByGrade[shareTargetGrade] || [];
+        const gradeList = subjectsByGrade[effectiveGrade] || [];
         targetSubDoc = gradeList.find(s => s.id === targetSubId);
       }
 
@@ -1159,13 +1177,13 @@ export default function ServantCurriculum({
         });
 
         setSubjectsByGrade(prev => {
-          const list = prev[shareTargetGrade] || [];
+          const list = prev[effectiveGrade] || [];
           const updated = list.map(s => s.id === targetSubId ? {
             ...s,
             lectures: updatedLectures,
             references: allFlattenedRefs
           } : s);
-          return { ...prev, [shareTargetGrade]: updated };
+          return { ...prev, [effectiveGrade]: updated };
         });
       } else {
         const defaultLec = {
@@ -1179,7 +1197,7 @@ export default function ServantCurriculum({
         };
 
         const newDocRef = await addDoc(collection(db, 'service_curriculum'), {
-          grade: shareTargetGrade,
+          grade: effectiveGrade,
           name: finalSubjectName,
           teacher: user.fullName || 'خادم المادة',
           targetAudience: 'students',
@@ -1190,7 +1208,7 @@ export default function ServantCurriculum({
 
         const newSubObj = {
           id: newDocRef.id,
-          grade: shareTargetGrade,
+          grade: effectiveGrade,
           name: finalSubjectName,
           teacher: user.fullName || 'خادم المادة',
           targetAudience: 'students',
@@ -1200,22 +1218,22 @@ export default function ServantCurriculum({
 
         setSubjectsByGrade(prev => ({
           ...prev,
-          [shareTargetGrade]: [...(prev[shareTargetGrade] || []), newSubObj]
+          [effectiveGrade]: [...(prev[effectiveGrade] || []), newSubObj]
         }));
       }
 
-      const gradeLabel = shareTargetGrade === 'first' 
-        ? 'السنة الأولى' 
-        : shareTargetGrade === 'second' 
-          ? 'السنة الثانية' 
-          : 'القاعة المشتركة';
+      const gradeLabel = shareTargetGrade === 'current'
+        ? `السنة الحالية (${effectiveGrade === 'second' ? 'سنة ثانية' : 'سنة أولى'})`
+        : shareTargetGrade === 'first' 
+          ? 'السنة الأولى' 
+          : 'السنة الثانية';
 
       const notifTitle = `📚 مرجع دراسي جديد: ${finalSubjectName}`;
       const notifDesc = `تمت مشاركة مرجع (${sharingRefData.title}) بمادة ${finalSubjectName} بواسطة (${user?.fullName || 'الخادم المسؤول'}). تفضل بتحميله وتصفحه الآن.`;
 
       try {
         await addDoc(collection(db, 'notifications'), {
-          targetUserId: shareTargetGrade,
+          targetUserId: effectiveGrade,
           title: notifTitle,
           desc: notifDesc,
           time: 'الآن',
@@ -1224,7 +1242,7 @@ export default function ServantCurriculum({
         });
 
         triggerServerPush({
-          targetGrade: shareTargetGrade,
+          targetGrade: effectiveGrade,
           title: notifTitle,
           body: notifDesc,
           url: '/'
@@ -2948,20 +2966,40 @@ export default function ServantCurriculum({
                 </label>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                   {[
-                    { key: 'first', label: 'منهج سنة أولى', sub: 'بولس الرسول' },
-                    { key: 'second', label: 'منهج سنة ثانية', sub: 'بولس الرسول' },
-                    { key: 'common_hall', label: 'القاعة المشتركة', sub: 'عام لجميع المخدومين' }
+                    { 
+                      key: 'current', 
+                      label: 'منهج السنة الحالية', 
+                      sub: activeAcademicCycle === 'second' ? 'منهج سنة ثانية حالياً' : 'منهج سنة أولى حالياً',
+                      badge: 'النشط الآن 🌟'
+                    },
+                    { 
+                      key: 'first', 
+                      label: 'منهج سنة أولى', 
+                      sub: 'بولس الرسول' 
+                    },
+                    { 
+                      key: 'second', 
+                      label: 'منهج سنة ثانية', 
+                      sub: 'بولس الرسول' 
+                    }
                   ].map(g => (
                     <button
                       key={g.key}
                       type="button"
                       onClick={() => handleGradeChangeForShare(g.key)}
-                      className={`p-3 rounded-2xl border text-right transition-all cursor-pointer ${
+                      className={`p-3 rounded-2xl border text-right transition-all cursor-pointer relative ${
                         shareTargetGrade === g.key
                           ? 'bg-maroon-900 text-white border-maroon-900 shadow-sm'
                           : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
                       }`}
                     >
+                      {g.badge && (
+                        <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-md mb-1 inline-block ${
+                          shareTargetGrade === g.key ? 'bg-gold-500/20 text-gold-300 border border-gold-400/40' : 'bg-amber-100 text-amber-900 border border-amber-300'
+                        }`}>
+                          {g.badge}
+                        </span>
+                      )}
                       <span className="text-xs font-black block">{g.label}</span>
                       <span className={`text-[10px] block mt-0.5 ${shareTargetGrade === g.key ? 'text-gold-300' : 'text-slate-400'}`}>
                         {g.sub}
@@ -2977,7 +3015,8 @@ export default function ServantCurriculum({
                   المادة الدراسية لدى المخدومين *
                 </label>
                 {(() => {
-                  const gradeSubs = (subjectsByGrade[shareTargetGrade] || []).filter(
+                  const effectiveGrade = shareTargetGrade === 'current' ? (activeAcademicCycle || 'first') : shareTargetGrade;
+                  const gradeSubs = (subjectsByGrade[effectiveGrade] || []).filter(
                     s => (s.targetAudience || 'students') === 'students'
                   );
                   return (
