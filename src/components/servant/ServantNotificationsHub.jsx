@@ -8,7 +8,7 @@ import {
   addDoc, updateDoc, deleteDoc, doc, serverTimestamp 
 } from 'firebase/firestore';
 import { db } from '../../firebase';
-import { formatNotificationTime } from '../../utils/notificationSystem';
+import { formatNotificationTime, getNotificationTimestamp } from '../../utils/notificationSystem';
 import { triggerServerPush } from '../../services/webPushService';
 
 export default function ServantNotificationsHub({ currentUser, allStudents = [] }) {
@@ -68,7 +68,9 @@ export default function ServantNotificationsHub({ currentUser, allStudents = [] 
   useEffect(() => {
     const q = query(collection(db, 'notifications'), orderBy('createdAt', 'desc'));
     const unsub = onSnapshot(q, (snapshot) => {
-      const list = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+      const list = snapshot.docs
+        .map(d => ({ id: d.id, ...d.data() }))
+        .sort((a, b) => getNotificationTimestamp(b) - getNotificationTimestamp(a));
       setNotifications(list);
       setLoading(false);
     }, (err) => {
