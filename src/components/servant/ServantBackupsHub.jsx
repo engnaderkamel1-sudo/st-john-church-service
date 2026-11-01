@@ -2,13 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { 
   ShieldCheck, Database, Download, RefreshCw, Trash2, 
   RotateCcw, CheckCircle2, Clock, AlertTriangle, Calendar,
-  FileSpreadsheet, Sparkles, HardDrive
+  FileSpreadsheet, Sparkles, HardDrive, Eye, ExternalLink
 } from 'lucide-react';
 import { db } from '../../firebase';
 import { 
   collection, query, orderBy, onSnapshot, addDoc, 
-  deleteDoc, doc, getDocs, setDoc, serverTimestamp, writeBatch 
+  deleteDoc, doc, getDocs, setDoc, serverTimestamp 
 } from 'firebase/firestore';
+import ServantBackupPreviewModal from './ServantBackupPreviewModal';
 
 export default function ServantBackupsHub({ user, allUsers = [] }) {
   const [backups, setBackups] = useState([]);
@@ -16,10 +17,11 @@ export default function ServantBackupsHub({ user, allUsers = [] }) {
   const [creatingBackup, setCreatingBackup] = useState(false);
   const [restoringId, setRestoringId] = useState(null);
   const [statusMessage, setStatusMessage] = useState(null);
+  const [previewBackup, setPreviewBackup] = useState(null);
 
   const MAX_BACKUPS = 6;
+  const DRIVE_ENDPOINT = 'https://script.google.com/macros/s/AKfycbxhdl_hk5vB7NLLL7zdPmVXlwvAOiZYVLsrk5T73UdJpJJM9JpU74p0DexpSch7gI4I/exec';
 
-  // Calculate most recent Friday
   const getMostRecentFriday = () => {
     const d = new Date();
     const day = d.getDay(); // 0: Sun, 5: Fri
@@ -28,7 +30,6 @@ export default function ServantBackupsHub({ user, allUsers = [] }) {
     return d.toISOString().split('T')[0];
   };
 
-  // Realtime subscription to backups
   useEffect(() => {
     const q = query(collection(db, 'system_backups'), orderBy('createdAtIso', 'desc'));
     const unsub = onSnapshot(q, (snapshot) => {
@@ -38,8 +39,6 @@ export default function ServantBackupsHub({ user, allUsers = [] }) {
       }));
       setBackups(list);
       setLoading(false);
-
-      // Check for automatic Friday 8:00 PM backup
       checkAndRunAutoFridayBackup(list);
     }, (err) => {
       console.error('Error fetching backups:', err);
@@ -49,13 +48,10 @@ export default function ServantBackupsHub({ user, allUsers = [] }) {
     return () => unsub();
   }, []);
 
-  // Automatic check for Friday 8:00 PM backup
   const checkAndRunAutoFridayBackup = async (currentBackups) => {
     const now = new Date();
     const isFriday = now.getDay() === 5;
     const isAfterEightPM = now.getHours() >= 20;
-
-    // Trigger on Friday after 8 PM or if Friday passed and no backup for latest Friday
     const mostRecentFriday = getMostRecentFriday();
     const fridayPassed = (isFriday && isAfterEightPM) || (now.getDay() !== 5);
 
@@ -66,12 +62,10 @@ export default function ServantBackupsHub({ user, allUsers = [] }) {
     );
 
     if (!alreadyBackedUp && !creatingBackup) {
-      console.log('Initiating auto Friday 8:00 PM backup for:', mostRecentFriday);
       handleCreateBackup(true, mostRecentFriday);
     }
   };
 
-  // Enforce maximum 6 backups in Firestore
   const enforceBackupLimit = async () => {
     try {
       const q = query(collection(db, 'system_backups'), orderBy('createdAtIso', 'desc'));
@@ -87,7 +81,42 @@ export default function ServantBackupsHub({ user, allUsers = [] }) {
     }
   };
 
-  // Create a backup snapshot of attendance records
+  // Upload backup payload to Google Drive via Google Apps Script
+  const uploadBackupToGoogleDrive = async (backupPayload, fileName) => {
+    try {
+      const jsonStr = JSON.stringify(backupPayload, null, 2);
+      // UTF-8 to Base64
+      const utf8Bytes = new TextEncoder().encode(jsonStr);
+      let binary = '';
+      for (let i = 0; i < utf8Bytes.length; i++) {
+        binary += String.fromCharCode(utf8Bytes[i]);
+      }
+      const base64Data = btoa(binary);
+
+      const response = await fetch(DRIVE_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({
+          fileName: fileName,
+          mimeType: 'application/json',
+          base64Data: base64Data,
+          base64: base64Data
+        })
+      });
+
+      const resData = await response.json();
+      if (resData.status === 'success') {
+        return {
+          driveUrl: resData.fileUrl || resData.url || null,
+          driveFileId: resData.fileId || null
+        };
+      }
+    } catch (err) {
+      console.warn('Google Drive backup upload skipped or error:', err);
+    }
+    return { driveUrl: null, driveFileId: null };
+  };
+
   const handleCreateBackup = async (isAuto = false, targetFriday = null) => {
     setCreatingBackup(true);
     setStatusMessage(null);
@@ -100,8 +129,9 @@ export default function ServantBackupsHub({ user, allUsers = [] }) {
 
       const now = new Date();
       const fridayDate = targetFriday || getMostRecentFriday();
+      const fileName = `نسخة_حضور_${fridayDate}_${now.getTime()}.json`;
 
-      const newBackup = {
+      const backupPayload = {
         fridayDate: fridayDate,
         type: isAuto ? 'scheduled_friday' : 'manual_supervisor',
         title: isAuto 
@@ -116,11 +146,24 @@ export default function ServantBackupsHub({ user, allUsers = [] }) {
         attendanceData: attDocs
       };
 
-      await addDoc(collection(db, 'system_backups'), newBackup);
+      // Upload to Google Drive
+      const driveInfo = await uploadBackupToGoogleDrive(backupPayload, fileName);
+
+      // Save to Firestore
+      await addDoc(collection(db, 'system_backups'), {
+        ...backupPayload,
+        ...driveInfo
+      });
+
       await enforceBackupLimit();
 
-      setStatusMessage({ type: 'success', text: isAuto ? 'تم إنشاء النسخة التلقائية بنجاح ✓' : 'تم أخذ النسخة الاحتياطية بنجاح ✓' });
-      setTimeout(() => setStatusMessage(null), 4000);
+      setStatusMessage({ 
+        type: 'success', 
+        text: driveInfo.driveUrl 
+          ? 'تم أخذ النسخة بنجاح ورفعها تلقائياً إلى Google Drive وقاعدة البيانات ✓' 
+          : 'تم أخذ النسخة وحفظها بنجاح في قاعدة البيانات ✓' 
+      });
+      setTimeout(() => setStatusMessage(null), 5000);
     } catch (err) {
       console.error('Error creating backup:', err);
       setStatusMessage({ type: 'error', text: 'حدث خطأ أثناء أخذ النسخة الاحتياطية.' });
@@ -129,23 +172,21 @@ export default function ServantBackupsHub({ user, allUsers = [] }) {
     }
   };
 
-  // Download snapshot as a JSON file
   const handleDownloadBackup = (backup) => {
     try {
       const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backup, null, 2));
       const downloadAnchor = document.createElement('a');
       downloadAnchor.setAttribute("href", dataStr);
-      downloadAnchor.setAttribute("download", `نسخة_حضور_الخدمة_${backup.fridayDate || backup.id}.json`);
+      downloadAnchor.setAttribute("download", `نسخة_حضور_${backup.fridayDate || backup.id}.json`);
       document.body.appendChild(downloadAnchor);
       downloadAnchor.click();
       downloadAnchor.remove();
     } catch (err) {
       console.error('Download error:', err);
-      alert('حدث خطأ أثناء تحميل ملف النسخة الاحتياطية.');
+      alert('حدث خطأ أثناء تحميل ملف النسخة.');
     }
   };
 
-  // Export current attendance directly to CSV / Excel
   const handleExportCSV = async () => {
     try {
       const attSnap = await getDocs(collection(db, 'attendance'));
@@ -182,10 +223,9 @@ export default function ServantBackupsHub({ user, allUsers = [] }) {
     }
   };
 
-  // Restore attendance records from backup
   const handleRestoreBackup = async (backup) => {
     const confirmFirst = window.confirm(
-      `تنبيه هام ومصيري:\n\nأنت على وشك استعادة نسخة الحضور الخاصة بتاريخ (${backup.dateFormatted || backup.fridayDate}).\n\nتحتوي النسخة على (${backup.attendanceCount} سجل حضور وغياب).\n\nهل أنت متأكد تماماً من المتابعة واستعادة هذه النسخة؟`
+      `تنبيه هام ومصيري:\n\nأنت على وشك استعادة سجلات الحضور الخاصة بتاريخ (${backup.dateFormatted || backup.fridayDate}).\n\nتحتوي النسخة على (${backup.attendanceCount} سجل حضور وغياب).\n\nهل أنت متأكد تماماً من المتابعة؟`
     );
     if (!confirmFirst) return;
 
@@ -199,6 +239,7 @@ export default function ServantBackupsHub({ user, allUsers = [] }) {
       }
 
       alert(`تمت استعادة (${records.length}) سجل حضور وغياب بنجاح ✓`);
+      setPreviewBackup(null);
     } catch (err) {
       console.error('Error restoring backup:', err);
       alert('حدث خطأ أثناء استعادة النسخة الاحتياطية.');
@@ -207,9 +248,8 @@ export default function ServantBackupsHub({ user, allUsers = [] }) {
     }
   };
 
-  // Delete a backup document
   const handleDeleteBackupDoc = async (backupId, title) => {
-    if (!window.confirm(`هل أنت متأكد من حذف هذه النسخة الاحتياطية (${title || ''}) نهائياً؟`)) return;
+    if (!window.confirm(`هل أنت متأكد من حذف هذه النسخة (${title || ''}) نهائياً؟`)) return;
     try {
       await deleteDoc(doc(db, 'system_backups', backupId));
     } catch (err) {
@@ -234,14 +274,13 @@ export default function ServantBackupsHub({ user, allUsers = [] }) {
           </div>
           <h2 className="text-xl sm:text-2xl font-black text-white flex items-center gap-2.5">
             <Database className="w-6 h-6 text-gold-400" />
-            <span>النسخ الاحتياطي لمنظومة الحضور والغياب</span>
+            <span>النسخ الاحتياطي السحابي للحضور والغياب</span>
           </h2>
           <p className="text-xs sm:text-sm text-slate-300 mt-1 max-w-2xl leading-relaxed">
-            يتم أخذ نسخة احتياطية لسجلات الحضور والغياب تلقائياً كل جمعة الساعة 8:00 مساءً فور انتهاء الخدمة، لحماية البيانات وسهولة استرجاعها.
+            يتم النسخ التلقائي كل جمعة 8:00 مساءً ورفع النسخة سحابياً إلى Google Drive وقاعدة البيانات مع إمكانية المعاينة والفحص كشيت إكسيل قبل الاستعادة.
           </p>
         </div>
 
-        {/* Action Buttons */}
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
@@ -250,7 +289,7 @@ export default function ServantBackupsHub({ user, allUsers = [] }) {
             className="px-4 py-2.5 rounded-xl bg-gold-400 hover:bg-gold-500 text-maroon-950 font-black text-xs sm:text-sm flex items-center gap-2 shadow-lg hover:shadow-xl transition-all cursor-pointer active:scale-95 disabled:opacity-60"
           >
             <RefreshCw className={`w-4 h-4 ${creatingBackup ? 'animate-spin' : ''}`} />
-            <span>{creatingBackup ? 'جارٍ أخذ النسخة...' : 'أخذ نسخة احتياطية فورية الآن ⚡'}</span>
+            <span>{creatingBackup ? 'جارٍ أخذ النسخة والرفع...' : 'أخذ نسخة سحابية فورية الآن ⚡'}</span>
           </button>
 
           <button
@@ -265,7 +304,6 @@ export default function ServantBackupsHub({ user, allUsers = [] }) {
         </div>
       </div>
 
-      {/* Status Alert */}
       {statusMessage && (
         <div className={`p-3.5 rounded-2xl text-xs font-bold flex items-center gap-2 transition-all animate-in fade-in duration-200 ${
           statusMessage.type === 'success' 
@@ -277,7 +315,7 @@ export default function ServantBackupsHub({ user, allUsers = [] }) {
         </div>
       )}
 
-      {/* Backups List Section */}
+      {/* Backups List */}
       <div className="bg-white rounded-3xl p-4 sm:p-6 shadow-sm border border-slate-200/80">
         <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
           <div className="flex items-center gap-2">
@@ -287,7 +325,7 @@ export default function ServantBackupsHub({ user, allUsers = [] }) {
             </h3>
           </div>
           <span className="text-xs bg-slate-100 text-slate-600 px-2.5 py-1 rounded-full font-bold">
-            التحديث الأسبوعي التلقائي: الجمعة 08:00 م
+            النسخ التلقائي: الجمعة 08:00 م
           </span>
         </div>
 
@@ -300,9 +338,7 @@ export default function ServantBackupsHub({ user, allUsers = [] }) {
           <div className="py-12 text-center text-slate-400 space-y-2">
             <Database className="w-10 h-10 mx-auto text-slate-300" />
             <p className="font-bold text-sm text-slate-700">لا توجد نسخ احتياطية مسجلة حتى الآن</p>
-            <p className="text-xs text-slate-500">
-              اضغط على زر (أخذ نسخة احتياطية فورية الآن) لإنشاء أول نسخة وحفظها.
-            </p>
+            <p className="text-xs text-slate-500">اضغط على زر (أخذ نسخة سحابية فورية الآن) لإنشاء أول نسخة.</p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -323,6 +359,11 @@ export default function ServantBackupsHub({ user, allUsers = [] }) {
                     }`}>
                       {b.type === 'scheduled_friday' ? 'تلقائي أسبوعي ⚙️' : 'يدوي بواسطة المشرف 👑'}
                     </span>
+                    {b.driveUrl && (
+                      <span className="text-[10px] bg-emerald-100 text-emerald-800 border border-emerald-200 px-2 py-0.5 rounded-full font-bold">
+                        محفوظة على درايف ☁️
+                      </span>
+                    )}
                   </div>
 
                   <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500 font-semibold">
@@ -341,33 +382,61 @@ export default function ServantBackupsHub({ user, allUsers = [] }) {
                 </div>
 
                 {/* Card Action Controls */}
-                <div className="flex items-center gap-2 shrink-0 pt-2 md:pt-0 border-t md:border-t-0 border-slate-200/60">
+                <div className="flex flex-wrap items-center gap-2 shrink-0 pt-2 md:pt-0 border-t md:border-t-0 border-slate-200/60">
+                  {/* Preview Button */}
+                  <button
+                    type="button"
+                    onClick={() => setPreviewBackup(b)}
+                    className="p-2 sm:px-3 sm:py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-900 border border-indigo-200 text-xs font-bold flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer active:scale-95"
+                    title="معاينة وفحص بيانات النسخة كشيت إكسيل"
+                  >
+                    <Eye className="w-3.5 h-3.5 text-indigo-700" />
+                    <span>معاينة وفحص 👁️</span>
+                  </button>
+
+                  {/* Google Drive Link if exists */}
+                  {b.driveUrl && (
+                    <a
+                      href={b.driveUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-2 sm:px-3 sm:py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-300 text-xs font-bold flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer active:scale-95"
+                      title="فتح ملف النسخة على Google Drive"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5 text-emerald-700" />
+                      <span>درايف 📁</span>
+                    </a>
+                  )}
+
+                  {/* Download Local */}
                   <button
                     type="button"
                     onClick={() => handleDownloadBackup(b)}
-                    className="p-2 sm:px-3 sm:py-1.5 rounded-xl bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 text-xs font-bold flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer active:scale-95"
-                    title="تحميل النسخة كملف محفوظ على جهازك"
+                    className="p-2 sm:px-2.5 sm:py-1.5 rounded-xl bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 text-xs font-bold flex items-center gap-1 transition-all shadow-2xs cursor-pointer active:scale-95"
+                    title="تحميل النسخة على جهازك"
                   >
                     <Download className="w-3.5 h-3.5 text-maroon-800" />
                     <span>تحميل 💾</span>
                   </button>
 
+                  {/* Restore Button */}
                   <button
                     type="button"
                     onClick={() => handleRestoreBackup(b)}
                     disabled={restoringId === b.id}
                     className="p-2 sm:px-3 sm:py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 text-xs font-bold flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer active:scale-95 disabled:opacity-60"
-                    title="استعادة سجلات الحضور والغياب من هذه النسخة"
+                    title="استعادة هذه النسخة"
                   >
                     <RotateCcw className={`w-3.5 h-3.5 text-amber-700 ${restoringId === b.id ? 'animate-spin' : ''}`} />
-                    <span>{restoringId === b.id ? 'جارٍ الاستعادة...' : 'استعادة 🔄'}</span>
+                    <span>استعادة 🔄</span>
                   </button>
 
+                  {/* Delete Doc */}
                   <button
                     type="button"
                     onClick={() => handleDeleteBackupDoc(b.id, b.title)}
                     className="p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-200 transition-all cursor-pointer"
-                    title="حذف هذه النسخة"
+                    title="حذف النسخة"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -377,6 +446,16 @@ export default function ServantBackupsHub({ user, allUsers = [] }) {
           </div>
         )}
       </div>
+
+      {/* Preview Modal */}
+      {previewBackup && (
+        <ServantBackupPreviewModal
+          backup={previewBackup}
+          onClose={() => setPreviewBackup(null)}
+          onRestore={handleRestoreBackup}
+          restoring={restoringId === previewBackup.id}
+        />
+      )}
     </div>
   );
 }
