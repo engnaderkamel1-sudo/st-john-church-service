@@ -165,18 +165,6 @@ export default function StudentCurriculum({
                       }
                     });
                   }
-                  visibleLectures.forEach((lec) => {
-                    if (Array.isArray(lec.files)) {
-                      lec.files.forEach((rf, idx) => {
-                        if (rf && rf.isPublishedForStudents !== false && rf.targetAudience !== 'servants') {
-                          const key = rf.id || rf.url || `${rf.title}-${idx}`;
-                          if (!map.has(key)) {
-                            map.set(key, { ...rf, lectureTitle: lec.title || lec.number });
-                          }
-                        }
-                      });
-                    }
-                  });
                   return Array.from(map.values());
                 })();
 
@@ -230,7 +218,7 @@ export default function StudentCurriculum({
                           <p className="text-[11px] text-slate-400 mt-1">سيقوم الخدام بفتح المحاضرات ومذكراتها وملفاتها تباعاً.</p>
                         </div>
                       ) : (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-4">
                           {visibleLectures.map((lec) => {
                             const visibleFilesCount = (lec.files || []).filter(
                               f => f.isPublishedForStudents !== false && f.targetAudience !== 'servants'

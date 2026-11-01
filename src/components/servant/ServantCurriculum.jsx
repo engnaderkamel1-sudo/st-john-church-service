@@ -105,6 +105,7 @@ export default function ServantCurriculum({
   const [editLectureLecturer, setEditLectureLecturer] = useState('');
   const [editSubLecturesList, setEditSubLecturesList] = useState([]);
   const [lectureEntryMode, setLectureEntryMode] = useState('single'); // 'single' | 'combined'
+  const [servantSubjectTab, setServantSubjectTab] = useState('lectures'); // 'lectures' | 'references'
   
   // Single Lecture fields
   const [singleLectureNumber, setSingleLectureNumber] = useState('المحاضرة الأولى');
@@ -140,6 +141,11 @@ export default function ServantCurriculum({
       setInputYear(academicYear);
     }
   }, [academicYear]);
+
+  useEffect(() => {
+    setActiveLecture(null);
+    setServantSubjectTab('lectures');
+  }, [activeSubject?.id]);
 
   // Edit Reference states
   const [showEditRefModal, setShowEditRefModal] = useState(false);
@@ -422,6 +428,32 @@ export default function ServantCurriculum({
       targetAudience: curriculumTarget,
       isPublishedForStudents: true
     };
+
+    if (servantSubjectTab === 'references' && !activeLecture) {
+      const updatedRefs = [newRef, ...(activeSubject.references || [])];
+      try {
+        await updateDoc(doc(db, 'service_curriculum', activeSubject.id), {
+          references: updatedRefs
+        });
+        const updatedSubject = { ...activeSubject, references: updatedRefs };
+        setActiveSubject(updatedSubject);
+        setSubjectsByGrade(prev => {
+          const list = prev[selectedGrade] || [];
+          const updated = list.map(s => s.id === activeSubject.id ? updatedSubject : s);
+          return { ...prev, [selectedGrade]: updated };
+        });
+      } catch (err) {
+        console.error('Error saving subject reference:', err);
+      } finally {
+        setRefSaving(false);
+        setUploadStatusText('');
+        setNewRefTitle('');
+        setNewRefUrl('');
+        setSelectedUploadFile(null);
+        setShowAddRefModal(false);
+      }
+      return;
+    }
 
     const currentLecs = normalizeLectures(activeSubject);
     let targetLecId = activeLecture?.id;
@@ -944,14 +976,16 @@ export default function ServantCurriculum({
         r.id === refId ? { ...r, isPublishedForStudents: r.isPublishedForStudents === false } : r
       )
     }));
-    const allFlattenedRefs = updatedLectures.flatMap(l => l.files || []);
+    const updatedStandaloneRefs = (activeSubject.references || []).map(r =>
+      r.id === refId ? { ...r, isPublishedForStudents: r.isPublishedForStudents === false } : r
+    );
 
     try {
       await updateDoc(doc(db, 'service_curriculum', activeSubject.id), {
         lectures: updatedLectures,
-        references: allFlattenedRefs
+        references: updatedStandaloneRefs
       });
-      const updatedSubject = { ...activeSubject, lectures: updatedLectures, references: allFlattenedRefs };
+      const updatedSubject = { ...activeSubject, lectures: updatedLectures, references: updatedStandaloneRefs };
       setActiveSubject(updatedSubject);
       if (activeLecture) {
         setActiveLecture(updatedLectures.find(l => l.id === activeLecture.id) || null);
@@ -968,21 +1002,21 @@ export default function ServantCurriculum({
 
   const handleDeleteReference = async (refId) => {
     if (!activeSubject) return;
-    if (!window.confirm('هل أنت متأكد من حذف هذا الملف من المحاضرة؟')) return;
+    if (!window.confirm('هل أنت متأكد من حذف هذا المرجع؟')) return;
 
     const currentLecs = normalizeLectures(activeSubject);
     const updatedLectures = currentLecs.map(lec => ({
       ...lec,
       files: (lec.files || []).filter(r => r.id !== refId)
     }));
-    const allFlattenedRefs = updatedLectures.flatMap(l => l.files || []);
+    const updatedStandaloneRefs = (activeSubject.references || []).filter(r => r.id !== refId);
 
     try {
       await updateDoc(doc(db, 'service_curriculum', activeSubject.id), {
         lectures: updatedLectures,
-        references: allFlattenedRefs
+        references: updatedStandaloneRefs
       });
-      const updatedSubject = { ...activeSubject, lectures: updatedLectures, references: allFlattenedRefs };
+      const updatedSubject = { ...activeSubject, lectures: updatedLectures, references: updatedStandaloneRefs };
       setActiveSubject(updatedSubject);
       if (activeLecture) {
         setActiveLecture(updatedLectures.find(l => l.id === activeLecture.id) || null);
@@ -1666,28 +1700,45 @@ export default function ServantCurriculum({
                   <span className="text-xs text-slate-500 font-medium">مسئول المادة: <strong className="text-slate-700">{activeSubject.teacher || 'خادم المادة'}</strong></span>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const lecturesList = normalizeLectures(activeSubject);
-                      const nextNum = LECTURE_NUMBERS[lecturesList.length] || 'المحاضرة الأولى';
-                      const afterNextNum = LECTURE_NUMBERS[lecturesList.length + 1] || 'المحاضرة الثانية';
-                      setLectureEntryMode('single');
-                      setSingleLectureNumber(nextNum);
-                      setSingleLectureTopic('');
-                      setSingleLectureDate(new Date().toISOString().split('T')[0]);
-                      setSingleLectureLecturer(activeSubject.teacher || user.fullName || '');
-                      setSubLecturesList([
-                        { id: 'sub-1', number: nextNum, topic: '', lecturer: activeSubject.teacher || user.fullName || '', date: new Date().toISOString().split('T')[0] },
-                        { id: 'sub-2', number: afterNextNum, topic: '', lecturer: activeSubject.teacher || user.fullName || '', date: new Date().toISOString().split('T')[0] }
-                      ]);
-                      setShowAddLectureModal(true);
-                    }}
-                    className="bg-maroon-800 hover:bg-maroon-700 text-white font-bold text-xs py-2 px-3.5 rounded-xl transition-all shadow-xs flex items-center gap-1.5 cursor-pointer active:scale-95"
-                  >
-                    <Plus className="w-4 h-4" />
-                    <span>إضافة محاضرة جديدة</span>
-                  </button>
+                  {servantSubjectTab === 'lectures' ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const lecturesList = normalizeLectures(activeSubject);
+                        const nextNum = LECTURE_NUMBERS[lecturesList.length] || 'المحاضرة الأولى';
+                        const afterNextNum = LECTURE_NUMBERS[lecturesList.length + 1] || 'المحاضرة الثانية';
+                        setLectureEntryMode('single');
+                        setSingleLectureNumber(nextNum);
+                        setSingleLectureTopic('');
+                        setSingleLectureDate(new Date().toISOString().split('T')[0]);
+                        setSingleLectureLecturer(activeSubject.teacher || user.fullName || '');
+                        setSubLecturesList([
+                          { id: 'sub-1', number: nextNum, topic: '', lecturer: activeSubject.teacher || user.fullName || '', date: new Date().toISOString().split('T')[0] },
+                          { id: 'sub-2', number: afterNextNum, topic: '', lecturer: activeSubject.teacher || user.fullName || '', date: new Date().toISOString().split('T')[0] }
+                        ]);
+                        setShowAddLectureModal(true);
+                      }}
+                      className="bg-maroon-800 hover:bg-maroon-700 text-white font-bold text-xs py-2 px-3.5 rounded-xl transition-all shadow-xs flex items-center gap-1.5 cursor-pointer active:scale-95"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>إضافة محاضرة جديدة</span>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveLecture(null);
+                        setNewRefTitle('');
+                        setNewRefUrl('');
+                        setSelectedUploadFile(null);
+                        setShowAddRefModal(true);
+                      }}
+                      className="bg-maroon-800 hover:bg-maroon-700 text-white font-bold text-xs py-2 px-3.5 rounded-xl transition-all shadow-xs flex items-center gap-1.5 cursor-pointer active:scale-95"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>إضافة مرجع أو كتاب للمادة</span>
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={() => setActiveSubject(null)}
@@ -1696,6 +1747,45 @@ export default function ServantCurriculum({
                     ← العودة لقائمة المواد
                   </button>
                 </div>
+              </div>
+
+              {/* Dual Sub-Tabs Bar: Lectures vs References for Servants */}
+              <div className="flex items-center gap-2 border-b border-slate-200 pb-2.5">
+                <button
+                  type="button"
+                  onClick={() => setServantSubjectTab('lectures')}
+                  className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 cursor-pointer ${
+                    servantSubjectTab === 'lectures'
+                      ? 'bg-maroon-800 text-white shadow-sm'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  <BookOpen className="w-3.5 h-3.5" />
+                  <span>المحاضرات الأسبوعية</span>
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                    servantSubjectTab === 'lectures' ? 'bg-maroon-700 text-white' : 'bg-slate-200 text-slate-700'
+                  }`}>
+                    {normalizeLectures(activeSubject).length}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setServantSubjectTab('references')}
+                  className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 cursor-pointer ${
+                    servantSubjectTab === 'references'
+                      ? 'bg-maroon-800 text-white shadow-sm'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  <span>مراجع وكتب المادة</span>
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                    servantSubjectTab === 'references' ? 'bg-maroon-700 text-white' : 'bg-slate-200 text-slate-700'
+                  }`}>
+                    {(activeSubject.references || []).length}
+                  </span>
+                </button>
               </div>
 
               {/* Add Lecture Modal */}
@@ -1890,7 +1980,7 @@ export default function ServantCurriculum({
               )}
 
               {/* Lectures Cards Grid */}
-              {(() => {
+              {servantSubjectTab === 'lectures' && (() => {
                 const lecturesList = normalizeLectures(activeSubject);
                 if (lecturesList.length === 0) {
                   return (
@@ -1903,7 +1993,7 @@ export default function ServantCurriculum({
                 }
 
                 return (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-4">
                     {lecturesList.map((lec) => {
                       const filesCount = (lec.files || []).length;
                       const isCombined = lec.type === 'combined' || (Array.isArray(lec.subLectures) && lec.subLectures.length > 1);
@@ -2083,6 +2173,267 @@ export default function ServantCurriculum({
                   </div>
                 );
               })()}
+
+              {/* References Tab View for Servants */}
+              {servantSubjectTab === 'references' && (
+                <div className="space-y-4">
+                  {showAddRefModal && !activeLecture && (
+                    <form onSubmit={handleAddReference} className="bg-slate-50 border border-slate-200 p-4.5 rounded-2xl space-y-3.5 shadow-sm">
+                      <h5 className="font-extrabold text-xs text-slate-800">
+                        إضافة مرجع أو كتاب دراسي لمادة ({activeSubject.name})
+                      </h5>
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-700 mb-1">نوع المحتوى</label>
+                        <div className="grid grid-cols-3 gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setNewRefType('file')}
+                            className={`py-2 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
+                              newRefType === 'file' || newRefType === 'pdf' ? 'bg-maroon-800 text-white border-maroon-800 shadow-sm' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                            }`}
+                          >
+                            <FileText className="w-3.5 h-3.5" />
+                            <span>ملف (PDF، Word، Excel، صور)</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setNewRefType('audio')}
+                            className={`py-2 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
+                              newRefType === 'audio' ? 'bg-maroon-800 text-white border-maroon-800 shadow-sm' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                            }`}
+                          >
+                            <Music className="w-3.5 h-3.5" />
+                            <span>تسجيل صوتي (MP3)</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setNewRefType('video')}
+                            className={`py-2 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
+                              newRefType === 'video' ? 'bg-maroon-800 text-white border-maroon-800 shadow-sm' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                            }`}
+                          >
+                            <Video className="w-3.5 h-3.5" />
+                            <span>فيديو (YouTube)</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-700 mb-1">عنوان المرجع أو الكتاب *</label>
+                        <input
+                          type="text"
+                          required
+                          placeholder="مثال: كتاب الطقس الكنسي وتاريخه"
+                          value={newRefTitle}
+                          onChange={(e) => setNewRefTitle(e.target.value)}
+                          className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-maroon-800 font-bold"
+                        />
+                      </div>
+
+                      {newRefType !== 'video' ? (
+                        <div className="space-y-2">
+                          <label className="block text-[11px] font-bold text-slate-700">رفع الملف مباشرة (أو رابط خارجي)</label>
+                          <div className="border border-dashed border-slate-300 rounded-2xl p-4 text-center bg-white hover:bg-slate-50 transition-colors">
+                            <input
+                              type="file"
+                              id="ref-subject-standalone-upload"
+                              className="hidden"
+                              accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.mp3,.wav,.m4a,.png,.jpg,.jpeg"
+                              onChange={(e) => {
+                                if (e.target.files && e.target.files[0]) {
+                                  setSelectedUploadFile(e.target.files[0]);
+                                  if (!newRefTitle.trim()) {
+                                    const cleanName = e.target.files[0].name.replace(/\.[^/.]+$/, "");
+                                    setNewRefTitle(cleanName);
+                                  }
+                                }
+                              }}
+                            />
+                            <label htmlFor="ref-subject-standalone-upload" className="cursor-pointer block">
+                              <UploadCloud className="w-6 h-6 text-maroon-800 mx-auto mb-1.5" />
+                              <span className="text-xs font-bold text-maroon-900 block">
+                                {selectedUploadFile ? selectedUploadFile.name : 'اضغط لاختيار ملف ورفعه إلى Google Drive'}
+                              </span>
+                              <span className="text-[10px] text-slate-400 mt-0.5 block">
+                                {selectedUploadFile ? `${(selectedUploadFile.size / (1024 * 1024)).toFixed(2)} MB` : 'PDF، Word، Excel، بوربوينت، تسجيلات صوتية'}
+                              </span>
+                            </label>
+                          </div>
+                          <div className="relative">
+                            <input
+                              type="url"
+                              placeholder="أو الصق رابط Google Drive / الرابط المباشر هنا"
+                              value={newRefUrl}
+                              onChange={(e) => setNewRefUrl(e.target.value)}
+                              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-maroon-800"
+                            />
+                          </div>
+                        </div>
+                      ) : (
+                        <div>
+                          <label className="block text-[11px] font-bold text-slate-700 mb-1">رابط الفيديو (YouTube) *</label>
+                          <input
+                            type="url"
+                            required
+                            placeholder="https://www.youtube.com/watch?v=..."
+                            value={newRefUrl}
+                            onChange={(e) => setNewRefUrl(e.target.value)}
+                            className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-maroon-800 font-mono text-[11px]"
+                          />
+                        </div>
+                      )}
+
+                      {uploadStatusText && (
+                        <div className="text-[11px] font-bold text-maroon-800 bg-maroon-50 p-2.5 rounded-xl border border-maroon-200 flex items-center gap-2">
+                          <div className="w-3.5 h-3.5 border-2 border-maroon-800 border-t-transparent rounded-full animate-spin"></div>
+                          <span>{uploadStatusText}</span>
+                        </div>
+                      )}
+
+                      <div className="flex justify-end gap-2 pt-2 border-t border-slate-200/80">
+                        <button
+                          type="button"
+                          disabled={refSaving}
+                          onClick={() => setShowAddRefModal(false)}
+                          className="bg-white border border-slate-200 text-slate-600 text-xs px-3.5 py-1.5 rounded-xl font-bold hover:bg-slate-100 cursor-pointer disabled:opacity-50"
+                        >
+                          إلغاء
+                        </button>
+                        <button
+                          type="submit"
+                          disabled={refSaving || (!selectedUploadFile && !newRefUrl.trim())}
+                          className="bg-maroon-800 hover:bg-maroon-700 text-white font-bold text-xs px-5 py-1.5 rounded-xl transition-all shadow-xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                        >
+                          <Check className="w-3.5 h-3.5" />
+                          <span>{refSaving ? 'جاري الرفع والحفظ...' : 'حفظ المرجع بالمادة'}</span>
+                        </button>
+                      </div>
+                    </form>
+                  )}
+
+                  {(activeSubject.references || []).length === 0 ? (
+                    <div className="text-center py-12 text-slate-400 text-xs bg-slate-50 rounded-2xl border border-slate-200 p-6">
+                      <FileText className="w-10 h-10 text-slate-300 mx-auto mb-2" />
+                      <p className="font-bold text-slate-600">لا توجد مراجع أو كتب مرفوعة لهذه المادة حتى الآن.</p>
+                      <p className="text-[11px] text-slate-400 mt-1">يمكنك إضافة مراجع وكتب المادة بالضغط على "إضافة مرجع أو كتاب للمادة" أعلاه.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {(activeSubject.references || []).map((rf) => {
+                        const meta = getRefTypeMeta(rf.type);
+                        const IconComp = meta.icon;
+                        return (
+                          <div
+                            key={rf.id || rf.url || rf.title}
+                            className="bg-white border border-slate-200 hover:border-slate-300 p-4 rounded-2xl shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs transition-all"
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className={`p-2.5 rounded-xl border shrink-0 ${meta.color}`}>
+                                <IconComp className="w-4 h-4" />
+                              </div>
+                              <div>
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <h5 className="font-extrabold text-slate-900 text-sm">{rf.title}</h5>
+                                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${meta.color}`}>
+                                    {meta.label}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-2 text-[11px] text-slate-400 mt-1 flex-wrap">
+                                  <span>رفع بواسطة: <strong className="text-slate-600">{rf.uploadedBy || 'الخادم المسؤول'}</strong></span>
+                                  <span>•</span>
+                                  <span>{rf.date || 'اليوم'} {rf.time ? `(${rf.time})` : ''}</span>
+                                  {rf.fileName && (
+                                    <>
+                                      <span>•</span>
+                                      <span className="font-mono text-[10px] text-slate-500">{rf.fileName}</span>
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                              {rf.url && (
+                                <>
+                                  <a
+                                    href={
+                                      rf.fileId
+                                        ? `https://drive.google.com/uc?export=download&id=${rf.fileId}`
+                                        : (rf.url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/) || rf.url.match(/[?&]id=([a-zA-Z0-9_-]+)/))
+                                          ? `https://drive.google.com/uc?export=download&id=${(rf.url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/) || rf.url.match(/[?&]id=([a-zA-Z0-9_-]+)/))[1]}`
+                                          : rf.url
+                                    }
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-2.5 py-1 rounded-lg text-[11px] flex items-center gap-1 shadow-xs"
+                                    title="تحميل الملف مباشرة"
+                                  >
+                                    <Download className="w-3 h-3" />
+                                    <span>تحميل</span>
+                                  </a>
+                                  <a
+                                    href={rf.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 font-bold px-2.5 py-1 rounded-lg text-[11px] flex items-center gap-1"
+                                  >
+                                    <ExternalLink className="w-3 h-3" />
+                                    <span>فتح</span>
+                                  </a>
+                                </>
+                              )}
+
+                              {/* Visibility toggle for students */}
+                              <button
+                                type="button"
+                                onClick={() => handleToggleRefVisibility(rf.id)}
+                                className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border transition-all cursor-pointer ${
+                                  rf.isPublishedForStudents !== false
+                                    ? 'bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100'
+                                    : 'bg-amber-50 text-amber-800 border-amber-300 hover:bg-amber-100'
+                                }`}
+                                title="إتاحة أو إخفاء المرجع عن المخدومين"
+                              >
+                                {rf.isPublishedForStudents !== false ? 'متاحة للمخدومين 👁️' : 'مخفية عن المخدومين 🔒'}
+                              </button>
+
+                              {curriculumTarget === 'servants' && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenShareModal(rf)}
+                                  className="bg-indigo-50 hover:bg-indigo-100 text-indigo-900 border border-indigo-200 font-bold px-2.5 py-1 rounded-lg text-[10px] flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs"
+                                  title="كشف ومشاركة هذا المرجع مع المخدومين واختيار السنة الدراسية"
+                                >
+                                  <Share2 className="w-3 h-3 text-indigo-700" />
+                                  <span>كشف ومشاركة مع المخدومين 📢</span>
+                                </button>
+                              )}
+
+                              <button
+                                type="button"
+                                onClick={() => handleOpenEditReference(rf)}
+                                className="text-slate-400 hover:text-maroon-800 p-1.5 rounded-lg hover:bg-slate-200/60 transition-colors cursor-pointer"
+                                title="تعديل هذا المرجع أو الملف"
+                              >
+                                <Pencil className="w-3.5 h-3.5" />
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteReference(rf.id)}
+                                className="text-slate-400 hover:text-red-600 p-1.5 rounded-lg hover:bg-red-50 transition-colors cursor-pointer"
+                                title="حذف هذا المرجع"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           ) : (
             /* ========================================================================= */
