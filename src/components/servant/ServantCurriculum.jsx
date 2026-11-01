@@ -1054,6 +1054,31 @@ export default function ServantCurriculum({
     }
   };
 
+  const normalizeSubjectName = (name) => {
+    if (!name) return '';
+    return name
+      .trim()
+      .toLowerCase()
+      .replace(/^ال/, '')
+      .replace(/\s+/g, '');
+  };
+
+  const findMatchingSubject = (gradeSubs, currentSubjectName) => {
+    if (!currentSubjectName || !gradeSubs || gradeSubs.length === 0) return null;
+    const targetNorm = normalizeSubjectName(currentSubjectName);
+    
+    // 1. Exact match
+    let found = gradeSubs.find(s => s.name?.trim().toLowerCase() === currentSubjectName.trim().toLowerCase());
+    if (found) return found;
+
+    // 2. Normalized match (e.g. "طقس" vs "الطقس الكنسي" or "كتاب مقدس" vs "الكتاب المقدس")
+    found = gradeSubs.find(s => {
+      const sNorm = normalizeSubjectName(s.name);
+      return sNorm === targetNorm || sNorm.includes(targetNorm) || targetNorm.includes(sNorm);
+    });
+    return found || null;
+  };
+
   const handleOpenShareModal = (rf) => {
     setSharingRefData(rf);
     setShareTargetGrade('current');
@@ -1063,15 +1088,10 @@ export default function ServantCurriculum({
     const gradeSubs = (subjectsByGrade[effectiveGrade] || []).filter(
       s => (s.targetAudience || 'students') === 'students'
     );
-    const match = gradeSubs.find(
-      s => s.name?.trim().toLowerCase() === activeSubject?.name?.trim().toLowerCase()
-    );
+    const match = findMatchingSubject(gradeSubs, activeSubject?.name);
     if (match) {
       setShareTargetSubjectId(match.id);
       setShareTargetSubjectName(match.name);
-    } else if (gradeSubs.length > 0) {
-      setShareTargetSubjectId(gradeSubs[0].id);
-      setShareTargetSubjectName(gradeSubs[0].name);
     } else {
       setShareTargetSubjectId('new');
       setShareTargetSubjectName(activeSubject?.name || '');
@@ -1084,15 +1104,10 @@ export default function ServantCurriculum({
     const gradeSubs = (subjectsByGrade[effectiveGrade] || []).filter(
       s => (s.targetAudience || 'students') === 'students'
     );
-    const match = gradeSubs.find(
-      s => s.name?.trim().toLowerCase() === activeSubject?.name?.trim().toLowerCase()
-    );
+    const match = findMatchingSubject(gradeSubs, activeSubject?.name);
     if (match) {
       setShareTargetSubjectId(match.id);
       setShareTargetSubjectName(match.name);
-    } else if (gradeSubs.length > 0) {
-      setShareTargetSubjectId(gradeSubs[0].id);
-      setShareTargetSubjectName(gradeSubs[0].name);
     } else {
       setShareTargetSubjectId('new');
       setShareTargetSubjectName(activeSubject?.name || '');
@@ -3028,7 +3043,7 @@ export default function ServantCurriculum({
                             مادة: {sub.name} ({sub.teacher || 'خادم المادة'})
                           </option>
                         ))}
-                        <option value="new">➕ إضافة مادة جديدة بهذه المرحلة</option>
+                        <option value="new">➕ إنشاء مادة جديدة باسم ({activeSubject?.name || 'مادة جديدة'}) للمخدومين</option>
                       </select>
 
                       {shareTargetSubjectId === 'new' && (
