@@ -8,6 +8,7 @@ import {
   History, Activity, Menu, X, Video, Music, ExternalLink,
   Eye, EyeOff, Calendar, CalendarOff, ChevronRight, FileSpreadsheet, File, BarChart3, TrendingDown, Image as ImageIcon,
   AlertTriangle,
+  Database,
   Cake,
   Lightbulb,
   Rocket,
@@ -31,6 +32,7 @@ import StudentProfileModal from './servant/StudentProfileModal';
 import ServantErrorsHub from './servant/ServantErrorsHub';
 import ServantSuggestionsHub from './servant/ServantSuggestionsHub';
 import ServantNotificationsHub from './servant/ServantNotificationsHub';
+import ServantBackupsHub from './servant/ServantBackupsHub';
 import StageRegulationsModal from './common/StageRegulationsModal';
 import UserProfileModal from './common/UserProfileModal';
 import AppSupportToolsDrawerSection from './common/AppSupportToolsDrawerSection';
@@ -2041,6 +2043,28 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
                   </button>
                 )}
 
+                {/* 15.1 App Admin only: Backups Hub */}
+                {isAppAdmin && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMainTab('backups_hub');
+                      setActiveSubject(null);
+                      setMobileSidebarOpen(false);
+                    }}
+                    className={`w-full text-right py-2 px-3 rounded-xl flex items-center justify-between text-xs font-bold transition-all cursor-pointer ${
+                      mainTab === 'backups_hub'
+                        ? 'bg-maroon-800 text-white shadow-xs'
+                        : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Database className={`w-4 h-4 ${mainTab === 'backups_hub' ? 'text-gold-300' : 'text-slate-500'}`} />
+                      <span>النسخ الاحتياطية 🛡️</span>
+                    </div>
+                  </button>
+                )}
+
                 {/* 16. System & Support Tools */}
                 <AppSupportToolsDrawerSection 
                   user={user} 
@@ -2186,6 +2210,14 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
       {/* 0.2 App Feature Suggestions Hub (Admin Only) */}
       {isAppAdmin && mainTab === 'suggestions_hub' && (
         <ServantSuggestionsHub />
+      )}
+
+      {/* 0.3 App Backups Hub (Admin Only) */}
+      {isAppAdmin && mainTab === 'backups_hub' && (
+        <ServantBackupsHub
+          user={user}
+          allUsers={allUsers}
+        />
       )}
 
       {/* 1. Subjects & Curriculum Management Hub */}
