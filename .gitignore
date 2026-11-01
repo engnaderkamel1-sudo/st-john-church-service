@@ -6,3 +6,4 @@ dist-ssr
 .env.*
 .DS_Store
 sync-github.ps1
+.backup_trash

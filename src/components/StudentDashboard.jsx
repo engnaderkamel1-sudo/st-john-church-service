@@ -335,7 +335,17 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser, externa
       });
       // Sort newest first
       relevantExams.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
-      setAvailableExams(relevantExams);
+
+      // Deduplication by title to prevent any duplicate active tasks
+      const seenTitles = new Set();
+      const uniqueRelevant = [];
+      for (const ex of relevantExams) {
+        const norm = (ex.title || '').trim().replace(/\s+/g, ' ');
+        if (norm && seenTitles.has(norm)) continue;
+        if (norm) seenTitles.add(norm);
+        uniqueRelevant.push(ex);
+      }
+      setAvailableExams(uniqueRelevant);
     }, (err) => console.log('Student exams fetch info:', err));
 
     // Sync Student's Completed Exams / Submissions
