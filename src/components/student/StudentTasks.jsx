@@ -128,7 +128,8 @@ export default function StudentTasks({
     const questions = activeTask.questions || [];
     let autoScore = 0;
     questions.forEach(q => {
-      if ((q.type === 'mcq' || q.type === 'true_false') && taskAnswers[q.id] === q.correctAnswer) {
+      const isMcq = q.type === 'mcq' || q.type === 'multiple_choice';
+      if ((isMcq || q.type === 'true_false') && taskAnswers[q.id] === q.correctAnswer) {
         autoScore += (Number(q.points) || 1);
       }
     });
@@ -516,7 +517,7 @@ export default function StudentTasks({
                       )}
 
                       {/* MCQ Options */}
-                      {q.type === 'mcq' && q.options && (
+                      {(q.type === 'mcq' || q.type === 'multiple_choice') && q.options && (
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
                           {q.options.map((opt) => (
                             <label

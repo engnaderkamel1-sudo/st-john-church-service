@@ -174,7 +174,7 @@ export default function StudentExams({
                   )}
 
                   {/* Multiple Choice Options */}
-                  {q.type === 'mcq' && q.options && (
+                  {(q.type === 'mcq' || q.type === 'multiple_choice') && q.options && (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
                       {q.options.map((opt) => (
                         <label

@@ -96,11 +96,13 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser, externa
         if (studentGrade === 'elisha') {
           if (data.grade === 'elisha') list.push(data);
         } else {
-          // First and second year prep students get the active academic cycle curriculum
+          // First and second year prep students get the active academic cycle curriculum, common hall, or their grade
           const isTargetMatch = 
             data.grade === activeCycle || 
             (activeCycle === 'cycle_1' && data.grade === 'first') ||
-            (activeCycle === 'cycle_2' && data.grade === 'second');
+            (activeCycle === 'cycle_2' && data.grade === 'second') ||
+            data.grade === 'common_hall' ||
+            data.grade === studentGrade;
           if (isTargetMatch) {
             list.push(data);
           }
@@ -723,7 +725,8 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser, externa
     let autoScore = 0;
     const questionsList = exam.questions || [];
     questionsList.forEach(q => {
-      if ((q.type === 'mcq' || q.type === 'true_false') && examAnswers[q.id] === q.correctAnswer) {
+      const isMcq = q.type === 'mcq' || q.type === 'multiple_choice';
+      if ((isMcq || q.type === 'true_false') && examAnswers[q.id] === q.correctAnswer) {
         autoScore += (Number(q.points) || 1);
       }
     });

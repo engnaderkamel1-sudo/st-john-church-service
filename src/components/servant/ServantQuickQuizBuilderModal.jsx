@@ -273,7 +273,10 @@ export default function ServantQuickQuizBuilderModal({
       deadline: deadline || null,
       totalScore: totalScore || (questions.length * 2),
       questionsCount: questions.length,
-      questions: questions,
+      questions: questions.map(q => ({
+        ...q,
+        type: (q.type === 'multiple_choice' || q.type === 'mcq') ? 'mcq' : q.type
+      })),
       type: 'online_quiz',
       status: targetStatus, // 'active' (متاحة للطلبة) | 'draft' (مسودة مغلقة)
       createdBy: user?.fullName || 'الخادم المسؤول',
