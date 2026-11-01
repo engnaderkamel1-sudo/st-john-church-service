@@ -4,6 +4,7 @@ import { getGeminiApiKey, saveGeminiApiKey } from '../../services/geminiService'
 import { db } from '../../firebase';
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { hashPassword, checkIsAppAdmin } from '../../utils/security';
+import { getRelativeActivityInfo } from '../../services/activityTrackingService';
 
 export default function ServantUsersHub({
   user,
@@ -49,6 +50,8 @@ export default function ServantUsersHub({
   const [waModalUser, setWaModalUser] = useState(null);
   const [waMessageText, setWaMessageText] = useState('');
   const [waSending, setWaSending] = useState(false);
+  const [logSearchQuery, setLogSearchQuery] = useState('');
+  const [logFilterRole, setLogFilterRole] = useState('all');
 
   const formatEgyptianPhone = (phone) => {
     if (!phone) return '';
@@ -227,18 +230,20 @@ https://st-john-church-service-rust.vercel.app/
           )}
         </button>
 
-        <button
-          type="button"
-          onClick={() => { setUserHubSubTab('login_history'); fetchLoginLogs(); }}
-          className={`py-2 px-4 rounded-xl font-bold text-xs transition-all flex items-center gap-1.5 ${
-            userHubSubTab === 'login_history'
-              ? 'bg-maroon-800 text-white shadow-xs'
-              : 'bg-slate-100 text-slate-600 hover:text-slate-900'
-          }`}
-        >
-          <History className="w-4 h-4 text-gold-400" />
-          <span>سجل النشاط والدخول ({loginLogs.length})</span>
-        </button>
+        {isAppAdmin && (
+          <button
+            type="button"
+            onClick={() => { setUserHubSubTab('login_history'); fetchLoginLogs(); }}
+            className={`py-2 px-4 rounded-xl font-bold text-xs transition-all flex items-center gap-1.5 ${
+              userHubSubTab === 'login_history'
+                ? 'bg-maroon-800 text-white shadow-xs'
+                : 'bg-slate-100 text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <History className="w-4 h-4 text-gold-400" />
+            <span>سجل النشاط والدخول ({loginLogs.length})</span>
+          </button>
+        )}
 
         {isAppAdmin && (
           <button
@@ -565,6 +570,31 @@ https://st-john-church-service-rust.vercel.app/
                             {item.email && (
                               <span className="text-[10px] text-slate-400 font-mono block truncate max-w-[200px]" dir="ltr">{item.email}</span>
                             )}
+                            {isAppAdmin && (() => {
+                              const act = getRelativeActivityInfo(item);
+                              return (
+                                <div className="flex items-center gap-1.5 flex-wrap mt-1 text-[11px]">
+                                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-bold ${
+                                    act.isOnline
+                                      ? 'bg-emerald-50 text-emerald-700 border border-emerald-300'
+                                      : 'bg-slate-100 text-slate-600'
+                                  }`}>
+                                    {act.isOnline && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping inline-block" />}
+                                    {act.text}
+                                  </span>
+                                  {item.lastDevice && (
+                                    <span className="text-slate-500 font-medium">
+                                      {item.lastDevice}
+                                    </span>
+                                  )}
+                                  {(item.loginCount || 0) > 0 && (
+                                    <span className="text-slate-400 font-mono text-[10px]">
+                                      ({item.loginCount} زيارة)
+                                    </span>
+                                  )}
+                                </div>
+                              );
+                            })()}
                           </div>
                         </div>
 
@@ -821,6 +851,31 @@ https://st-john-church-service-rust.vercel.app/
                                 {item.email && (
                                   <span className="text-[10px] text-slate-400 block font-normal font-mono" dir="ltr">{item.email}</span>
                                 )}
+                                {isAppAdmin && (() => {
+                                  const act = getRelativeActivityInfo(item);
+                                  return (
+                                    <div className="flex items-center gap-1.5 flex-wrap mt-1 text-[11px]">
+                                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-bold ${
+                                        act.isOnline
+                                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-300'
+                                          : 'bg-slate-100 text-slate-600'
+                                      }`}>
+                                        {act.isOnline && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping inline-block" />}
+                                        {act.text}
+                                      </span>
+                                      {item.lastDevice && (
+                                        <span className="text-slate-500 font-medium">
+                                          {item.lastDevice}
+                                        </span>
+                                      )}
+                                      {(item.loginCount || 0) > 0 && (
+                                        <span className="text-slate-400 font-mono text-[10px]">
+                                          ({item.loginCount} زيارة)
+                                        </span>
+                                      )}
+                                    </div>
+                                  );
+                                })()}
                               </div>
                             </div>
                           </td>
@@ -1204,19 +1259,19 @@ https://st-john-church-service-rust.vercel.app/
         </div>
       )}
 
-      {userHubSubTab === 'login_history' && (
-        /* Login History View (سجل دخول المستخدمين) */
+      {isAppAdmin && userHubSubTab === 'login_history' && (
+        /* Login History View (سجل دخول المستخدمين - مخصص للمشرف فقط) */
         <div className="space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="font-extrabold text-slate-900 text-base">سجل النشاط وعمليات دخول المستخدمين</h3>
-                <span className="text-[11px] bg-amber-100 text-amber-900 font-bold px-2 py-0.5 rounded-full">
-                  متابعة حية
+                <h3 className="font-extrabold text-slate-900 text-base">سجل النشاط وعمليات الدخول</h3>
+                <span className="text-[11px] bg-amber-100 text-amber-900 font-bold px-2.5 py-0.5 rounded-full">
+                  إدارة المشرف 👑
                 </span>
               </div>
               <p className="text-xs text-slate-500 mt-1">
-                رصد كامل لكافة عمليات الدخول وإنشاء الحسابات الجديدة بالوقت والتاريخ والصفة للمنظومة.
+                رصد دقيق لكافة الجلسات التلقائية والدخول اليدوي ونوع الأجهزة المستخدمة.
               </p>
             </div>
 
@@ -1224,7 +1279,7 @@ https://st-john-church-service-rust.vercel.app/
               type="button"
               onClick={fetchLoginLogs}
               disabled={logsLoading}
-              className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition-colors flex items-center gap-1.5 text-xs font-bold"
+              className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition-colors flex items-center gap-1.5 text-xs font-bold self-start sm:self-auto cursor-pointer"
               title="تحديث السجل"
             >
               <RefreshCw className={`w-4 h-4 ${logsLoading ? 'animate-spin text-maroon-800' : ''}`} />
@@ -1232,71 +1287,259 @@ https://st-john-church-service-rust.vercel.app/
             </button>
           </div>
 
+          {/* Activity Stats Summary */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+            <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-3 flex items-center justify-between">
+              <div>
+                <span className="text-[11px] text-emerald-800 font-bold block">متواجدون الآن 🟢</span>
+                <span className="text-lg font-extrabold text-emerald-900">
+                  {allUsers.filter(u => getRelativeActivityInfo(u).isOnline).length}
+                </span>
+              </div>
+              <Activity className="w-5 h-5 text-emerald-600 shrink-0" />
+            </div>
+
+            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3 flex items-center justify-between">
+              <div>
+                <span className="text-[11px] text-slate-600 font-bold block">إجمالي السجلات</span>
+                <span className="text-lg font-extrabold text-slate-800">{loginLogs.length}</span>
+              </div>
+              <History className="w-5 h-5 text-slate-500 shrink-0" />
+            </div>
+
+            <div className="bg-maroon-50 border border-maroon-200 rounded-2xl p-3 flex items-center justify-between">
+              <div>
+                <span className="text-[11px] text-maroon-800 font-bold block">سجلات الخدام</span>
+                <span className="text-lg font-extrabold text-maroon-900">
+                  {loginLogs.filter(l => l.role === 'servant' || l.role === 'servant_leader' || l.role === 'admin').length}
+                </span>
+              </div>
+              <Users className="w-5 h-5 text-maroon-600 shrink-0" />
+            </div>
+
+            <div className="bg-blue-50 border border-blue-200 rounded-2xl p-3 flex items-center justify-between">
+              <div>
+                <span className="text-[11px] text-blue-800 font-bold block">سجلات المخدومين</span>
+                <span className="text-lg font-extrabold text-blue-900">
+                  {loginLogs.filter(l => l.role === 'student').length}
+                </span>
+              </div>
+              <Users className="w-5 h-5 text-blue-600 shrink-0" />
+            </div>
+          </div>
+
+          {/* Search & Filter Bar */}
+          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+            <div className="flex-1">
+              <input
+                type="text"
+                value={logSearchQuery}
+                onChange={(e) => setLogSearchQuery(e.target.value)}
+                placeholder="بحث بالاسم، رقم الهاتف، أو نوع الجهاز..."
+                className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-maroon-800 transition-colors"
+              />
+            </div>
+
+            <div className="flex items-center gap-1 bg-white border border-slate-200 p-1 rounded-xl shrink-0 self-center">
+              <button
+                type="button"
+                onClick={() => setLogFilterRole('all')}
+                className={`px-3 py-1 rounded-lg font-bold text-xs transition-all ${
+                  logFilterRole === 'all'
+                    ? 'bg-maroon-800 text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                الكل ({loginLogs.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setLogFilterRole('servant')}
+                className={`px-3 py-1 rounded-lg font-bold text-xs transition-all ${
+                  logFilterRole === 'servant'
+                    ? 'bg-maroon-800 text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                الخدام فقط
+              </button>
+              <button
+                type="button"
+                onClick={() => setLogFilterRole('student')}
+                className={`px-3 py-1 rounded-lg font-bold text-xs transition-all ${
+                  logFilterRole === 'student'
+                    ? 'bg-maroon-800 text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                المخدومين فقط
+              </button>
+            </div>
+          </div>
+
           {logsLoading ? (
             <div className="py-12 text-center text-slate-400 text-xs flex items-center justify-center gap-2">
               <RefreshCw className="w-5 h-5 animate-spin text-maroon-800" />
-              <span>جاري تحميل سجل الدخول من قاعدة البيانات...</span>
+              <span>جاري تحميل سجل النشاط من قاعدة البيانات...</span>
             </div>
-          ) : loginLogs.length === 0 ? (
-            <div className="text-center py-12 bg-slate-50 border border-dashed border-slate-200 rounded-2xl p-6">
-              <History className="w-10 h-10 text-slate-300 mx-auto mb-2" />
-              <p className="text-xs font-bold text-slate-700">لا توجد عمليات دخول مسجلة بعد في السجل.</p>
-              <p className="text-[11px] text-slate-400 mt-1">عند تسجيل دخول أي مستخدم أو إنشاء حساب جديد سيتم تدوينها هنا فوراً.</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto border border-slate-200 rounded-2xl">
-              <table className="w-full text-right text-xs">
-                <thead className="bg-slate-50 border-b border-slate-200 text-slate-600">
-                  <tr>
-                    <th className="py-3 px-3">المستخدم</th>
-                    <th className="py-3 px-3">رقم الهاتف</th>
-                    <th className="py-3 px-3">الصفة</th>
-                    <th className="py-3 px-3">العملية</th>
-                    <th className="py-3 px-3">الوقت</th>
-                    <th className="py-3 px-3">التاريخ</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {loginLogs.map((log) => (
-                    <tr key={log.id} className="hover:bg-slate-50/80 transition-colors">
-                      <td className="py-3 px-3 font-bold text-slate-900">
-                        <div className="flex items-center gap-2">
-                          <div className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs ${
-                            log.role === 'servant' ? 'bg-maroon-800 text-white' : 'bg-slate-100 text-slate-700'
+          ) : (() => {
+            const filteredLogs = loginLogs.filter((log) => {
+              if (logFilterRole === 'servant' && log.role === 'student') return false;
+              if (logFilterRole === 'student' && log.role !== 'student') return false;
+              if (!logSearchQuery.trim()) return true;
+              const q = logSearchQuery.trim().toLowerCase();
+              const mName = (log.userName || '').toLowerCase().includes(q);
+              const mPhone = (log.phone || '').toLowerCase().includes(q);
+              const mDevice = (log.device || '').toLowerCase().includes(q);
+              return mName || mPhone || mDevice;
+            });
+
+            if (filteredLogs.length === 0) {
+              return (
+                <div className="text-center py-12 bg-slate-50 border border-dashed border-slate-200 rounded-2xl p-6">
+                  <History className="w-10 h-10 text-slate-300 mx-auto mb-2" />
+                  <p className="text-xs font-bold text-slate-700">لا توجد سجلات تطابق البحث أو الفلتر المحدد.</p>
+                  <p className="text-[11px] text-slate-400 mt-1">تأكد من كتابة الاسم أو الرقم بشكل صحيح أو قم بمسح نص البحث.</p>
+                </div>
+              );
+            }
+
+            return (
+              <div className="space-y-3">
+                {/* Mobile View: Clean Cards */}
+                <div className="md:hidden space-y-2.5">
+                  {filteredLogs.map((log) => (
+                    <div key={`ml-${log.id}`} className="bg-white border border-slate-200 rounded-2xl p-3.5 shadow-2xs space-y-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-2.5">
+                          <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold text-xs shrink-0 ${
+                            log.role === 'servant' || log.role === 'servant_leader' || log.role === 'admin'
+                              ? 'bg-maroon-800 text-white'
+                              : 'bg-emerald-100 text-emerald-900'
                           }`}>
                             {log.userName ? log.userName[0] : '؟'}
                           </div>
-                          <span>{log.userName}</span>
+                          <div>
+                            <span className="font-extrabold text-slate-900 text-xs block">{log.userName}</span>
+                            <span className="text-[11px] text-slate-500 font-mono" dir="ltr">{log.phone}</span>
+                          </div>
                         </div>
-                      </td>
-                      <td className="py-3 px-3 font-mono text-slate-600" dir="ltr">{log.phone}</td>
-                      <td className="py-3 px-3">
-                        <span className={`inline-flex items-center text-[10px] font-extrabold px-2 py-0.5 rounded-full ${
-                          log.role === 'servant'
+
+                        <span className={`inline-flex items-center text-[10px] font-extrabold px-2 py-0.5 rounded-full shrink-0 ${
+                          log.role === 'servant' || log.role === 'servant_leader' || log.role === 'admin'
                             ? 'bg-maroon-100 text-maroon-900'
                             : 'bg-emerald-100 text-emerald-800'
                         }`}>
-                          {log.role === 'servant' ? 'خادم' : 'مخدوم'}
+                          {log.role === 'servant' || log.role === 'servant_leader' || log.role === 'admin' ? 'خادم' : 'مخدوم'}
                         </span>
-                      </td>
-                      <td className="py-3 px-3">
-                        <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                          log.action === 'register'
-                            ? 'bg-purple-100 text-purple-800 border border-purple-200'
-                            : 'bg-blue-100 text-blue-800 border border-blue-200'
-                        }`}>
-                          <Activity className="w-3 h-3" />
-                          <span>{log.action === 'register' ? 'إنشاء حساب جديد' : 'تسجيل دخول'}</span>
+                      </div>
+
+                      <div className="flex items-center justify-between text-[11px] pt-1 border-t border-slate-100 flex-wrap gap-1">
+                        <div className="flex items-center gap-1.5">
+                          <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                            log.action === 'register_pending_approval'
+                              ? 'bg-purple-100 text-purple-800'
+                              : log.action === 'session_open'
+                              ? 'bg-emerald-100 text-emerald-800'
+                              : 'bg-blue-100 text-blue-800'
+                          }`}>
+                            <Activity className="w-3 h-3" />
+                            <span>
+                              {log.action === 'register_pending_approval'
+                                ? 'طلب حساب جديد'
+                                : log.action === 'session_open'
+                                ? 'فتح جلسة 🟢'
+                                : 'تسجيل دخول 🔑'}
+                            </span>
+                          </span>
+
+                          {log.device && (
+                            <span className="text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md text-[10px] font-medium">
+                              {log.device}
+                            </span>
+                          )}
+                        </div>
+
+                        <span className="text-slate-400 font-mono text-[10px]">
+                          {log.timeStr} • {log.dateStr}
                         </span>
-                      </td>
-                      <td className="py-3 px-3 font-mono font-bold text-slate-700" dir="ltr">{log.timeStr || 'الآن'}</td>
-                      <td className="py-3 px-3 text-slate-500">{log.dateStr || 'اليوم'}</td>
-                    </tr>
+                      </div>
+                    </div>
                   ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+                </div>
+
+                {/* Desktop View: Full Table */}
+                <div className="hidden md:block overflow-x-auto border border-slate-200 rounded-2xl">
+                  <table className="w-full text-right text-xs">
+                    <thead className="bg-slate-50 border-b border-slate-200 text-slate-600">
+                      <tr>
+                        <th className="py-3 px-3">المستخدم</th>
+                        <th className="py-3 px-3">رقم الهاتف</th>
+                        <th className="py-3 px-3">الصفة</th>
+                        <th className="py-3 px-3">الجهاز</th>
+                        <th className="py-3 px-3">نوع الحركة</th>
+                        <th className="py-3 px-3">الوقت والتاريخ</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {filteredLogs.map((log) => (
+                        <tr key={log.id} className="hover:bg-slate-50/80 transition-colors">
+                          <td className="py-3 px-3 font-bold text-slate-900">
+                            <div className="flex items-center gap-2">
+                              <div className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs ${
+                                log.role === 'servant' || log.role === 'servant_leader' || log.role === 'admin'
+                                  ? 'bg-maroon-800 text-white'
+                                  : 'bg-emerald-100 text-emerald-900'
+                              }`}>
+                                {log.userName ? log.userName[0] : '؟'}
+                              </div>
+                              <span>{log.userName}</span>
+                            </div>
+                          </td>
+                          <td className="py-3 px-3 font-mono text-slate-600" dir="ltr">{log.phone}</td>
+                          <td className="py-3 px-3">
+                            <span className={`inline-flex items-center text-[10px] font-extrabold px-2 py-0.5 rounded-full ${
+                              log.role === 'servant' || log.role === 'servant_leader' || log.role === 'admin'
+                                ? 'bg-maroon-100 text-maroon-900'
+                                : 'bg-emerald-100 text-emerald-800'
+                            }`}>
+                              {log.role === 'servant' || log.role === 'servant_leader' || log.role === 'admin' ? 'خادم' : 'مخدوم'}
+                            </span>
+                          </td>
+                          <td className="py-3 px-3">
+                            <span className="text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md text-[11px] font-medium">
+                              {log.device || 'كمبيوتر 💻'}
+                            </span>
+                          </td>
+                          <td className="py-3 px-3">
+                            <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                              log.action === 'register_pending_approval'
+                                ? 'bg-purple-100 text-purple-800 border border-purple-200'
+                                : log.action === 'session_open'
+                                ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                                : 'bg-blue-100 text-blue-800 border border-blue-200'
+                            }`}>
+                              <Activity className="w-3 h-3" />
+                              <span>
+                                {log.action === 'register_pending_approval'
+                                  ? 'إنشاء حساب جديد ⏳'
+                                  : log.action === 'session_open'
+                                  ? 'فتح جلسة تلقائية 🟢'
+                                  : 'تسجيل دخول يدوي 🔑'}
+                              </span>
+                            </span>
+                          </td>
+                          <td className="py-3 px-3 text-slate-500 font-mono text-[11px]">
+                            {log.timeStr || 'الآن'} • {log.dateStr || 'اليوم'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            );
+          })()}
         </div>
       )}
 

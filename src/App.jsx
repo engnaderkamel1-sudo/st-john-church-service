@@ -11,6 +11,7 @@ import { collection, query, where, onSnapshot, orderBy, doc, deleteDoc } from 'f
 import { checkIsAppAdmin } from './utils/security';
 import { playNotificationChime, triggerBrowserNotification, formatNotificationTime, getNotificationTimestamp, getNotificationTypeInfo } from './utils/notificationSystem';
 import { registerServiceWorkerAndSubscribe } from './services/webPushService';
+import { recordUserSession, sendPresenceHeartbeat } from './services/activityTrackingService';
 import { initNavigationManager, useBackHandler, onExitPrompt, NAV_PRIORITY } from './utils/navigationManager';
 
 export default function App() {
@@ -371,6 +372,20 @@ export default function App() {
       }
     }
   }, []);
+
+  // تتبع النشاط التلقائي ونبض التواجد الحي للمستخدم النشط
+  useEffect(() => {
+    if (!currentUser || !currentUser.id) return;
+
+    recordUserSession(currentUser);
+    sendPresenceHeartbeat(currentUser);
+
+    const interval = setInterval(() => {
+      sendPresenceHeartbeat(currentUser);
+    }, 2.5 * 60 * 1000);
+
+    return () => clearInterval(interval);
+  }, [currentUser?.id]);
 
   const handleLoginSuccess = (user) => {
     setCurrentUser(user);

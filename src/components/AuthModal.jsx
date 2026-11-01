@@ -9,6 +9,7 @@ import RegisterForm from './auth/RegisterForm';
 import ForgotPassForm from './auth/ForgotPassForm';
 import RegistrationPendingSuccess from './auth/RegistrationPendingSuccess';
 import { triggerServerPush } from '../services/webPushService';
+import { recordUserSession, detectDevice } from '../services/activityTrackingService';
 
 export default function AuthModal({ isOpen, onClose, initialRole = 'student', initialMode = 'login', onLoginSuccess }) {
   const [isLogin, setIsLogin] = useState(initialMode !== 'register');
@@ -286,18 +287,7 @@ export default function AuthModal({ isOpen, onClose, initialRole = 'student', in
         }
 
         try {
-          await addDoc(collection(db, 'login_logs'), {
-            userId: userData.id,
-            userName: userData.fullName || 'مستخدم',
-            phone: userData.phone || phone.trim(),
-            role: userData.role || 'student',
-            grade: userData.grade || null,
-            servantScope: userData.servantScope || null,
-            action: 'login',
-            timestamp: serverTimestamp(),
-            timeStr: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }),
-            dateStr: new Date().toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
-          });
+          await recordUserSession(userData, 'login');
         } catch (logErr) {
           console.error('Failed to log login:', logErr);
         }
@@ -360,6 +350,7 @@ export default function AuthModal({ isOpen, onClose, initialRole = 'student', in
             role: newUser.role,
             grade: newUser.grade,
             servantScope: newUser.servantScope,
+            device: detectDevice(),
             action: 'register_pending_approval',
             timestamp: serverTimestamp(),
             timeStr: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }),
