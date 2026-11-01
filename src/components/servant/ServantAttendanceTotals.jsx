@@ -51,17 +51,6 @@ export default function ServantAttendanceTotals({
   const [searchQuery, setSearchQuery] = useState('');
   const [activeStageFilter, setActiveStageFilter] = useState('all'); // 'all' (combined) | 'first' | 'second'
   const [updatingId, setUpdatingId] = useState(null);
-  const [selectedRetroFriday, setSelectedRetroFriday] = useState(SERVICE_START_FRIDAY);
-  const [bulkLoading, setBulkLoading] = useState(false);
-  const [bulkSuccessMsg, setBulkSuccessMsg] = useState('');
-
-  // 2 Modes: 'quick' (حضور وغياب سريع بنقرة واحدة) | 'detailed' (بالوقت والدقائق مع نافذة تعديل)
-  const [attendanceEntryMode, setAttendanceEntryMode] = useState('quick');
-  const [editingCell, setEditingCell] = useState(null);
-  const [modalStatus, setModalStatus] = useState('حاضر');
-  const [modalTime, setModalTime] = useState('');
-  const [modalSubmitting, setModalSubmitting] = useState(false);
-
   // Generate dynamic list of service Fridays from 2026-10-02 up to today / upcoming Friday
   const fridaysList = useMemo(() => {
     const list = [];
@@ -88,6 +77,26 @@ export default function ServantAttendanceTotals({
     // Keep chronological order for the columns (Week 1 -> Week 2 -> Week 3...)
     return list;
   }, []);
+
+  const latestFridayDateStr = fridaysList[fridaysList.length - 1]?.dateStr || SERVICE_START_FRIDAY;
+  const [selectedRetroFriday, setSelectedRetroFriday] = useState(latestFridayDateStr);
+  const [bulkLoading, setBulkLoading] = useState(false);
+  const [bulkSuccessMsg, setBulkSuccessMsg] = useState('');
+
+  // 2 Modes: 'quick' (حضور وغياب سريع بنقرة واحدة) | 'detailed' (بالوقت والدقائق مع نافذة تعديل)
+  const [attendanceEntryMode, setAttendanceEntryMode] = useState('quick');
+  const [editingCell, setEditingCell] = useState(null);
+  const [modalStatus, setModalStatus] = useState('حاضر');
+  const [modalTime, setModalTime] = useState('');
+  const [modalSubmitting, setModalSubmitting] = useState(false);
+
+  // Auto-sync selected retro Friday to the latest Friday
+  useEffect(() => {
+    if (fridaysList.length > 0) {
+      const latest = fridaysList[fridaysList.length - 1].dateStr;
+      setSelectedRetroFriday(latest);
+    }
+  }, [fridaysList]);
 
   // Format date in Arabic short form with strict English digits (e.g. 2 أكتوبر)
   const formatShortDate = (dateStr) => {
