@@ -444,6 +444,18 @@ export default function StudentTasks({
                 </div>
               </div>
 
+              {isPracticeMode && (
+                <div className="p-3.5 sm:p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-start gap-2.5 shadow-2xs">
+                  <AlertCircle className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" />
+                  <div>
+                    <h5 className="font-black text-amber-950 text-xs sm:text-sm">تنبيه: حل تدريبي لمراجعة معلوماتك</h5>
+                    <p className="text-[11px] sm:text-xs text-amber-800 font-medium leading-relaxed mt-0.5">
+                      انتهى الموعد النهائي لتسليم هذه المسابقة، لذلك يمكنك حلها الآن لاختبار معلوماتك الشخصية فقط. لن يتم رصد أو تسجيل هذه الدرجة في السجل الرسمي للخدمة.
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {taskResult ? (
                 <div className="p-6 bg-slate-50 border border-slate-200 rounded-3xl text-center space-y-3">
                   <CheckCircle className="w-12 h-12 text-emerald-600 mx-auto" />
@@ -454,9 +466,14 @@ export default function StudentTasks({
                     تم حفظ وتسليم إجاباتك بنجاح ✓
                   </div>
                   {isPracticeMode ? (
-                    <p className="text-xs text-indigo-800 font-bold bg-indigo-50 border border-indigo-200 p-2.5 rounded-xl max-w-md mx-auto">
-                      💡 تم حفظ إجاباتك لأغراض المراجعة والتعلم الذاتي.
-                    </p>
+                    <div className="space-y-2 max-w-md mx-auto">
+                      <p className="text-xs sm:text-sm text-indigo-950 font-bold bg-indigo-50 border border-indigo-200 p-3 rounded-2xl">
+                        درجتك في المراجعة الذاتية: <strong className="text-indigo-700 text-base">{taskResult.autoScore}</strong> من <strong>{taskResult.totalScore}</strong> نقطة
+                      </p>
+                      <p className="text-[11px] text-amber-900 font-bold bg-amber-50 border border-amber-200 p-2.5 rounded-xl leading-relaxed">
+                        ⚠️ لم يتم تسجيل هذه النتيجة في سجلات الدرجات الرسمية للخدمة لأن المسابقة حُلّت بعد انتهاء الموعد النهائي للتسليم.
+                      </p>
+                    </div>
                   ) : (
                     <p className="text-xs text-emerald-800 font-bold bg-emerald-50 border border-emerald-200 p-2.5 rounded-xl max-w-md mx-auto">
                       تم رصد وحفظ تسليمك بنجاح في سجلات الخدمة المباركة.

@@ -332,7 +332,8 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser, externa
       const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       const studentGrade = user.grade || 'first';
       const relevantExams = list.filter(ex => {
-        if (ex.status !== 'active') return false;
+        // Include active quizzes and closed/archived quizzes for self-training archive, but exclude unpublished drafts
+        if (ex.status === 'draft') return false;
         if (!ex.grade || ex.grade === 'all' || ex.grade === 'all_grades') return true;
         // Common Hall / Cycle 1 / First Stage (Servants Prep year 1 + year 2 shared classroom)
         if (ex.grade === 'common_hall' || ex.grade === 'cycle_1' || ex.grade === 'first' || ex.grade === 'first_stage') {
@@ -1306,7 +1307,7 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser, externa
         <StudentExams
           user={user}
           getGradeTitle={getGradeTitle}
-          availableExams={availableExams.filter(ex => ex.type === 'term_exam' || ex.type === 'formal_exam')}
+          availableExams={availableExams.filter(ex => (ex.type === 'term_exam' || ex.type === 'formal_exam') && ex.status === 'active')}
           completedExams={completedExams}
           activeExam={activeExam}
           setActiveExam={setActiveExam}
