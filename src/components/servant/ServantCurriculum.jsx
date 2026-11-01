@@ -3,7 +3,7 @@ import {
   BookOpen, ShieldCheck, Plus, Trash2, ChevronLeft, UploadCloud, 
   FileText, Music, Video, Check, ExternalLink, Eye, EyeOff, Download,
   FileSpreadsheet, File, Image as ImageIcon, Sparkles, Presentation,
-  Calendar, User, FolderPlus, Pencil, X
+  Calendar, User, FolderPlus, Pencil, X, Share2
 } from 'lucide-react';
 import { db } from '../../firebase';
 import { collection, doc, addDoc, updateDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
@@ -148,6 +148,14 @@ export default function ServantCurriculum({
   const [editRefUrl, setEditRefUrl] = useState('');
   const [editRefType, setEditRefType] = useState('pdf');
   const [editRefSaving, setEditRefSaving] = useState(false);
+
+  // Share Reference with Students State
+  const [sharingRefData, setSharingRefData] = useState(null);
+  const [shareTargetGrade, setShareTargetGrade] = useState('first');
+  const [shareTargetSubjectId, setShareTargetSubjectId] = useState('');
+  const [shareTargetSubjectName, setShareTargetSubjectName] = useState('');
+  const [shareIsSaving, setShareIsSaving] = useState(false);
+  const [shareSuccessMsg, setShareSuccessMsg] = useState('');
 
   // Sync activeLecture whenever activeSubject changes
   useEffect(() => {
@@ -1039,6 +1047,202 @@ export default function ServantCurriculum({
       alert('حدث خطأ أثناء حفظ تعديل المرجع: ' + err.message);
     } finally {
       setEditRefSaving(false);
+    }
+  };
+
+  const handleOpenShareModal = (rf) => {
+    setSharingRefData(rf);
+    const defaultGrade = (selectedGrade === 'servants' || selectedGrade === 'elisha') ? 'first' : selectedGrade;
+    setShareTargetGrade(defaultGrade);
+    setShareSuccessMsg('');
+
+    const gradeSubs = (subjectsByGrade[defaultGrade] || []).filter(
+      s => (s.targetAudience || 'students') === 'students'
+    );
+    const match = gradeSubs.find(
+      s => s.name?.trim().toLowerCase() === activeSubject?.name?.trim().toLowerCase()
+    );
+    if (match) {
+      setShareTargetSubjectId(match.id);
+      setShareTargetSubjectName(match.name);
+    } else if (gradeSubs.length > 0) {
+      setShareTargetSubjectId(gradeSubs[0].id);
+      setShareTargetSubjectName(gradeSubs[0].name);
+    } else {
+      setShareTargetSubjectId('new');
+      setShareTargetSubjectName(activeSubject?.name || '');
+    }
+  };
+
+  const handleGradeChangeForShare = (newGrade) => {
+    setShareTargetGrade(newGrade);
+    const gradeSubs = (subjectsByGrade[newGrade] || []).filter(
+      s => (s.targetAudience || 'students') === 'students'
+    );
+    const match = gradeSubs.find(
+      s => s.name?.trim().toLowerCase() === activeSubject?.name?.trim().toLowerCase()
+    );
+    if (match) {
+      setShareTargetSubjectId(match.id);
+      setShareTargetSubjectName(match.name);
+    } else if (gradeSubs.length > 0) {
+      setShareTargetSubjectId(gradeSubs[0].id);
+      setShareTargetSubjectName(gradeSubs[0].name);
+    } else {
+      setShareTargetSubjectId('new');
+      setShareTargetSubjectName(activeSubject?.name || '');
+    }
+  };
+
+  const handleConfirmShareRef = async (e) => {
+    e.preventDefault();
+    if (!sharingRefData || !shareTargetGrade) return;
+
+    setShareIsSaving(true);
+    setShareSuccessMsg('');
+
+    try {
+      const finalSubjectName = shareTargetSubjectName.trim() || activeSubject?.name || 'مادة دراسية';
+      let targetSubId = shareTargetSubjectId;
+      let targetSubDoc = null;
+
+      if (targetSubId && targetSubId !== 'new') {
+        const gradeList = subjectsByGrade[shareTargetGrade] || [];
+        targetSubDoc = gradeList.find(s => s.id === targetSubId);
+      }
+
+      const sharedRefObject = {
+        ...sharingRefData,
+        id: `ref-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+        sharedFrom: activeSubject?.name || 'مناهج الخدمة',
+        sharedAt: new Date().toLocaleDateString('ar-EG', { year: 'numeric', month: 'short', day: 'numeric' }),
+        targetAudience: 'students',
+        isPublishedForStudents: true,
+        uploadedBy: user.fullName || user.phone || 'الخادم المسؤول'
+      };
+
+      if (targetSubDoc && targetSubId && targetSubId !== 'new') {
+        const currentLecs = normalizeLectures(targetSubDoc);
+        let updatedLectures = [];
+
+        if (currentLecs.length === 0) {
+          const defaultLec = {
+            id: `lec-${Date.now()}`,
+            title: 'المحاضرة الأولى',
+            date: new Date().toISOString().split('T')[0],
+            lecturer: targetSubDoc.teacher || user.fullName || 'خادم المادة',
+            isPublishedForStudents: true,
+            createdAt: new Date().toISOString(),
+            files: [sharedRefObject]
+          };
+          updatedLectures = [defaultLec];
+        } else {
+          updatedLectures = currentLecs.map((lec, idx) => {
+            if (idx === 0) {
+              return {
+                ...lec,
+                files: [sharedRefObject, ...(lec.files || [])]
+              };
+            }
+            return lec;
+          });
+        }
+
+        const allFlattenedRefs = [
+          sharedRefObject,
+          ...(Array.isArray(targetSubDoc.references) ? targetSubDoc.references : [])
+        ];
+
+        await updateDoc(doc(db, 'service_curriculum', targetSubId), {
+          lectures: updatedLectures,
+          references: allFlattenedRefs
+        });
+
+        setSubjectsByGrade(prev => {
+          const list = prev[shareTargetGrade] || [];
+          const updated = list.map(s => s.id === targetSubId ? {
+            ...s,
+            lectures: updatedLectures,
+            references: allFlattenedRefs
+          } : s);
+          return { ...prev, [shareTargetGrade]: updated };
+        });
+      } else {
+        const defaultLec = {
+          id: `lec-${Date.now()}`,
+          title: 'المحاضرة الأولى',
+          date: new Date().toISOString().split('T')[0],
+          lecturer: user.fullName || 'خادم المادة',
+          isPublishedForStudents: true,
+          createdAt: new Date().toISOString(),
+          files: [sharedRefObject]
+        };
+
+        const newDocRef = await addDoc(collection(db, 'service_curriculum'), {
+          grade: shareTargetGrade,
+          name: finalSubjectName,
+          teacher: user.fullName || 'خادم المادة',
+          targetAudience: 'students',
+          references: [sharedRefObject],
+          lectures: [defaultLec],
+          createdAt: serverTimestamp()
+        });
+
+        const newSubObj = {
+          id: newDocRef.id,
+          grade: shareTargetGrade,
+          name: finalSubjectName,
+          teacher: user.fullName || 'خادم المادة',
+          targetAudience: 'students',
+          references: [sharedRefObject],
+          lectures: [defaultLec]
+        };
+
+        setSubjectsByGrade(prev => ({
+          ...prev,
+          [shareTargetGrade]: [...(prev[shareTargetGrade] || []), newSubObj]
+        }));
+      }
+
+      const gradeLabel = shareTargetGrade === 'first' 
+        ? 'السنة الأولى' 
+        : shareTargetGrade === 'second' 
+          ? 'السنة الثانية' 
+          : 'القاعة المشتركة';
+
+      const notifTitle = `📚 مرجع دراسي جديد: ${finalSubjectName}`;
+      const notifDesc = `تمت مشاركة مرجع (${sharingRefData.title}) بمادة ${finalSubjectName} بواسطة (${user?.fullName || 'الخادم المسؤول'}). تفضل بتحميله وتصفحه الآن.`;
+
+      try {
+        await addDoc(collection(db, 'notifications'), {
+          targetUserId: shareTargetGrade,
+          title: notifTitle,
+          desc: notifDesc,
+          time: 'الآن',
+          type: 'curriculum_reference',
+          createdAt: serverTimestamp()
+        });
+
+        triggerServerPush({
+          targetGrade: shareTargetGrade,
+          title: notifTitle,
+          body: notifDesc,
+          url: '/'
+        }).catch(() => {});
+      } catch (notifErr) {
+        console.warn('Failed to send share notification:', notifErr);
+      }
+
+      setShareSuccessMsg(`تمت مشاركة المرجع بنجاح مع مخدومي (${gradeLabel}) بمادة (${finalSubjectName})! ✓`);
+      setTimeout(() => {
+        setSharingRefData(null);
+        setShareSuccessMsg('');
+      }, 2000);
+    } catch (err) {
+      console.error('Error sharing reference with students:', err);
+      alert('حدث خطأ أثناء مشاركة المرجع: ' + err.message);
+    } finally {
+      setShareIsSaving(false);
     }
   };
 
@@ -2260,6 +2464,16 @@ export default function ServantCurriculum({
 
                           <button
                             type="button"
+                            onClick={() => handleOpenShareModal(rf)}
+                            className="bg-indigo-50 hover:bg-indigo-100 text-indigo-900 border border-indigo-200 font-bold px-2.5 py-1 rounded-lg text-[10px] flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs"
+                            title="كشف ومشاركة هذا المرجع مع المخدومين واختيار السنة الدراسية"
+                          >
+                            <Share2 className="w-3 h-3 text-indigo-700" />
+                            <span>كشف ومشاركة مع المخدومين 📢</span>
+                          </button>
+
+                          <button
+                            type="button"
                             onClick={() => handleOpenEditReference(rf)}
                             className="text-slate-400 hover:text-maroon-800 p-1.5 rounded-lg hover:bg-slate-200/60 transition-colors cursor-pointer"
                             title="تعديل هذا المرجع أو الملف"
@@ -2684,6 +2898,154 @@ export default function ServantCurriculum({
                 >
                   <Check className="w-3.5 h-3.5" />
                   <span>{editRefSaving ? 'جاري الحفظ...' : 'حفظ التعديلات'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Share Reference with Students Modal */}
+      {sharingRefData && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-lg w-full shadow-2xl overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95 duration-200 text-right">
+            <div className="bg-gradient-to-r from-maroon-900 to-maroon-800 p-4 text-white flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Share2 className="w-5 h-5 text-gold-300" />
+                <h4 className="font-black text-sm">كشف ومشاركة المرجع مع المخدومين 📢</h4>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setSharingRefData(null);
+                  setShareSuccessMsg('');
+                }}
+                className="text-white/70 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleConfirmShareRef} className="p-5 space-y-4">
+              {/* Reference Info Card */}
+              <div className="bg-slate-50 border border-slate-200 p-3.5 rounded-2xl flex items-center gap-3">
+                <div className="p-2.5 bg-maroon-50 text-maroon-800 rounded-xl border border-maroon-100 shrink-0">
+                  <FileText className="w-5 h-5" />
+                </div>
+                <div>
+                  <span className="text-[10px] font-bold text-slate-400 block">المرجع المُراد مشاركته:</span>
+                  <h5 className="font-extrabold text-xs text-slate-900">{sharingRefData.title}</h5>
+                  <span className="text-[10px] text-slate-500 block mt-0.5">
+                    من مادة: <strong>{activeSubject?.name || 'مناهج الخدام'}</strong>
+                  </span>
+                </div>
+              </div>
+
+              {/* Target Grade Selector */}
+              <div>
+                <label className="block text-xs font-extrabold text-slate-700 mb-1.5">
+                  اختر مرحلة المخدومين المستهدفة *
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  {[
+                    { key: 'first', label: 'منهج سنة أولى', sub: 'بولس الرسول' },
+                    { key: 'second', label: 'منهج سنة ثانية', sub: 'بولس الرسول' },
+                    { key: 'common_hall', label: 'القاعة المشتركة', sub: 'عام لجميع المخدومين' }
+                  ].map(g => (
+                    <button
+                      key={g.key}
+                      type="button"
+                      onClick={() => handleGradeChangeForShare(g.key)}
+                      className={`p-3 rounded-2xl border text-right transition-all cursor-pointer ${
+                        shareTargetGrade === g.key
+                          ? 'bg-maroon-900 text-white border-maroon-900 shadow-sm'
+                          : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
+                      }`}
+                    >
+                      <span className="text-xs font-black block">{g.label}</span>
+                      <span className={`text-[10px] block mt-0.5 ${shareTargetGrade === g.key ? 'text-gold-300' : 'text-slate-400'}`}>
+                        {g.sub}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Target Subject Selector */}
+              <div>
+                <label className="block text-xs font-extrabold text-slate-700 mb-1.5">
+                  المادة الدراسية لدى المخدومين *
+                </label>
+                {(() => {
+                  const gradeSubs = (subjectsByGrade[shareTargetGrade] || []).filter(
+                    s => (s.targetAudience || 'students') === 'students'
+                  );
+                  return (
+                    <div className="space-y-2">
+                      <select
+                        value={shareTargetSubjectId}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setShareTargetSubjectId(val);
+                          if (val !== 'new') {
+                            const sub = gradeSubs.find(s => s.id === val);
+                            if (sub) setShareTargetSubjectName(sub.name);
+                          } else {
+                            setShareTargetSubjectName(activeSubject?.name || '');
+                          }
+                        }}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-800 focus:outline-none focus:border-maroon-800"
+                      >
+                        {gradeSubs.map(sub => (
+                          <option key={sub.id} value={sub.id}>
+                            مادة: {sub.name} ({sub.teacher || 'خادم المادة'})
+                          </option>
+                        ))}
+                        <option value="new">➕ إضافة مادة جديدة بهذه المرحلة</option>
+                      </select>
+
+                      {shareTargetSubjectId === 'new' && (
+                        <div>
+                          <input
+                            type="text"
+                            required
+                            value={shareTargetSubjectName}
+                            onChange={(e) => setShareTargetSubjectName(e.target.value)}
+                            placeholder="اسم المادة الجديدة للمخدومين (مثال: طقس كنسي)"
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-bold text-slate-800 focus:outline-none focus:border-maroon-800"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+              </div>
+
+              {shareSuccessMsg && (
+                <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 p-3 rounded-xl text-xs font-bold flex items-center gap-2">
+                  <Check className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>{shareSuccessMsg}</span>
+                </div>
+              )}
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSharingRefData(null);
+                    setShareSuccessMsg('');
+                  }}
+                  className="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs px-4 py-2 rounded-xl font-bold transition-colors cursor-pointer"
+                >
+                  إلغاء
+                </button>
+                <button
+                  type="submit"
+                  disabled={shareIsSaving || !!shareSuccessMsg}
+                  className="bg-maroon-800 hover:bg-maroon-700 text-white font-bold text-xs px-5 py-2 rounded-xl transition-all shadow-xs flex items-center gap-1.5 cursor-pointer active:scale-95 disabled:opacity-50"
+                >
+                  <Share2 className="w-3.5 h-3.5 text-gold-300" />
+                  <span>{shareIsSaving ? 'جاري المشاركة والإرسال...' : 'تأكيد المشاركة الآن'}</span>
                 </button>
               </div>
             </form>
