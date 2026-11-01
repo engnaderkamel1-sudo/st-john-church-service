@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Users, History, RefreshCw, Activity, UserPlus, UserX, Check, Sparkles, Key, ExternalLink, Save, Eye, EyeOff, Lock, X, CheckCircle2, ShieldAlert, UserCheck, AlertCircle, PauseCircle, Ban, RotateCcw, Calendar, MessageCircle, Send, Trash2 } from 'lucide-react';
+import { Users, History, RefreshCw, Activity, UserPlus, UserX, Check, Sparkles, Key, ExternalLink, Save, Eye, EyeOff, Lock, X, CheckCircle2, ShieldAlert, UserCheck, AlertCircle, PauseCircle, Ban, RotateCcw, Calendar, MessageCircle, Send, Trash2, Clock } from 'lucide-react';
 import { getGeminiApiKey, saveGeminiApiKey } from '../../services/geminiService';
 import { db } from '../../firebase';
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { hashPassword, checkIsAppAdmin } from '../../utils/security';
-import { getRelativeActivityInfo, formatLogTimestamp } from '../../services/activityTrackingService';
+import { getRelativeActivityInfo, formatLogTimestamp, formatDuration } from '../../services/activityTrackingService';
 
 export default function ServantUsersHub({
   user,
@@ -594,6 +594,11 @@ https://st-john-church-service-rust.vercel.app/
                                       ({item.loginCount} زيارة)
                                     </span>
                                   )}
+                                  {(item.totalMinutes || 0) > 0 && (
+                                    <span className="text-slate-500 font-medium text-[10px]">
+                                      • التواجد: {formatDuration(item.totalMinutes)}
+                                    </span>
+                                  )}
                                 </div>
                               );
                             })()}
@@ -873,6 +878,11 @@ https://st-john-church-service-rust.vercel.app/
                                       {(item.loginCount || 0) > 0 && (
                                         <span className="text-slate-400 font-mono text-[10px]">
                                           ({item.loginCount} زيارة)
+                                        </span>
+                                      )}
+                                      {(item.totalMinutes || 0) > 0 && (
+                                        <span className="text-slate-500 font-medium text-[10px]">
+                                          • التواجد: {formatDuration(item.totalMinutes)}
                                         </span>
                                       )}
                                     </div>
@@ -1437,7 +1447,7 @@ https://st-john-church-service-rust.vercel.app/
                       </div>
 
                       <div className="flex items-center justify-between text-[11px] pt-1 border-t border-slate-100 flex-wrap gap-1">
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-1.5 flex-wrap">
                           <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full ${
                             log.action === 'register_pending_approval'
                               ? 'bg-purple-100 text-purple-800'
@@ -1462,6 +1472,13 @@ https://st-john-church-service-rust.vercel.app/
                           ) : (
                             <span className="text-slate-400 font-mono text-[10px]">—</span>
                           )}
+
+                          {log.durationMinutes !== undefined && log.durationMinutes !== null && (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-medium text-slate-700 bg-slate-100 px-2 py-0.5 rounded-md">
+                              <Clock className="w-3 h-3 text-slate-500" />
+                              <span>{formatDuration(log.durationMinutes)}</span>
+                            </span>
+                          )}
                         </div>
 
                         <span className="text-slate-500 font-mono text-[11px]" dir="ltr">
@@ -1482,6 +1499,7 @@ https://st-john-church-service-rust.vercel.app/
                         <th className="py-3 px-3">الصفة</th>
                         <th className="py-3 px-3">الجهاز</th>
                         <th className="py-3 px-3">نوع الحركة</th>
+                        <th className="py-3 px-3">المدة</th>
                         <th className="py-3 px-3">الوقت والتاريخ</th>
                       </tr>
                     </thead>
@@ -1535,6 +1553,12 @@ https://st-john-church-service-rust.vercel.app/
                                   ? 'فتح التطبيق 📱'
                                   : 'تسجيل دخول 🔑'}
                               </span>
+                            </span>
+                          </td>
+                          <td className="py-3 px-3">
+                            <span className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-700 bg-slate-100 px-2.5 py-1 rounded-lg">
+                              <Clock className="w-3 h-3 text-slate-400" />
+                              <span>{formatDuration(log.durationMinutes)}</span>
                             </span>
                           </td>
                           <td className="py-3 px-3 text-slate-600 font-mono text-[11px]" dir="ltr">

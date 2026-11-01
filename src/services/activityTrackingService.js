@@ -57,6 +57,20 @@ export function formatLogTimestamp(log) {
 }
 
 /**
+ * تنسيق مدة الجلسة بدقة بالأرقام الإنجليزية
+ */
+export function formatDuration(minutes) {
+  if (minutes === undefined || minutes === null) return '—';
+  const mins = Math.round(Number(minutes) || 0);
+  if (mins <= 0) return 'أقل من دقيقتين';
+  if (mins < 60) return `${mins} دقيقة`;
+  const hours = Math.floor(mins / 60);
+  const remainingMins = mins % 60;
+  if (remainingMins === 0) return `${hours} ساعة`;
+  return `${hours} ساعة و ${remainingMins} دقيقة`;
+}
+
+/**
  * تسجيل جلسة دخول جديدة في سجل النشاط وتحديث بطاقة المستخدم
  * تتضمن مهلة 30 دقيقة لمنع تكرار التسجيل عند تحديث الصفحة
  */
@@ -102,7 +116,7 @@ export async function recordUserSession(currentUser, customAction = 'session_ope
     const hoursStr = String(hours).padStart(2, '0');
 
     // 3. كتابة وثيقة في سجل الدخول والنشاط
-    await addDoc(collection(db, 'login_logs'), {
+    const logDocRef = await addDoc(collection(db, 'login_logs'), {
       userId: userId,
       userName: currentUser.fullName || 'مستخدم',
       phone: currentUser.phone || '',
@@ -111,10 +125,17 @@ export async function recordUserSession(currentUser, customAction = 'session_ope
       servantScope: currentUser.servantScope || null,
       device: deviceName,
       action: customAction,
+      durationMinutes: 0,
       timestamp: serverTimestamp(),
       timeStr: `${hoursStr}:${minutes} ${ampm}`,
       dateStr: `${day}/${month}/${year}`
     });
+
+    try {
+      localStorage.setItem(`current_session_log_id_${userId}`, logDocRef.id);
+      localStorage.setItem(`current_session_start_${userId}`, String(now));
+      localStorage.setItem(`current_session_last_beat_${userId}`, String(now));
+    } catch (eSave) {}
 
     // 4. تحديث وثيقة المستخدم برفع عداد الزيارات وتسجيل آخر ظهور
     await setDoc(doc(db, 'users', userId), {
@@ -132,7 +153,7 @@ export async function recordUserSession(currentUser, customAction = 'session_ope
 }
 
 /**
- * إرسال نبض خفيف لتسجيل التواجد الحي للمستخدم الحالي
+ * إرسال نبض خفيف لتسجيل التواجد الحي للمستخدم الحالي واحتساب مدة الجلسة
  */
 export async function sendPresenceHeartbeat(currentUser) {
   if (!currentUser || !currentUser.id || !db) return;
@@ -155,9 +176,65 @@ export async function sendPresenceHeartbeat(currentUser) {
       sessionStorage.setItem(key, String(now));
     } catch (eSet) {}
 
-    await setDoc(doc(db, 'users', userId), {
+    const isVisible = typeof document === 'undefined' || document.visibilityState !== 'hidden';
+
+    let elapsedMinutes = 0;
+    let incrementalMinutes = 0;
+    let sessionLogId = null;
+    try {
+      sessionLogId = localStorage.getItem(`current_session_log_id_${userId}`);
+      const startStr = localStorage.getItem(`current_session_start_${userId}`);
+      const lastSessionBeatStr = localStorage.getItem(`current_session_last_beat_${userId}`);
+
+      if (startStr) {
+        const startTime = parseInt(startStr, 10);
+        if (startTime > 0 && now > startTime) {
+          elapsedMinutes = Math.floor((now - startTime) / 60000);
+        }
+      }
+
+      if (lastSessionBeatStr) {
+        const lastSessionBeat = parseInt(lastSessionBeatStr, 10);
+        if (lastSessionBeat > 0 && now > lastSessionBeat) {
+          incrementalMinutes = Math.floor((now - lastSessionBeat) / 60000);
+        }
+      }
+    } catch (eStorage) {}
+
+    if (isVisible && incrementalMinutes > 0) {
+      try {
+        localStorage.setItem(`current_session_last_beat_${userId}`, String(now));
+      } catch (eSet) {}
+    }
+
+    // تحديث وثيقة المستخدم برصد التواجد والمدة
+    const userUpdate = {
       lastActiveAt: serverTimestamp()
-    }, { merge: true });
+    };
+    if (isVisible && elapsedMinutes > 0) {
+      userUpdate.lastSessionMinutes = elapsedMinutes;
+    }
+    if (isVisible && incrementalMinutes > 0 && incrementalMinutes <= 15) {
+      userUpdate.totalMinutes = increment(incrementalMinutes);
+    }
+
+    await setDoc(doc(db, 'users', userId), userUpdate, { merge: true });
+
+    // تحديث سطر الجلسة النشطة في سجل النشاط (login_logs)
+    if (sessionLogId && isVisible && elapsedMinutes > 0) {
+      try {
+        await setDoc(doc(db, 'login_logs', sessionLogId), {
+          durationMinutes: elapsedMinutes,
+          lastActiveAt: serverTimestamp()
+        }, { merge: true });
+      } catch (errLog) {
+        // حماية هادئة في حال كانت القواعد لا تتيح التحديث
+      }
+    }
+  } catch (err) {
+    // تجاهل هادئ لأخطاء الشبكة أثناء النبض الدوري
+  }
+}
   } catch (err) {
     // تجاهل هادئ لأخطاء الشبكة أثناء النبض الدوري
   }
