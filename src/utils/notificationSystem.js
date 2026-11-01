@@ -134,3 +134,47 @@ export function formatNotificationTime(notif) {
     month: 'short'
   });
 }
+
+/**
+ * Safely extracts milliseconds timestamp from any notification object.
+ * Supports Firestore Timestamp, milliseconds, ISO date strings, birthday alerts, or pending server writes.
+ */
+export function getNotificationTimestamp(notif) {
+  if (!notif) return 0;
+
+  // Active birthday alert (priority for current day)
+  if (notif.isBirthday) {
+    return Date.now();
+  }
+
+  if (notif.createdAt) {
+    if (typeof notif.createdAt.toMillis === 'function') {
+      return notif.createdAt.toMillis();
+    }
+    if (typeof notif.createdAt.toDate === 'function') {
+      return notif.createdAt.toDate().getTime();
+    }
+    if (typeof notif.createdAt === 'object' && notif.createdAt.seconds) {
+      return notif.createdAt.seconds * 1000 + (notif.createdAt.nanoseconds ? Math.floor(notif.createdAt.nanoseconds / 1000000) : 0);
+    }
+    if (typeof notif.createdAt === 'number') {
+      return notif.createdAt;
+    }
+    if (typeof notif.createdAt === 'string') {
+      const parsed = new Date(notif.createdAt).getTime();
+      if (!isNaN(parsed)) return parsed;
+    }
+  }
+
+  if (notif.date) {
+    const parsed = new Date(notif.date).getTime();
+    if (!isNaN(parsed)) return parsed;
+  }
+
+  // Newly dispatched notification locally with pending serverTimestamp
+  if (notif.time === 'الآن') {
+    return Date.now();
+  }
+
+  return 0;
+}

@@ -9,7 +9,7 @@ import ErrorBoundary from './components/common/ErrorBoundary';
 
 import { collection, query, where, onSnapshot, orderBy, doc, deleteDoc } from 'firebase/firestore';
 import { checkIsAppAdmin } from './utils/security';
-import { playNotificationChime, triggerBrowserNotification, formatNotificationTime } from './utils/notificationSystem';
+import { playNotificationChime, triggerBrowserNotification, formatNotificationTime, getNotificationTimestamp } from './utils/notificationSystem';
 import { registerServiceWorkerAndSubscribe } from './services/webPushService';
 import { initNavigationManager, useBackHandler, onExitPrompt, NAV_PRIORITY } from './utils/navigationManager';
 
@@ -354,7 +354,9 @@ export default function App() {
     });
   };
 
-  const visibleNotifications = notifications.filter(n => !deletedNotificationIds.includes(n.id));
+  const visibleNotifications = notifications
+    .filter(n => !deletedNotificationIds.includes(n.id))
+    .sort((a, b) => getNotificationTimestamp(b) - getNotificationTimestamp(a));
   const unreadCount = visibleNotifications.filter(n => !readNotificationIds.includes(n.id)).length;
 
 
