@@ -37,6 +37,7 @@ import AppSupportToolsDrawerSection from './common/AppSupportToolsDrawerSection'
 import { triggerServerPush } from '../services/webPushService';
 import { calculateAttendancePoints, DEFAULT_STAGE_REGULATIONS } from '../utils/regulationsService';
 import { checkIsAppAdmin } from '../utils/security';
+import { useBackHandler, useTabBackHandler, NAV_PRIORITY } from '../utils/navigationManager';
 import { collection, getDocs, doc, updateDoc, setDoc, addDoc, deleteDoc, query, where, orderBy, serverTimestamp, limit, onSnapshot } from 'firebase/firestore';
 
 export default function ServantDashboard({ user, onLogout, onUpdateUser, externalMenuTrigger, navTarget }) {
@@ -70,6 +71,14 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
   const [showRegulationsModal, setShowRegulationsModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [previewPhotoModal, setPreviewPhotoModal] = useState(null);
+
+  // Mobile Back Button Management for Servant Dashboard
+  const defaultTab = isAppAdmin ? 'users_hub' : 'subjects_hub';
+  useTabBackHandler(mainTab, setMainTab, defaultTab);
+  useBackHandler(mobileSidebarOpen, () => setMobileSidebarOpen(false), NAV_PRIORITY.DRAWER);
+  useBackHandler(showRegulationsModal, () => setShowRegulationsModal(false), NAV_PRIORITY.MODAL);
+  useBackHandler(showProfileModal, () => setShowProfileModal(false), NAV_PRIORITY.MODAL);
+  useBackHandler(Boolean(previewPhotoModal), () => setPreviewPhotoModal(null), NAV_PRIORITY.LIGHTBOX);
 
   // Registered Users Management & Approval State
   const [allUsers, setAllUsers] = useState([]);
@@ -819,6 +828,7 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
   const [studentsDiariesList, setStudentsDiariesList] = useState([]);
   const [selectedStudentDetail, setSelectedStudentDetail] = useState(null);
   const [student360Profile, setStudent360Profile] = useState(null);
+  useBackHandler(Boolean(student360Profile), () => setStudent360Profile(null), NAV_PRIORITY.MODAL);
 
   const [servantDiary, setServantDiary] = useState({
     [todayDateStr]: {

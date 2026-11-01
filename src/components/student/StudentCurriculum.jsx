@@ -3,6 +3,7 @@ import {
   BookOpen, ChevronLeft, Download, FileText, Video, X, Eye,
   FileSpreadsheet, Music, Image as ImageIcon, File, Calendar, User, FolderPlus, Sparkles 
 } from 'lucide-react';
+import { useBackHandler, NAV_PRIORITY } from '../../utils/navigationManager';
 
 const getDriveFileId = (mat) => {
   if (!mat) return null;
@@ -45,6 +46,9 @@ export default function StudentCurriculum({
 }) {
   const [selectedLecture, setSelectedLecture] = useState(null);
   const [subjectSubTab, setSubjectSubTab] = useState('lectures'); // 'lectures' | 'references'
+
+  // Back button returns to lectures list when a single lecture is open
+  useBackHandler(Boolean(selectedLecture), () => setSelectedLecture(null), NAV_PRIORITY.SUBVIEW + 5);
 
   // Reset selectedLecture and tab when selectedSubject changes
   useEffect(() => {

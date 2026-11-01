@@ -17,6 +17,7 @@ import { triggerServerPush, registerServiceWorkerAndSubscribe } from '../service
 import { calculateAttendancePoints, DEFAULT_STAGE_REGULATIONS, getDiaryPointsConfig } from '../utils/regulationsService';
 import { getDailyServicePin, isValidServicePin } from '../utils/security';
 import { formatNotificationTime } from '../utils/notificationSystem';
+import { useBackHandler, useTabBackHandler, NAV_PRIORITY } from '../utils/navigationManager';
 
 export default function StudentDashboard({ user, onLogout, onUpdateUser, externalMenuTrigger }) {
   // Tabs: 'home', 'attendance', 'spiritual_diary', 'curriculum', 'exams', 'tasks', 'announcements'
@@ -72,6 +73,16 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser, externa
   const [activePreviewPdf, setActivePreviewPdf] = useState(null);
   const [activePreviewVideo, setActivePreviewVideo] = useState(null);
   const [activeCycle, setActiveCycle] = useState('cycle_1');
+
+  // Mobile Back Button Management for Student Dashboard
+  useTabBackHandler(activeTab, setActiveTab, 'home');
+  useBackHandler(isNavDrawerOpen, () => setIsNavDrawerOpen(false), NAV_PRIORITY.DRAWER);
+  useBackHandler(showRegulationsModal, () => setShowRegulationsModal(false), NAV_PRIORITY.MODAL);
+  useBackHandler(showProfileModal, () => setShowProfileModal(false), NAV_PRIORITY.MODAL);
+  useBackHandler(Boolean(previewPhotoModal), () => setPreviewPhotoModal(null), NAV_PRIORITY.LIGHTBOX);
+  useBackHandler(Boolean(activePreviewPdf), () => setActivePreviewPdf(null), NAV_PRIORITY.LIGHTBOX);
+  useBackHandler(Boolean(activePreviewVideo), () => setActivePreviewVideo(null), NAV_PRIORITY.LIGHTBOX);
+  useBackHandler(activeTab === 'curriculum' && Boolean(selectedSubject), () => setSelectedSubject(null), NAV_PRIORITY.SUBVIEW);
 
   // Sync active academic cycle setting
   useEffect(() => {

@@ -11,6 +11,7 @@ import { collection, query, where, onSnapshot, orderBy, doc, deleteDoc } from 'f
 import { checkIsAppAdmin } from './utils/security';
 import { playNotificationChime, triggerBrowserNotification, formatNotificationTime } from './utils/notificationSystem';
 import { registerServiceWorkerAndSubscribe } from './services/webPushService';
+import { initNavigationManager, useBackHandler, onExitPrompt, NAV_PRIORITY } from './utils/navigationManager';
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState(null);
@@ -32,6 +33,22 @@ export default function App() {
   // Full-Screen Image Lightbox Preview State (for church logo or user profile photos)
   const [previewModalImage, setPreviewModalImage] = useState(null);
   const [adminNavTarget, setAdminNavTarget] = useState(null);
+  const [showExitToast, setShowExitToast] = useState(false);
+
+  // Initialize PWA mobile back button interception & exit prompt
+  useEffect(() => {
+    initNavigationManager();
+    const unsubscribeExit = onExitPrompt(() => {
+      setShowExitToast(true);
+      setTimeout(() => setShowExitToast(false), 2500);
+    });
+    return () => unsubscribeExit();
+  }, []);
+
+  // Back button handlers for App-level modals
+  useBackHandler(Boolean(previewModalImage), () => setPreviewModalImage(null), NAV_PRIORITY.LIGHTBOX);
+  useBackHandler(authModalOpen, () => setAuthModalOpen(false), NAV_PRIORITY.MODAL);
+  useBackHandler(showNotifications, () => setShowNotifications(false), NAV_PRIORITY.DRAWER);
 
   // Auto-sync Push Subscription when user is logged in & notification permission granted
   useEffect(() => {
@@ -547,6 +564,16 @@ export default function App() {
             >
               <span className="text-sm font-bold">✕</span>
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* PWA Mobile Back Exit Confirmation Toast */}
+      {showExitToast && (
+        <div className="fixed bottom-6 inset-x-0 z-[120] flex justify-center px-4 pointer-events-none animate-in fade-in slide-in-from-bottom-4 duration-200">
+          <div className="bg-slate-900/95 text-white backdrop-blur-md border border-amber-500/60 rounded-2xl px-5 py-3 shadow-2xl flex items-center gap-2.5 text-xs font-bold text-center">
+            <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping shrink-0"></span>
+            <span>اضغط مرة أخرى للخروج من الخدمة</span>
           </div>
         </div>
       )}
