@@ -473,8 +473,9 @@ export default function ServantCurriculum({
 
       // Send in-app and background push notification to students and servants
       if (curriculumTarget === 'students' && newRef.isPublishedForStudents !== false) {
-        const notifTitle = `📚 محتوى جديد: ${activeSubject.name}`;
-        const notifDesc = `تمت إضافة (${newRef.title}) بمادة ${activeSubject.name} بواسطة (${user?.fullName || 'خادم المادة'}). تفضل بتحميلها والاطلاع عليها الآن.`;
+        const lectureName = cur?.title || activeLecture?.title || 'المحاضرة';
+        const notifTitle = `🎓 محاضرة جديدة: ${activeSubject.name}`;
+        const notifDesc = `تمت إضافة (${newRef.title}) ضمن (${lectureName}) بمادة ${activeSubject.name} بواسطة (${user?.fullName || 'خادم المادة'}).`;
 
         try {
           // 1. In-App notification for students of this grade
@@ -483,7 +484,7 @@ export default function ServantCurriculum({
             title: notifTitle,
             desc: notifDesc,
             time: 'الآن',
-            type: 'curriculum_update',
+            type: 'curriculum_lecture',
             createdAt: serverTimestamp()
           });
 
@@ -493,7 +494,7 @@ export default function ServantCurriculum({
             title: notifTitle,
             desc: notifDesc,
             time: 'الآن',
-            type: 'curriculum_update_servants',
+            type: 'curriculum_lecture',
             createdAt: serverTimestamp()
           });
 

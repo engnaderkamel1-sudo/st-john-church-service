@@ -304,8 +304,8 @@ export default function ServantQuickQuizBuilderModal({
         // Send in-app notification & Web Push to students and servants if activated
         if (targetStatus === 'active') {
           try {
-            const notifTitle = `تم فتح تاسك جديدة: ${quizTitle.trim()}`;
-            const notifBody = `تم نشر مسابقة جديدة لمرحلتكم. آخر موعد لتسليم التاسك الخميس الساعة 12 بالليل.`;
+            const notifTitle = `📝 تم فتح تاسك جديدة: ${quizTitle.trim()}`;
+            const notifBody = `تم نشر مسابقة جديدة لمرحلتكم: (${quizTitle.trim()}). آخر موعد لتسليم التاسك الخميس الساعة 12 بالليل.`;
 
             await addDoc(collection(db, 'notifications'), {
               targetUserId: grade || 'ALL',

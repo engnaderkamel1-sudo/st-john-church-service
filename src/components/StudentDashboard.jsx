@@ -16,7 +16,7 @@ import AppSupportToolsDrawerSection from './common/AppSupportToolsDrawerSection'
 import { triggerServerPush, registerServiceWorkerAndSubscribe } from '../services/webPushService';
 import { calculateAttendancePoints, DEFAULT_STAGE_REGULATIONS, getDiaryPointsConfig } from '../utils/regulationsService';
 import { getDailyServicePin, isValidServicePin } from '../utils/security';
-import { formatNotificationTime } from '../utils/notificationSystem';
+import { formatNotificationTime, getNotificationTypeInfo } from '../utils/notificationSystem';
 import { useBackHandler, useTabBackHandler, NAV_PRIORITY } from '../utils/navigationManager';
 
 export default function StudentDashboard({ user, onLogout, onUpdateUser, externalMenuTrigger }) {
@@ -1351,10 +1351,18 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser, externa
             <div className="space-y-3">
               {announcements.map((item) => {
                 const sanitizedDesc = (item.desc || item.text || '').replace(/،?\s*وتمت إضافة.*نقطة لرصيدك\.?/g, '').trim();
+                const typeInfo = getNotificationTypeInfo(item);
+                const displayTitle = (item.title || '').replace('محتوى جديد:', 'محاضرة:');
+
                 return (
                   <div key={item.id} className="bg-slate-50 border border-slate-200 p-4 rounded-2xl space-y-2 text-xs">
                     <div className="flex items-center justify-between gap-2">
-                      <span className="font-extrabold text-slate-900 text-sm">{item.title}</span>
+                      <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                        <span className={`text-[10px] font-black px-1.5 py-0.2 rounded-md border shrink-0 ${typeInfo.className}`}>
+                          {typeInfo.label}
+                        </span>
+                        <span className="font-extrabold text-slate-900 text-sm truncate">{displayTitle}</span>
+                      </div>
                       <div className="flex items-center gap-2">
                         <span className="text-[10px] text-slate-400 font-mono">{formatNotificationTime(item)}</span>
                         <button

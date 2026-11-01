@@ -326,15 +326,18 @@ export default function ServantExamsBank({
 
       // If opened/activated, send notifications and Web Push to students and servants
       if (newStatus === 'active') {
-        const notifTitle = `تم فتح تاسك جديدة: ${exam.title}`;
-        const notifBody = `تم نشر مسابقة جديدة لمرحلتكم. آخر موعد لتسليم التاسك الخميس الساعة 12 بالليل.`;
+        const isFormalExam = exam.type === 'formal_exam';
+        const notifTitle = isFormalExam ? `📑 تم نشر امتحان رسمي: ${exam.title}` : `📝 تم فتح تاسك جديدة: ${exam.title}`;
+        const notifBody = isFormalExam
+          ? `تم تفعيل امتحان رسمي جديد لمرحلتكم: (${exam.title}). بالتوفيق لجميع المخدومين.`
+          : `تم نشر مسابقة جديدة لمرحلتكم: (${exam.title}). آخر موعد لتسليم التاسك الخميس الساعة 12 بالليل.`;
 
         addDoc(collection(db, 'notifications'), {
           targetUserId: exam.grade || 'ALL',
           title: notifTitle,
           desc: notifBody,
           time: 'الآن',
-          type: 'new_task',
+          type: isFormalExam ? 'new_exam' : 'new_task',
           examId: exam.id,
           createdAt: serverTimestamp()
         }).catch(() => {});

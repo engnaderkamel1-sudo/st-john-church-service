@@ -187,3 +187,50 @@ export function getNotificationTimestamp(notif) {
 
   return 0;
 }
+
+/**
+ * Returns user-friendly categorization and styling badge for notifications.
+ * Distinguishes lectures, references, tasks/quizzes, formal exams, registrations, and general alerts.
+ */
+export function getNotificationTypeInfo(notif) {
+  if (!notif) {
+    return { label: 'تنبيه', className: 'bg-slate-100 text-slate-700 border-slate-200' };
+  }
+
+  const rawText = `${notif.type || ''} ${notif.title || ''} ${notif.desc || ''}`.toLowerCase();
+
+  // 1. Pending registration or join request
+  if (notif.type === 'pending_registration' || rawText.includes('تسجيل') || rawText.includes('انضمام')) {
+    return { label: 'طلب انضمام', className: 'bg-amber-50 text-amber-900 border-amber-300' };
+  }
+
+  // 2. Formal Exam
+  if (notif.type === 'new_exam' || notif.type === 'formal_exam' || rawText.includes('امتحان')) {
+    return { label: 'امتحان رسمي', className: 'bg-rose-50 text-rose-900 border-rose-300' };
+  }
+
+  // 3. Weekly Task / Quiz / Competition
+  if (notif.type === 'new_task' || notif.type === 'quiz' || rawText.includes('تاسك') || rawText.includes('مسابقة') || rawText.includes('كويز')) {
+    return { label: 'تاسك أسبوعي', className: 'bg-purple-50 text-purple-900 border-purple-300' };
+  }
+
+  // 4. Study Reference / Books / Notes
+  if (notif.type === 'curriculum_reference' || rawText.includes('مرجع') || rawText.includes('مذكرة') || rawText.includes('كتاب')) {
+    return { label: 'مرجع دراسي', className: 'bg-cyan-50 text-cyan-900 border-cyan-300' };
+  }
+
+  // 5. Lecture (Curriculum update / file in lecture)
+  if (
+    notif.type === 'curriculum_lecture' ||
+    notif.type === 'curriculum_update' ||
+    notif.type === 'curriculum_update_servants' ||
+    rawText.includes('محاضر') ||
+    rawText.includes('محتوى جديد') ||
+    rawText.includes('بمادة')
+  ) {
+    return { label: 'محاضرة دراسية', className: 'bg-indigo-50 text-indigo-900 border-indigo-300' };
+  }
+
+  // 6. General Service Announcement
+  return { label: 'تنبيه خدمة', className: 'bg-slate-100 text-slate-700 border-slate-200' };
+}

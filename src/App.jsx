@@ -9,7 +9,7 @@ import ErrorBoundary from './components/common/ErrorBoundary';
 
 import { collection, query, where, onSnapshot, orderBy, doc, deleteDoc } from 'firebase/firestore';
 import { checkIsAppAdmin } from './utils/security';
-import { playNotificationChime, triggerBrowserNotification, formatNotificationTime, getNotificationTimestamp } from './utils/notificationSystem';
+import { playNotificationChime, triggerBrowserNotification, formatNotificationTime, getNotificationTimestamp, getNotificationTypeInfo } from './utils/notificationSystem';
 import { registerServiceWorkerAndSubscribe } from './services/webPushService';
 import { initNavigationManager, useBackHandler, onExitPrompt, NAV_PRIORITY } from './utils/navigationManager';
 
@@ -658,6 +658,9 @@ export default function App() {
                     <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-0.5">
                       {visibleNotifications.map((n) => {
                         const isRead = readNotificationIds.includes(n.id);
+                        const typeInfo = getNotificationTypeInfo(n);
+                        const displayTitle = (n.title || '').replace('محتوى جديد:', 'محاضرة:');
+
                         return (
                           <div 
                             key={n.id} 
@@ -679,8 +682,11 @@ export default function App() {
                                 {!isRead && (
                                   <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
                                 )}
+                                <span className={`text-[10px] font-black px-1.5 py-0.2 rounded-md border shrink-0 ${typeInfo.className}`}>
+                                  {typeInfo.label}
+                                </span>
                                 <span className={`font-bold truncate ${!isRead ? 'text-slate-900' : 'text-slate-600'}`}>
-                                  {n.title}
+                                  {displayTitle}
                                 </span>
                               </div>
                               <div className="flex items-center gap-0.5 shrink-0">
