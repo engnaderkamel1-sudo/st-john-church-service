@@ -82,6 +82,7 @@ export default function ServantExamsBank({
   const [newExamTitle, setNewExamTitle] = useState('');
   const [newExamSubject, setNewExamSubject] = useState('');
   const [newExamDuration, setNewExamDuration] = useState('20');
+  const [taskTab, setTaskTab] = useState('active'); // 'active' (المسابقات النشطة) | 'archive' (الأرشيف والسابقة)
 
   // Paper / Offline Exam State
   const [paperSubject, setPaperSubject] = useState('');
@@ -196,6 +197,10 @@ export default function ServantExamsBank({
     (selectedGrade === 'first' && (ex.grade === 'cycle_1' || ex.grade === 'common_hall')) ||
     (selectedGrade === 'second' && (ex.grade === 'cycle_1' || ex.grade === 'common_hall' || ex.grade === 'first'))
   );
+
+  const activeExamsList = currentGradeExams.filter(ex => ex.status === 'active');
+  const archiveExamsList = currentGradeExams.filter(ex => ex.status !== 'active');
+  const displayedExams = taskTab === 'active' ? activeExamsList : archiveExamsList;
 
   const handleAddQuestionSubmit = async (e) => {
     e.preventDefault();
@@ -548,31 +553,90 @@ export default function ServantExamsBank({
             </button>
           </div>
 
-          {currentGradeExams.length === 0 ? (
+          {/* Active / Archive Sub-Tabs */}
+          <div className="flex items-center gap-2 border-b border-slate-200 pb-2 overflow-x-auto">
+            <button
+              type="button"
+              onClick={() => setTaskTab('active')}
+              className={`px-3.5 sm:px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 cursor-pointer shrink-0 ${
+                taskTab === 'active'
+                  ? 'bg-emerald-700 text-white shadow-xs'
+                  : 'bg-slate-100 text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <span className={`w-2 h-2 rounded-full ${taskTab === 'active' ? 'bg-white animate-pulse' : 'bg-emerald-600'}`}></span>
+              <span>المسابقات النشطة (الحالية)</span>
+              <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                taskTab === 'active' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
+              }`}>
+                {activeExamsList.length}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setTaskTab('archive')}
+              className={`px-3.5 sm:px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 cursor-pointer shrink-0 ${
+                taskTab === 'archive'
+                  ? 'bg-maroon-800 text-white shadow-xs'
+                  : 'bg-slate-100 text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <Lock className="w-3.5 h-3.5" />
+              <span>الأرشيف والمسابقات السابقة</span>
+              <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                taskTab === 'archive' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
+              }`}>
+                {archiveExamsList.length}
+              </span>
+            </button>
+          </div>
+
+          {displayedExams.length === 0 ? (
             <div className="text-center py-12 bg-slate-50 border border-dashed border-slate-200 rounded-2xl p-6">
               <FileText className="w-10 h-10 text-slate-300 mx-auto mb-2" />
-              <p className="text-xs font-bold text-slate-700">لا توجد مسابقات منشورة لهذه المرحلة حتى الآن.</p>
-              <p className="text-[11px] text-slate-400 mt-1">لا توجد مسابقات منشأة حالياً، يمكنك إنشاء مسابقة جديدة للمرحلة.</p>
+              <p className="text-xs font-bold text-slate-700">
+                {taskTab === 'active'
+                  ? 'لا توجد مسابقات نشطة حالياً لهذه المرحلة.'
+                  : 'أرشيف المسابقات فارغ حالياً.'}
+              </p>
+              <p className="text-[11px] text-slate-400 mt-1">
+                {taskTab === 'active'
+                  ? 'يمكنك تفعيل مسابقة من الأرشيف أو إنشاء وتكليف مسابقة جديدة للمرحلة.'
+                  : 'أي مسابقة يتم إيقافها أو انتهاء مدتها ستظهر في هذا الأرشيف تلقائياً.'}
+              </p>
             </div>
           ) : (
             <div className="space-y-3">
-              {currentGradeExams.map((ex) => (
-                <div key={ex.id} className="bg-slate-50 border border-slate-200 p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs hover:border-slate-300 transition-all">
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                      <span className="font-extrabold text-slate-900 text-sm truncate">{ex.title}</span>
-                      <span className="bg-maroon-100 text-maroon-900 font-bold px-2 py-0.5 rounded text-[10px]">{ex.subject || 'عام'}</span>
+              {displayedExams.map((ex) => (
+                <div 
+                  key={ex.id} 
+                  className="bg-slate-50 border border-slate-200 p-4 sm:p-5 rounded-2xl flex flex-col gap-3 text-xs hover:border-slate-300 transition-all overflow-hidden"
+                >
+                  {/* Top Block: Badges, Full Responsive Title & Metadata */}
+                  <div className="space-y-2 min-w-0 w-full">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="bg-maroon-100 text-maroon-900 font-bold px-2 py-0.5 rounded text-[10px]">
+                        {ex.subject || 'عام'}
+                      </span>
                       {ex.deadline && (
                         <span className="bg-amber-50 text-amber-900 border border-amber-200 px-2 py-0.5 rounded text-[10px] font-bold flex items-center gap-1">
                           <Calendar className="w-3 h-3 text-amber-700" />
                           <span>ينتهي: {new Date(ex.deadline).toLocaleDateString('ar-EG', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
                         </span>
                       )}
-                    </div>
-                    <div className="flex items-center gap-2 text-[11px] text-slate-500 flex-wrap">
-                      <span>
-                        {ex.questions?.length ? `${ex.questions.length} أسئلة` : `${ex.questionsCount || 0} أسئلة`} • {ex.durationMinutes ? `${ex.durationMinutes} دقيقة` : 'وقت مفتوح'} • الدرجة الكلية: {ex.totalScore || 20} نقطة
+                      <span className="text-[11px] text-slate-500 font-bold">
+                        {ex.questions?.length ? `${ex.questions.length} أسئلة` : `${ex.questionsCount || 0} أسئلة`} • {ex.durationMinutes ? `${ex.durationMinutes} دقيقة` : 'وقت مفتوح'} • الدرجة: {ex.totalScore || 20}
                       </span>
+                    </div>
+
+                    {/* Full Title (Mobile-safe, wraps words cleanly without overflowing) */}
+                    <h4 className="font-black text-slate-900 text-sm sm:text-base leading-snug break-words hyphens-auto w-full">
+                      {ex.title}
+                    </h4>
+
+                    {/* Metadata: Uploader & Upload Time */}
+                    <div className="flex items-center gap-2 text-[10px] sm:text-[11px] text-slate-500 flex-wrap pt-0.5">
                       {ex.createdBy && (
                         <span className="bg-slate-200/70 text-slate-700 px-2 py-0.5 rounded-md font-bold text-[10px] flex items-center gap-1">
                           <UserCheck className="w-3 h-3 text-maroon-800" />
@@ -588,7 +652,8 @@ export default function ServantExamsBank({
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 shrink-0 flex-wrap sm:flex-nowrap">
+                  {/* Actions Bar: Positioned cleanly below, wrapped for Mobile */}
+                  <div className="flex items-center gap-2 flex-wrap pt-2.5 border-t border-slate-200/80 w-full">
                     {/* Active / Closed Toggle Button */}
                     <button
                       type="button"
