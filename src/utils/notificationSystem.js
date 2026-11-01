@@ -109,30 +109,39 @@ export function formatNotificationTime(notif) {
   const now = new Date();
   const diffSec = Math.floor((now.getTime() - dateObj.getTime()) / 1000);
 
+  // Formatting clock time (e.g. "08:30 م" or "11:15 ص")
+  const timeFormatted = dateObj.toLocaleTimeString('ar-EG-u-nu-latn', {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true
+  });
+
   // If within the last 45 seconds
-  if (diffSec < 45 && diffSec >= -30) return 'الآن';
+  if (diffSec < 45 && diffSec >= -30) return `الآن (${timeFormatted})`;
 
   const diffMin = Math.floor(diffSec / 60);
-  if (diffMin <= 1) return 'منذ دقيقة';
-  if (diffMin === 2) return 'منذ دقيقتين';
-  if (diffMin <= 10) return `منذ ${diffMin} دقائق`;
-  if (diffMin < 60) return `منذ ${diffMin} دقيقة`;
+  if (diffMin <= 1) return `منذ دقيقة (${timeFormatted})`;
+  if (diffMin === 2) return `منذ دقيقتين (${timeFormatted})`;
+  if (diffMin <= 10) return `منذ ${diffMin} دقائق (${timeFormatted})`;
+  if (diffMin < 60) return `منذ ${diffMin} دقيقة (${timeFormatted})`;
 
   const diffHours = Math.floor(diffMin / 60);
-  if (diffHours === 1) return 'منذ ساعة';
-  if (diffHours === 2) return 'منذ ساعتين';
-  if (diffHours <= 10) return `منذ ${diffHours} ساعات`;
-  if (diffHours < 24) return `منذ ${diffHours} ساعة`;
+  if (diffHours === 1) return `منذ ساعة (${timeFormatted})`;
+  if (diffHours === 2) return `منذ ساعتين (${timeFormatted})`;
+  if (diffHours <= 10) return `منذ ${diffHours} ساعات (${timeFormatted})`;
+  if (diffHours < 24) return `منذ ${diffHours} ساعة (${timeFormatted})`;
 
   const diffDays = Math.floor(diffHours / 24);
-  if (diffDays === 1) return 'أمس';
-  if (diffDays === 2) return 'منذ يومين';
-  if (diffDays <= 10) return `منذ ${diffDays} أيام`;
+  if (diffDays === 1) return `أمس (${timeFormatted})`;
+  if (diffDays === 2) return `منذ يومين (${timeFormatted})`;
+  if (diffDays <= 10) return `منذ ${diffDays} أيام (${timeFormatted})`;
 
-  return dateObj.toLocaleDateString('ar-EG-u-nu-latn', {
+  const dateFormatted = dateObj.toLocaleDateString('ar-EG-u-nu-latn', {
     day: 'numeric',
     month: 'short'
   });
+
+  return `${dateFormatted} (${timeFormatted})`;
 }
 
 /**

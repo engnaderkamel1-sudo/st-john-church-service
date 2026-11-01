@@ -615,7 +615,7 @@ export default function App() {
               </button>
 
               {showNotifications && (
-                <div className="absolute right-0 sm:right-auto sm:left-0 mt-2 w-[calc(100vw-2rem)] max-w-xs sm:w-80 bg-white border border-slate-200 rounded-2xl shadow-xl p-3 sm:p-4 z-50 text-right space-y-2.5">
+                <div className="absolute right-0 mt-2 w-[calc(100vw-2rem)] max-w-xs sm:w-80 sm:max-w-none bg-white border border-slate-200 rounded-2xl shadow-xl p-3 sm:p-4 z-50 text-right space-y-2.5">
                   <div className="flex items-center justify-between border-b border-slate-100 pb-2">
                     <div className="flex items-center gap-1.5 font-bold text-xs text-maroon-900">
                       <span>التنبيهات والإشعارات</span>
