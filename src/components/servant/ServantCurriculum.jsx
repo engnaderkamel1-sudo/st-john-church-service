@@ -302,6 +302,10 @@ export default function ServantCurriculum({
 
   const handleDeleteSubject = async (subId, e) => {
     e?.stopPropagation();
+    if (!isAppAdmin) {
+      alert('عفواً، حذف المادة الدراسية بالكامل مقتصر حصراً على مشرف التطبيق لحماية المنهج والمنظومة.\n\nبرجاء التواصل مع مشرف التطبيق.');
+      return;
+    }
     if (!window.confirm('هل أنت متأكد من حذف هذه المادة وجميع مراجعها؟')) return;
     try {
       await deleteDoc(doc(db, 'service_curriculum', subId));
@@ -853,9 +857,23 @@ export default function ServantCurriculum({
   const handleDeleteLecture = async (lectureId, e) => {
     if (e) e.stopPropagation();
     if (!activeSubject) return;
-    if (!window.confirm('هل أنت متأكد من حذف هذه المحاضرة وجميع الملفات التابعة لها؟')) return;
 
     const currentLecs = normalizeLectures(activeSubject);
+    const targetLec = currentLecs.find(l => l.id === lectureId);
+
+    // Permission check: Only App Admin can delete anytime. Normal servants can only delete within 30 minutes of creation.
+    if (!isAppAdmin) {
+      const createdAtTime = targetLec?.createdAt ? new Date(targetLec.createdAt).getTime() : 0;
+      const isWithin30Mins = createdAtTime > 0 && (Date.now() - createdAtTime <= 30 * 60 * 1000);
+
+      if (!isWithin30Mins) {
+        alert('لا يمكن حذف المحاضرة بعد مرور 30 دقيقة على إنشائها حرصاً على استقرار المنهج والبيانات.\n\nيمكنك إخفاء المحاضرة عن المخدومين بنقرة زر (رمز العين 👁️ / 🔒)، أو برجاء التواصل مع مشرف التطبيق.');
+        return;
+      }
+    }
+
+    if (!window.confirm('هل أنت متأكد من حذف هذه المحاضرة وجميع الملفات التابعة لها؟')) return;
+
     const updatedLectures = currentLecs.filter(l => l.id !== lectureId);
     const allFlattenedRefs = updatedLectures.flatMap(l => l.files || []);
 
@@ -1043,6 +1061,12 @@ export default function ServantCurriculum({
 
   const handleDeleteReference = async (refId) => {
     if (!activeSubject) return;
+
+    if (!isAppAdmin) {
+      alert('عفواً، حذف المراجع والملفات مقتصر حصراً على مشرف التطبيق لحماية المنهج والبيانات.\n\nيمكنك التحكم في مشاركة المرجع مع المخدومين أو إخفائه بنقرة زر (رمز العين 👁️ / 🔒)، أو برجاء التواصل مع مشرف التطبيق.');
+      return;
+    }
+
     if (!window.confirm('هل أنت متأكد من حذف هذا المرجع؟')) return;
 
     const currentLecs = normalizeLectures(activeSubject);
@@ -1693,13 +1717,15 @@ export default function ServantCurriculum({
                           <span className="text-xs text-slate-400 font-bold">
                             {counts.topLabel}
                           </span>
-                          <button
-                            onClick={(e) => handleDeleteSubject(sub.id, e)}
-                            className="text-slate-400 hover:text-red-600 p-1 rounded-lg hover:bg-red-50 transition-colors"
-                            title="حذف المادة"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+                          {isAppAdmin && (
+                            <button
+                              onClick={(e) => handleDeleteSubject(sub.id, e)}
+                              className="text-slate-400 hover:text-red-600 p-1 rounded-lg hover:bg-red-50 transition-colors"
+                              title="حذف المادة (مشرف التطبيق)"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
                         </div>
                       </div>
                       <h4 className="font-extrabold text-slate-900 text-base group-hover:text-maroon-800 transition-colors mb-1">{sub.name}</h4>
@@ -2491,7 +2517,7 @@ export default function ServantCurriculum({
                                 type="button"
                                 onClick={() => handleDeleteReference(rf.id)}
                                 className="text-slate-400 hover:text-red-600 p-1.5 rounded-lg hover:bg-red-50 transition-colors cursor-pointer"
-                                title="حذف هذا المرجع"
+                                title={isAppAdmin ? "حذف هذا المرجع" : "حذف المرجع (مقتصر على مشرف التطبيق)"}
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
                               </button>

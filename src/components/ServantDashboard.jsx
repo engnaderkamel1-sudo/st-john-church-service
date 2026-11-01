@@ -112,11 +112,29 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
     setLogsLoading(true);
     try {
       const q = query(collection(db, 'login_logs'), orderBy('timestamp', 'desc'), limit(customLimit));
-      const snap = await getDocs(q);
+      // 8-second safety timeout protects mobile browsers from hanging or watchdog crash
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('timeout')), 8000)
+      );
+      const snap = await Promise.race([getDocs(q), timeoutPromise]);
       const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       setLoginLogs(list);
     } catch (err) {
-      console.error('Error fetching login logs:', err);
+      console.warn('Primary login logs query notice:', err?.message || err);
+      // Fallback query if index, orderBy or network timeout occurs on mobile
+      try {
+        const fallbackQ = query(collection(db, 'login_logs'), limit(customLimit));
+        const snap = await getDocs(fallbackQ);
+        const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        list.sort((a, b) => {
+          const tA = a.timestamp?.seconds || (a.timestamp ? new Date(a.timestamp).getTime() / 1000 : 0);
+          const tB = b.timestamp?.seconds || (b.timestamp ? new Date(b.timestamp).getTime() / 1000 : 0);
+          return tB - tA;
+        });
+        setLoginLogs(list);
+      } catch (fallbackErr) {
+        console.error('Fallback login logs query notice:', fallbackErr);
+      }
     } finally {
       setLogsLoading(false);
     }
@@ -130,6 +148,7 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
 
   useEffect(() => {
     let unsubUsers = () => {};
+    let fallbackTimer = null;
     if (isAppAdmin || isServantLeader) {
       setUsersLoading(true);
       const q = query(collection(db, 'users'));
@@ -138,9 +157,19 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
         setAllUsers(list);
         setUsersLoading(false);
       }, (err) => {
-        console.error('Error in realtime users subscription:', err);
-        setUsersLoading(false);
+        console.error('Error in realtime users subscription, attempting fallback:', err);
+        fetchAllUsers();
       });
+
+      // Self-healing fallback: if realtime snapshot hasn't populated after 3.5 seconds on mobile, fetch directly
+      fallbackTimer = setTimeout(() => {
+        setAllUsers(prev => {
+          if (!prev || prev.length === 0) {
+            fetchAllUsers();
+          }
+          return prev;
+        });
+      }, 3500);
     } else {
       fetchAllUsers();
     }
@@ -180,6 +209,7 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
 
     return () => {
       unsubUsers();
+      if (fallbackTimer) clearTimeout(fallbackTimer);
       unsubPin();
       unsubCycle();
     };

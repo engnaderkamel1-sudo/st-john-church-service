@@ -115,6 +115,7 @@ export default function ServantAttendanceTotals({
   // Real-time subscription to attendance records from service start
   useEffect(() => {
     setLoading(true);
+    let fallbackTimer = null;
     const q = query(
       collection(db, 'attendance'),
       where('date', '>=', SERVICE_START_FRIDAY)
@@ -124,11 +125,32 @@ export default function ServantAttendanceTotals({
       setAttendanceRecords(records);
       setLoading(false);
     }, (err) => {
-      console.error('Error fetching attendance totals:', err);
-      setLoading(false);
+      console.error('Error in realtime attendance subscription, attempting fallback:', err);
+      getDocs(q).then(snap => {
+        const records = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        setAttendanceRecords(records);
+      }).catch(e => console.error('Fallback attendance fetch error:', e))
+        .finally(() => setLoading(false));
     });
 
-    return () => unsub();
+    // Self-healing fallback for mobile network latency
+    fallbackTimer = setTimeout(() => {
+      setAttendanceRecords(prev => {
+        if (!prev || prev.length === 0) {
+          getDocs(q).then(snap => {
+            const records = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            if (records.length > 0) setAttendanceRecords(records);
+          }).catch(() => {})
+            .finally(() => setLoading(false));
+        }
+        return prev;
+      });
+    }, 3500);
+
+    return () => {
+      unsub();
+      if (fallbackTimer) clearTimeout(fallbackTimer);
+    };
   }, []);
 
   // Quick lookup map: `${userId}_${date}` => record
@@ -417,8 +439,8 @@ export default function ServantAttendanceTotals({
           return addDoc(collection(db, 'attendance'), {
             userId: st.id,
             userName: st.fullName || 'مخدوم',
-            userPhone: student.phone || '',
-            userGrade: student.grade || 'first',
+            userPhone: st.phone || '',
+            userGrade: st.grade || 'first',
             date: targetDate,
             time: '', // Clean checkmark without fake time
             type: 'manual_bulk',

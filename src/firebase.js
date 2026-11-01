@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase/app";
-import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, getFirestore } from "firebase/firestore";
+import { initializeFirestore, persistentLocalCache, persistentSingleTabManager, memoryLocalCache, getFirestore } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 
 const firebaseConfig = {
@@ -19,12 +19,18 @@ let firestoreDb;
 try {
   firestoreDb = initializeFirestore(app, {
     localCache: persistentLocalCache({
-      tabManager: persistentMultipleTabManager()
+      tabManager: persistentSingleTabManager()
     })
   });
 } catch (e) {
-  console.warn("Firestore offline persistence already active or fallback used:", e);
-  firestoreDb = getFirestore(app);
+  console.warn("Firestore persistent cache fallback:", e);
+  try {
+    firestoreDb = initializeFirestore(app, {
+      localCache: memoryLocalCache()
+    });
+  } catch (memErr) {
+    firestoreDb = getFirestore(app);
+  }
 }
 
 export const db = firestoreDb;
