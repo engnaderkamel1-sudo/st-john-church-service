@@ -62,6 +62,7 @@ export default function StudentTasks({
       if (!isNaN(parsed)) return parsed;
     }
     if (q.publishedAt?.seconds) return q.publishedAt.seconds * 1000;
+    if (q.id === 'quiz_genesis_28_35') return 1731500000000;
     if (q.id === 'quiz_genesis_22_28') return 1730270000000;
     if (q.id === 'quiz_genesis_15_21') return 1729000000000;
     return 0;

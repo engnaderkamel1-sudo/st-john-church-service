@@ -14,6 +14,7 @@ import StageRegulationsModal from './common/StageRegulationsModal';
 import UserProfileModal from './common/UserProfileModal';
 import AppSupportToolsDrawerSection from './common/AppSupportToolsDrawerSection';
 import { triggerServerPush, registerServiceWorkerAndSubscribe } from '../services/webPushService';
+import { genesisQuizPart3Data } from '../data/genesisQuizPart3Data';
 import { calculateAttendancePoints, DEFAULT_STAGE_REGULATIONS, getDiaryPointsConfig } from '../utils/regulationsService';
 import { getDailyServicePin, isValidServicePin } from '../utils/security';
 import { formatNotificationTime, getNotificationTypeInfo } from '../utils/notificationSystem';
@@ -347,6 +348,16 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser, externa
       });
       // Sort newest first
       relevantExams.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+
+      // Ensure genesisQuizPart3 is available immediately for common hall
+      const hasGenesis3 = relevantExams.some(ex => ex.id === genesisQuizPart3Data.id || ((ex.title || '').includes('28') && (ex.title || '').includes('35')));
+      if (!hasGenesis3 && studentGrade !== 'elisha') {
+        relevantExams.unshift({
+          ...genesisQuizPart3Data,
+          createdBy: genesisQuizPart3Data.createdBy || 'الخادم المسؤول',
+          createdAt: { seconds: Math.floor(Date.now() / 1000) }
+        });
+      }
 
       // Deduplication by title to prevent any duplicate active tasks
       const seenTitles = new Set();

@@ -10,6 +10,7 @@ import ServantTaskPreviewModal from './ServantTaskPreviewModal';
 import ServantTasksTotals from './ServantTasksTotals';
 import { genesisQuizData } from '../../data/genesisQuizData';
 import { genesisQuizPart2Data } from '../../data/genesisQuizPart2Data';
+import { genesisQuizPart3Data } from '../../data/genesisQuizPart3Data';
 import { triggerServerPush } from '../../services/webPushService';
 
 export default function ServantExamsBank({
@@ -129,10 +130,26 @@ export default function ServantExamsBank({
       return (t.includes('22') && t.includes('28')) || t.includes(genesisQuizPart2Data.title);
     };
 
+    const isGen3Match = (ex) => {
+      if (ex.id === genesisQuizPart3Data.id) return true;
+      const t = (ex.title || '').trim();
+      return (t.includes('28') && t.includes('35')) || t.includes(genesisQuizPart3Data.title);
+    };
+
     const hasGenesis1 = rawList.some(isGen1Match);
     const hasGenesis2 = rawList.some(isGen2Match);
+    const hasGenesis3 = rawList.some(isGen3Match);
 
     const merged = [...rawList];
+
+    // إضافة مسابقة الأصحاحات 28 إلى 35 كمسابقة أساسية إن لم تكن مسجلة مسبقاً
+    if (!hasGenesis3 && selectedGrade !== 'elisha') {
+      merged.push({
+        ...genesisQuizPart3Data,
+        createdBy: genesisQuizPart3Data.createdBy || 'الخادم المسؤول',
+        createdAt: genesisQuizPart3Data.createdAt || { seconds: Math.floor(Date.now() / 1000) }
+      });
+    }
 
     // إضافة مسابقة الأصحاحات 22 إلى 28 كمسابقة أساسية إن لم تكن مسجلة مسبقاً
     if (!hasGenesis2 && selectedGrade !== 'elisha') {
@@ -178,6 +195,7 @@ export default function ServantExamsBank({
         if (!isNaN(parsed)) return parsed;
       }
       if (ex.publishedAt?.seconds) return ex.publishedAt.seconds * 1000;
+      if (ex.id === 'quiz_genesis_28_35') return 1731500000000;
       if (ex.id === 'quiz_genesis_22_28') return 1730270000000;
       if (ex.id === 'quiz_genesis_15_21') return 1729000000000;
       return 0;
@@ -302,7 +320,7 @@ export default function ServantExamsBank({
     if (!window.confirm(`هل تريد بالتأكيد ${actionLabel}؟`)) return;
 
     try {
-      if (exam.id === genesisQuizData.id || exam.id === genesisQuizPart2Data.id) {
+      if (exam.id === genesisQuizData.id || exam.id === genesisQuizPart2Data.id || exam.id === genesisQuizPart3Data.id) {
         // حفظ وتحديث الحالة المحددة في قاعدة البيانات بنفس المعرف الثابت لمنع أي تكرار
         await setDoc(doc(db, 'service_exams', exam.id), {
           ...exam,
