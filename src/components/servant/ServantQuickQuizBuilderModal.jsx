@@ -7,7 +7,7 @@ import {
 import { transcribeHandwrittenQuizFromImage, extractQuizQuestionsFromText } from '../../services/geminiService';
 import { compressImage } from '../../utils/imageCompressor';
 import { db } from '../../firebase';
-import { collection, addDoc, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, doc, updateDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { triggerServerPush } from '../../services/webPushService';
 
 export default function ServantQuickQuizBuilderModal({
@@ -286,12 +286,13 @@ export default function ServantQuickQuizBuilderModal({
 
     try {
       if (editingQuiz?.id) {
-        await updateDoc(doc(db, 'service_exams', editingQuiz.id), {
+        await setDoc(doc(db, 'service_exams', editingQuiz.id), {
           ...quizData,
           status: editingQuiz.status || targetStatus,
           updatedBy: user?.fullName || 'الخادم المسؤول',
-          updatedAt: serverTimestamp()
-        });
+          updatedAt: serverTimestamp(),
+          createdAt: editingQuiz.createdAt || serverTimestamp()
+        }, { merge: true });
         if (onQuizPublished) {
           onQuizPublished({ id: editingQuiz.id, ...quizData, status: editingQuiz.status || targetStatus });
         }
