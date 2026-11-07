@@ -80,6 +80,10 @@ export default async function handler(req, res) {
           if (grade === 'first' || grade === 'second') shouldSend = true;
         } else if (targetUserId === 'elisha') {
           if (grade === 'elisha') shouldSend = true;
+        } else if (targetUserId === 'SERVANTS') {
+          if (isServant) shouldSend = true;
+        } else if (targetUserId === 'LEADERSHIP') {
+          if (isLeader) shouldSend = true;
         } else if (targetUserId) {
           if (targetUserId === docId || (targetUserId === 'SUPER_ADMIN' && isSuperAdmin)) {
             shouldSend = true;

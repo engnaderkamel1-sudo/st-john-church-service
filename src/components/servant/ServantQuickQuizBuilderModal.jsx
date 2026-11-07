@@ -318,6 +318,17 @@ export default function ServantQuickQuizBuilderModal({
               createdAt: serverTimestamp()
             });
 
+            // In-app notification for all servants
+            await addDoc(collection(db, 'notifications'), {
+              targetUserId: 'SERVANTS',
+              title: `📢 مسابقة جديدة: ${quizTitle.trim()}`,
+              desc: `قام الخادم (${user?.fullName || 'المسؤول'}) بنشر وتفعيل مسابقة للطلبة. آخر موعد الخميس 12 بالليل.`,
+              time: 'الآن',
+              type: 'new_task',
+              examId: docRef.id,
+              createdAt: serverTimestamp()
+            });
+
             // Trigger background Web Push to students & servants (even when app is closed)
             triggerServerPush({
               targetRole: 'students',

@@ -49,6 +49,13 @@ export default function ServantNotificationsHub({ currentUser, allStudents = [] 
       target: 'ALL'
     },
     {
+      id: 'servants_meeting',
+      badge: '✝️ اجتماع خدام',
+      title: 'تذكير بموعد اجتماع الخدام ✝️',
+      desc: 'خدامنا الأحباء، نذكركم بموعد اجتماع الخدام القادم لبحث ومتابعة ترتيبات الخدمة وافتقاد المخدومين.',
+      target: 'servants'
+    },
+    {
       id: 'important_alert',
       badge: '⚠️ تنبيه هام',
       title: 'تنبيه هام لجميع المخدومين ⚠️',
@@ -97,6 +104,8 @@ export default function ServantNotificationsHub({ currentUser, allStudents = [] 
     setDesc(notif.desc || '');
     if (notif.targetUserId === 'ALL') {
       setTargetType('ALL');
+    } else if (notif.targetUserId === 'SERVANTS') {
+      setTargetType('servants');
     } else if (notif.targetUserId === 'common_hall' || notif.targetUserId === 'cycle_1') {
       setTargetType('common_hall');
     } else if (notif.targetUserId === 'elisha') {
@@ -129,7 +138,10 @@ export default function ServantNotificationsHub({ currentUser, allStudents = [] 
     let finalTargetUserId = 'ALL';
     let targetLabel = 'جميع المخدومين';
 
-    if (targetType === 'common_hall') {
+    if (targetType === 'servants') {
+      finalTargetUserId = 'SERVANTS';
+      targetLabel = 'أسرة الخدام فقط ✝️';
+    } else if (targetType === 'common_hall') {
       finalTargetUserId = 'common_hall';
       targetLabel = 'المرحلة الأولى (سنة أولى + ثانية معاً)';
     } else if (targetType === 'elisha') {
@@ -178,6 +190,7 @@ export default function ServantNotificationsHub({ currentUser, allStudents = [] 
         // Broadcast Web Push to target user devices (even when app is closed)
         triggerServerPush({
           targetUserId: finalTargetUserId,
+          targetRole: targetType === 'servants' ? 'servants' : undefined,
           title: title.trim(),
           body: desc.trim(),
           url: '/'
@@ -323,6 +336,7 @@ export default function ServantNotificationsHub({ currentUser, allStudents = [] 
                 className="w-full text-xs p-3 rounded-2xl border border-slate-300 focus:outline-none focus:border-maroon-800 bg-white"
               >
                 <option value="ALL">👥 جميع المخدومين (عام للكل)</option>
+                <option value="servants">✝️ أسرة الخدام فقط (خاص بالخدام)</option>
                 <option value="common_hall">🏛️ المرحلة الأولى (سنة أولى + ثانية معاً)</option>
                 <option value="elisha">🎓 فصل أليشع (إعداد خدام)</option>
                 <option value="specific_student">👤 مخدوم محدد بالاسم</option>

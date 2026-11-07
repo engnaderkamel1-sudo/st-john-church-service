@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Users, History, RefreshCw, Activity, UserPlus, UserX, Check, Sparkles, Key, ExternalLink, Save, Eye, EyeOff, Lock, X, CheckCircle2, ShieldAlert, UserCheck, AlertCircle, PauseCircle, Ban, RotateCcw, Calendar, MessageCircle, Send, Trash2, Clock } from 'lucide-react';
+import { Users, History, RefreshCw, Activity, UserPlus, UserX, Check, Sparkles, Key, ExternalLink, Save, Eye, EyeOff, Lock, X, CheckCircle2, ShieldAlert, UserCheck, AlertCircle, PauseCircle, Ban, RotateCcw, Calendar, MessageCircle, Send, Trash2, Clock, Bell } from 'lucide-react';
 import { getGeminiApiKey, saveGeminiApiKey } from '../../services/geminiService';
 import { db } from '../../firebase';
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
@@ -605,24 +605,35 @@ https://st-john-church-service-rust.vercel.app/
                           </div>
                         </div>
 
-                        {/* Role Badge */}
-                        <span className={`inline-flex items-center gap-1 text-[11px] font-extrabold px-2.5 py-1 rounded-full shrink-0 ${
-                          checkIsAppAdmin(item)
-                            ? 'bg-amber-100 text-amber-900 border border-amber-300'
-                            : item.role === 'servant_leader'
-                            ? 'bg-purple-100 text-purple-900 border border-purple-200'
-                            : item.role === 'servant'
-                            ? 'bg-maroon-100 text-maroon-900 border border-maroon-200'
-                            : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
-                        }`}>
-                          {checkIsAppAdmin(item)
-                            ? 'مشرف النظام 👑'
-                            : item.role === 'servant_leader'
-                            ? 'أمين خدمة 🛡️'
-                            : item.role === 'servant'
-                            ? 'خادم ✝️'
-                            : 'مخدوم 🎓'}
-                        </span>
+                        {/* Role & Push Badges */}
+                        <div className="flex flex-col items-end gap-1 shrink-0">
+                          <span className={`inline-flex items-center gap-1 text-[11px] font-extrabold px-2.5 py-1 rounded-full ${
+                            checkIsAppAdmin(item)
+                              ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                              : item.role === 'servant_leader'
+                              ? 'bg-purple-100 text-purple-900 border border-purple-200'
+                              : item.role === 'servant'
+                              ? 'bg-maroon-100 text-maroon-900 border border-maroon-200'
+                              : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                          }`}>
+                            {checkIsAppAdmin(item)
+                              ? 'مشرف النظام 👑'
+                              : item.role === 'servant_leader'
+                              ? 'أمين خدمة 🛡️'
+                              : item.role === 'servant'
+                              ? 'خادم ✝️'
+                              : 'مخدوم 🎓'}
+                          </span>
+
+                          <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                            item.pushSubscription
+                              ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                              : 'bg-slate-100 text-slate-500 border border-slate-200'
+                          }`} title={item.pushSubscription ? 'الإشعارات الفورية مفعلة على الهاتف' : 'الإشعارات الفورية غير مفعلة على الهاتف'}>
+                            <Bell className={`w-3 h-3 ${item.pushSubscription ? 'text-emerald-600' : 'text-slate-400'}`} />
+                            <span>{item.pushSubscription ? 'إشعارات مفعلة' : 'بدون إشعارات'}</span>
+                          </span>
+                        </div>
                       </div>
 
                       {/* Stage / Role Detail */}
@@ -908,23 +919,34 @@ https://st-john-church-service-rust.vercel.app/
                           </td>
                           <td className="py-3.5 px-3 font-mono text-slate-600" dir="ltr">{item.phone}</td>
                           <td className="py-3.5 px-3">
-                            <span className={`inline-flex items-center gap-1 text-[11px] font-extrabold px-2.5 py-1 rounded-full ${
-                              checkIsAppAdmin(item)
-                                ? 'bg-amber-100 text-amber-900 border border-amber-300'
-                                : item.role === 'servant_leader'
-                                ? 'bg-purple-100 text-purple-900 border border-purple-200'
-                                : item.role === 'servant'
-                                ? 'bg-maroon-100 text-maroon-900 border border-maroon-200'
-                                : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
-                            }`}>
-                              {checkIsAppAdmin(item)
-                                ? 'مشرف النظام 👑'
-                                : item.role === 'servant_leader'
-                                ? 'أمين خدمة 🛡️'
-                                : item.role === 'servant'
-                                ? 'خادم ✝️'
-                                : 'مخدوم 🎓'}
-                            </span>
+                            <div className="flex flex-col items-start gap-1">
+                              <span className={`inline-flex items-center gap-1 text-[11px] font-extrabold px-2.5 py-1 rounded-full ${
+                                checkIsAppAdmin(item)
+                                  ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                                  : item.role === 'servant_leader'
+                                  ? 'bg-purple-100 text-purple-900 border border-purple-200'
+                                  : item.role === 'servant'
+                                  ? 'bg-maroon-100 text-maroon-900 border border-maroon-200'
+                                  : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                              }`}>
+                                {checkIsAppAdmin(item)
+                                  ? 'مشرف النظام 👑'
+                                  : item.role === 'servant_leader'
+                                  ? 'أمين خدمة 🛡️'
+                                  : item.role === 'servant'
+                                  ? 'خادم ✝️'
+                                  : 'مخدوم 🎓'}
+                              </span>
+
+                              <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                                item.pushSubscription
+                                  ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                                  : 'bg-slate-100 text-slate-500 border border-slate-200'
+                              }`} title={item.pushSubscription ? 'الإشعارات الفورية مفعلة على الهاتف' : 'الإشعارات الفورية غير مفعلة على الهاتف'}>
+                                <Bell className={`w-3 h-3 ${item.pushSubscription ? 'text-emerald-600' : 'text-slate-400'}`} />
+                                <span>{item.pushSubscription ? 'إشعارات مفعلة' : 'بدون إشعارات'}</span>
+                              </span>
+                            </div>
                           </td>
                           <td className="py-3.5 px-3 font-bold text-slate-700">
                             {checkIsAppAdmin(item)

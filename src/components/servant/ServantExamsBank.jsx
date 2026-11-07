@@ -360,6 +360,17 @@ export default function ServantExamsBank({
           createdAt: serverTimestamp()
         }).catch(() => {});
 
+        // In-app notification for all servants
+        addDoc(collection(db, 'notifications'), {
+          targetUserId: 'SERVANTS',
+          title: isFormalExam ? `📑 تم تفعيل امتحان رسمي: ${exam.title}` : `📢 تم فتح مسابقة: ${exam.title}`,
+          desc: `قام الخادم (${user?.fullName || 'المسؤول'}) بفتح (${exam.title}) للطلبة.`,
+          time: 'الآن',
+          type: isFormalExam ? 'new_exam' : 'new_task',
+          examId: exam.id,
+          createdAt: serverTimestamp()
+        }).catch(() => {});
+
         triggerServerPush({
           targetRole: 'students',
           targetGrade: exam.grade || 'ALL',
