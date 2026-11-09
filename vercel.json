@@ -3,6 +3,10 @@
     {
       "path": "/api/cron-thursday-reminder",
       "schedule": "0 6 * * 4"
+    },
+    {
+      "path": "/api/cron-daily-birthdays",
+      "schedule": "0 6 * * *"
     }
   ],
   "rewrites": [

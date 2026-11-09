@@ -199,6 +199,16 @@ export function getNotificationTypeInfo(notif) {
 
   const rawText = `${notif.type || ''} ${notif.title || ''} ${notif.desc || ''}`.toLowerCase();
 
+  // 0. Birthday Alert
+  if (notif.isBirthday || notif.type === 'birthday_alert' || rawText.includes('عيد ميلاد')) {
+    return { label: 'عيد ميلاد 🎂', className: 'bg-amber-50 text-amber-900 border-amber-300' };
+  }
+
+  // 0.1 Weekly Curriculum Schedule
+  if (notif.type === 'weekly_curriculum' || rawText.includes('منهج أسبوعي') || rawText.includes('توزيع المنهج')) {
+    return { label: 'توزيع المنهج 📅', className: 'bg-emerald-50 text-emerald-900 border-emerald-300' };
+  }
+
   // 1. Pending registration or join request
   if (notif.type === 'pending_registration' || rawText.includes('تسجيل') || rawText.includes('انضمام')) {
     return { label: 'طلب انضمام', className: 'bg-amber-50 text-amber-900 border-amber-300' };

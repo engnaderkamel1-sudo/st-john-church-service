@@ -1,10 +1,52 @@
 import React, { useState, useMemo } from 'react';
-import { Cake, Calendar, Gift, Users, User, Search, Sparkles, AlertCircle, Phone, MessageCircle } from 'lucide-react';
+import { Cake, Calendar, Gift, Users, User, Search, Sparkles, AlertCircle, Phone, MessageCircle, Bell, Send, CheckCircle2, Loader2 } from 'lucide-react';
 
 export default function ServantBirthdaysHub({ allUsers = [], getGradeTitle, onSelectStudent }) {
   const [filterType, setFilterType] = useState('all'); // 'all' | 'servants' | 'students'
   const [stageFilter, setStageFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [isPushing, setIsPushing] = useState(false);
+  const [pushFeedback, setPushFeedback] = useState(null);
+
+  // Servants with Web Push subscription
+  const servantsWithPushCount = useMemo(() => {
+    return allUsers.filter(u => u.role !== 'student' && u.pushSubscription).length;
+  }, [allUsers]);
+
+  const totalServantsCount = useMemo(() => {
+    return allUsers.filter(u => u.role !== 'student').length;
+  }, [allUsers]);
+
+  const handleTriggerPush = async (targetId = null) => {
+    setIsPushing(true);
+    setPushFeedback(null);
+    try {
+      const url = targetId 
+        ? `/api/cron-daily-birthdays?targetUserId=${targetId}&force=true` 
+        : `/api/cron-daily-birthdays?force=true`;
+      const res = await fetch(url, { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        setPushFeedback({
+          type: 'success',
+          text: `تم بنجاح إرسال إشعار التذكير إلى (${data.totalPushesSent || 0}) هاتف خادم مفعل!`
+        });
+      } else {
+        setPushFeedback({
+          type: 'error',
+          text: data.error || data.message || 'تعذر إرسال الإشعار حالياً.'
+        });
+      }
+    } catch (e) {
+      setPushFeedback({
+        type: 'error',
+        text: 'حدث خطأ أثناء الاتصال بالخادم.'
+      });
+    } finally {
+      setIsPushing(false);
+      setTimeout(() => setPushFeedback(null), 6000);
+    }
+  };
 
   // Helper to calculate days until next birthday and turning age
   const processedUsers = useMemo(() => {
@@ -109,8 +151,8 @@ export default function ServantBirthdaysHub({ allUsers = [], getGradeTitle, onSe
           </p>
         </div>
 
-        {/* Quick Stats */}
-        <div className="flex items-center gap-2 self-start sm:self-auto">
+        {/* Quick Stats & Push Trigger */}
+        <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
           <div className="bg-white/10 backdrop-blur-xs border border-white/20 px-3.5 py-1.5 rounded-2xl text-center">
             <span className="text-[10px] text-gold-200 block">اليوم</span>
             <span className="text-base font-extrabold text-white">{todayBirthdays.length} 🎈</span>
@@ -119,8 +161,49 @@ export default function ServantBirthdaysHub({ allUsers = [], getGradeTitle, onSe
             <span className="text-[10px] text-gold-200 block">خلال ٣ أيام</span>
             <span className="text-base font-extrabold text-white">{upcoming3Days.length} ⏳</span>
           </div>
+          <div className="bg-white/10 backdrop-blur-xs border border-white/20 px-3 py-1.5 rounded-2xl flex items-center gap-1.5 text-xs text-gold-200">
+            <Bell className="w-3.5 h-3.5 text-gold-300" />
+            <span>{servantsWithPushCount} من {totalServantsCount} مفعلين للإشعارات</span>
+          </div>
+          {(todayBirthdays.length > 0 || upcoming3Days.length > 0) && (
+            <button
+              type="button"
+              onClick={() => handleTriggerPush()}
+              disabled={isPushing}
+              className="bg-gold-500 hover:bg-gold-600 active:scale-95 text-maroon-950 font-extrabold text-xs px-3.5 py-2 rounded-2xl flex items-center gap-1.5 transition-all shadow-sm cursor-pointer disabled:opacity-50"
+              title="إرسال إشعار تذكير فوري لهواتف الخدام"
+            >
+              {isPushing ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>جارٍ الإرسال...</span>
+                </>
+              ) : (
+                <>
+                  <Send className="w-4 h-4" />
+                  <span>إرسال تذكير لهواتف الخدام</span>
+                </>
+              )}
+            </button>
+          )}
         </div>
       </div>
+
+      {/* Push Feedback Banner */}
+      {pushFeedback && (
+        <div className={`p-3.5 rounded-2xl text-xs sm:text-sm font-bold flex items-center gap-2 transition-all ${
+          pushFeedback.type === 'success' 
+            ? 'bg-emerald-50 text-emerald-900 border border-emerald-300' 
+            : 'bg-rose-50 text-rose-900 border border-rose-300'
+        }`}>
+          {pushFeedback.type === 'success' ? (
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+          ) : (
+            <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+          )}
+          <span>{pushFeedback.text}</span>
+        </div>
+      )}
 
       {/* Filters Bar */}
       <div className="bg-white border border-slate-200 rounded-2xl p-3 sm:p-4 shadow-2xs space-y-3">
@@ -230,6 +313,15 @@ export default function ServantBirthdaysHub({ allUsers = [], getGradeTitle, onSe
                 </div>
 
                 <div className="flex items-center gap-1.5 shrink-0">
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); handleTriggerPush(u.id); }}
+                    disabled={isPushing}
+                    className="w-8 h-8 rounded-xl bg-purple-50 hover:bg-purple-600 text-purple-700 hover:text-white border border-purple-200 flex items-center justify-center transition-all shadow-2xs cursor-pointer"
+                    title="إرسال إشعار تذكير فوري لهواتف الخدام 📢"
+                  >
+                    <Bell className="w-4 h-4" />
+                  </button>
                   {u.phone && (
                     <>
                       <a
@@ -297,6 +389,15 @@ export default function ServantBirthdaysHub({ allUsers = [], getGradeTitle, onSe
                 </div>
 
                 <div className="flex items-center gap-1.5 shrink-0">
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); handleTriggerPush(u.id); }}
+                    disabled={isPushing}
+                    className="w-8 h-8 rounded-xl bg-purple-50 hover:bg-purple-600 text-purple-700 hover:text-white border border-purple-200 flex items-center justify-center transition-all shadow-2xs cursor-pointer"
+                    title="إرسال إشعار تذكير فوري لهواتف الخدام 📢"
+                  >
+                    <Bell className="w-4 h-4" />
+                  </button>
                   {u.phone && (
                     <>
                       <a

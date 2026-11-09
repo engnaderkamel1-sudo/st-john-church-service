@@ -224,8 +224,9 @@ export default function App() {
             }
           });
 
-          // Combine manual Firestore notifications with birthday alerts
-          setNotifications([...bdayAlerts, ...list]);
+          // Combine manual Firestore notifications with birthday alerts, preventing duplicate bday_ items
+          const filteredList = list.filter(item => !item.id?.startsWith('bday_'));
+          setNotifications([...bdayAlerts, ...filteredList]);
         }, (uErr) => {
           console.log('Error listening to users for birthdays:', uErr);
           setNotifications(list);
@@ -549,6 +550,8 @@ export default function App() {
               markAsRead(incomingToast.id);
               if (incomingToast.type === 'pending_registration') {
                 setAdminNavTarget({ mainTab: 'users_hub', subTab: 'pending_approvals', ts: Date.now() });
+              } else if (incomingToast.type === 'weekly_curriculum') {
+                setAdminNavTarget({ mainTab: 'weekly_curriculum', ts: Date.now() });
               } else {
                 setShowNotifications(true);
               }
@@ -683,6 +686,9 @@ export default function App() {
                               markAsRead(n.id);
                               if (n.type === 'pending_registration') {
                                 setAdminNavTarget({ mainTab: 'users_hub', subTab: 'pending_approvals', ts: Date.now() });
+                                setShowNotifications(false);
+                              } else if (n.type === 'weekly_curriculum') {
+                                setAdminNavTarget({ mainTab: 'weekly_curriculum', ts: Date.now() });
                                 setShowNotifications(false);
                               }
                             }}

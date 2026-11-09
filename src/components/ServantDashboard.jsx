@@ -17,6 +17,7 @@ import {
 import { db } from '../firebase';
 import ServantSpiritualDiary from './servant/ServantSpiritualDiary';
 import ServantCurriculum from './servant/ServantCurriculum';
+import ServantWeeklyCurriculum from './servant/ServantWeeklyCurriculum';
 import ServantExamsBank from './servant/ServantExamsBank';
 import ServantSubjectExams from './servant/ServantSubjectExams';
 import ServantAnalytics from './servant/ServantAnalytics';
@@ -1853,6 +1854,29 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
                   <span>مناهج ومراجع الخدام</span>
                 </button>
 
+                {/* 7.1 Weekly Curriculum Distribution */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMainTab('weekly_curriculum');
+                    setActiveSubject(null);
+                    setMobileSidebarOpen(false);
+                  }}
+                  className={`w-full text-right py-2 px-3 rounded-xl flex items-center justify-between text-xs font-bold transition-all cursor-pointer ${
+                    mainTab === 'weekly_curriculum'
+                      ? 'bg-maroon-800 text-white shadow-xs'
+                      : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Calendar className={`w-4 h-4 ${mainTab === 'weekly_curriculum' ? 'text-gold-300' : 'text-amber-600'}`} />
+                    <span>توزيع المنهج الأسبوعي 📅</span>
+                  </div>
+                  <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-md bg-amber-100 text-amber-900 font-bold">
+                    أسبوعي
+                  </span>
+                </button>
+
                 {/* 8. Regulations (Placed on hold until unified scoring launch) */}
 
                 {/* 9. Analytics */}
@@ -2237,6 +2261,16 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
           activeAcademicCycle={activeAcademicCycle}
           academicYear={academicYear}
           handleUpdateAcademicCycle={handleUpdateAcademicCycle}
+        />
+      )}
+
+      {/* 1.1 Weekly Curriculum Hub */}
+      {mainTab === 'weekly_curriculum' && (
+        <ServantWeeklyCurriculum
+          user={user}
+          isAppAdmin={isAppAdmin}
+          isServantLeader={isServantLeader}
+          allUsers={allUsers}
         />
       )}
 
