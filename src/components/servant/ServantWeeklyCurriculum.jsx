@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   Calendar, Clock, Users, User, Phone, MessageSquare, Send, Bell, 
   CheckCircle, Plus, Edit3, Save, Trash2, ChevronLeft, ChevronRight, 
-  Printer, Sparkles, AlertCircle, Share2, Eye, ShieldCheck, Check
+  Printer, Sparkles, AlertCircle, Share2, Eye, ShieldCheck, Check, RefreshCw
 } from 'lucide-react';
 import { 
   collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, 
@@ -19,6 +19,30 @@ const ARABIC_MONTHS = [
 
 // ألقاب المتكلم الخارجي المعتمدة كنسياً
 const EXTERNAL_TITLES = ['أبونا', 'أستاذ', 'طاسوني'];
+
+// بيانات الخدام الحقيقية المعتمدة لربط التنبيهات
+const REAL_SERVANTS = {
+  aghapy: {
+    id: 'vB3UKbTyDTQz3XhDIPBQ',
+    name: 'طاسوني اغابي اسحق',
+    phone: '01225278458'
+  },
+  nader: {
+    id: '7QfEDKZXwTB1QdtB6slC',
+    name: 'Nader Reda Labib',
+    phone: '01275571569'
+  },
+  hanaa: {
+    id: 'TEjV6XAHf3cYmGkjnnCc',
+    name: 'هناء فكري شفيق',
+    phone: '01226862261'
+  },
+  afaf: {
+    id: '0zzWT0Bs2PcQdJN77C8A',
+    name: 'عفاف كمال عبدالنور',
+    phone: '01024682928'
+  }
+};
 
 // دالة توليد أيام الجمعة لأي شهر وسنة
 function generateFridaysForMonth(year, monthIndex) {
@@ -83,15 +107,128 @@ function generateFridaysForMonth(year, monthIndex) {
   return fridays;
 }
 
+// بناء البيانات الأولية المعتمدة لشهري نوفمبر وديسمبر 2026 المطابقة للورقة الفعلية
+function buildRealScheduleDocs(uploadedByName = 'أمين الخدمة') {
+  // 1. شهر نوفمبر 2026
+  const novFridays = generateFridaysForMonth(2026, 10); // 10 = نوفمبر
+  novFridays.forEach(f => {
+    if (f.date === '2026-11-06' || f.dayNumber === 6) {
+      f.session1.title = 'لقاء تمهيدي وإعلان نظام دورة إعداد الخدام';
+      f.session1.speakerId = REAL_SERVANTS.hanaa.id;
+      f.session1.speakerName = REAL_SERVANTS.hanaa.name;
+      f.session1.speakerPhone = REAL_SERVANTS.hanaa.phone;
+      f.session2.title = 'توجيهات روحية ومنهجية وتوزيع المراجع';
+      f.session2.speakerId = REAL_SERVANTS.nader.id;
+      f.session2.speakerName = REAL_SERVANTS.nader.name;
+      f.session2.speakerPhone = REAL_SERVANTS.nader.phone;
+    } else if (f.date === '2026-11-13' || f.dayNumber === 13) {
+      f.session1.title = 'تك 25 - 44 (دراسة سفر التكوين)';
+      f.session1.speakerId = REAL_SERVANTS.aghapy.id;
+      f.session1.speakerName = REAL_SERVANTS.aghapy.name;
+      f.session1.speakerPhone = REAL_SERVANTS.aghapy.phone;
+      f.session2.title = 'مهارات خادم إعداد خدام';
+      f.session2.speakerId = REAL_SERVANTS.afaf.id;
+      f.session2.speakerName = REAL_SERVANTS.afaf.name;
+      f.session2.speakerPhone = REAL_SERVANTS.afaf.phone;
+    } else if (f.date === '2026-11-20' || f.dayNumber === 20) {
+      f.session1.title = 'تك 45 - 50 (دراسة سفر التكوين)';
+      f.session1.speakerId = REAL_SERVANTS.nader.id;
+      f.session1.speakerName = REAL_SERVANTS.nader.name;
+      f.session1.speakerPhone = REAL_SERVANTS.nader.phone;
+      f.session2.title = 'طقس الكنيسة القبطية الأرثوذكسية';
+      f.session2.speakerId = REAL_SERVANTS.hanaa.id;
+      f.session2.speakerName = REAL_SERVANTS.hanaa.name;
+      f.session2.speakerPhone = REAL_SERVANTS.hanaa.phone;
+    } else if (f.date === '2026-11-27' || f.dayNumber === 27) {
+      f.session1.title = 'خر 1 - 7 (دراسة سفر الخروج)';
+      f.session1.speakerId = REAL_SERVANTS.hanaa.id;
+      f.session1.speakerName = REAL_SERVANTS.hanaa.name;
+      f.session1.speakerPhone = REAL_SERVANTS.hanaa.phone;
+      f.session2.title = 'طقس الكنيسة القبطية الأرثوذكسية';
+      f.session2.speakerId = REAL_SERVANTS.afaf.id;
+      f.session2.speakerName = REAL_SERVANTS.afaf.name;
+      f.session2.speakerPhone = REAL_SERVANTS.afaf.phone;
+    }
+  });
+
+  const novDoc = {
+    id: '2026-11',
+    year: 2026,
+    month: 11,
+    monthName: 'نوفمبر',
+    title: 'منهج شهر نوفمبر 2026',
+    published: true,
+    fridays: novFridays,
+    updatedBy: uploadedByName
+  };
+
+  // 2. شهر ديسمبر 2026
+  const decFridays = generateFridaysForMonth(2026, 11); // 11 = ديسمبر
+  decFridays.forEach(f => {
+    if (f.date === '2026-12-04' || f.dayNumber === 4) {
+      f.session1.title = 'خر 8 - 14 (دراسة سفر الخروج)';
+      f.session1.speakerId = REAL_SERVANTS.afaf.id;
+      f.session1.speakerName = REAL_SERVANTS.afaf.name;
+      f.session1.speakerPhone = REAL_SERVANTS.afaf.phone;
+      f.session2.title = 'عقيدة أرثوذكسية';
+      f.session2.speakerId = REAL_SERVANTS.nader.id;
+      f.session2.speakerName = REAL_SERVANTS.nader.name;
+      f.session2.speakerPhone = REAL_SERVANTS.nader.phone;
+    } else if (f.date === '2026-12-11' || f.dayNumber === 11) {
+      f.session1.title = 'خر 15 - 21 (دراسة سفر الخروج)';
+      f.session1.speakerId = REAL_SERVANTS.nader.id;
+      f.session1.speakerName = REAL_SERVANTS.nader.name;
+      f.session1.speakerPhone = REAL_SERVANTS.nader.phone;
+      f.session2.title = 'عقيدة أرثوذكسية';
+      f.session2.speakerId = REAL_SERVANTS.hanaa.id;
+      f.session2.speakerName = REAL_SERVANTS.hanaa.name;
+      f.session2.speakerPhone = REAL_SERVANTS.hanaa.phone;
+    } else if (f.date === '2026-12-18' || f.dayNumber === 18) {
+      f.session1.title = 'خر 22 - 28 (دراسة سفر الخروج)';
+      f.session1.speakerId = REAL_SERVANTS.aghapy.id;
+      f.session1.speakerName = REAL_SERVANTS.aghapy.name;
+      f.session1.speakerPhone = REAL_SERVANTS.aghapy.phone;
+      f.session2.title = 'عقيدة أرثوذكسية';
+      f.session2.speakerId = REAL_SERVANTS.afaf.id;
+      f.session2.speakerName = REAL_SERVANTS.afaf.name;
+      f.session2.speakerPhone = REAL_SERVANTS.afaf.phone;
+    } else if (f.date === '2026-12-25' || f.dayNumber === 25) {
+      f.session1.title = 'خر 29 - 35 (دراسة سفر الخروج)';
+      f.session1.speakerId = REAL_SERVANTS.afaf.id;
+      f.session1.speakerName = REAL_SERVANTS.afaf.name;
+      f.session1.speakerPhone = REAL_SERVANTS.afaf.phone;
+      f.session2.title = 'عقيدة أرثوذكسية';
+      f.session2.speakerId = REAL_SERVANTS.hanaa.id;
+      f.session2.speakerName = REAL_SERVANTS.hanaa.name;
+      f.session2.speakerPhone = REAL_SERVANTS.hanaa.phone;
+    }
+  });
+
+  const decDoc = {
+    id: '2026-12',
+    year: 2026,
+    month: 12,
+    monthName: 'ديسمبر',
+    title: 'منهج شهر ديسمبر 2026',
+    published: true,
+    fridays: decFridays,
+    updatedBy: uploadedByName
+  };
+
+  return [novDoc, decDoc];
+}
+
 export default function ServantWeeklyCurriculum({ 
   user, 
   isAppAdmin, 
   isServantLeader, 
   allUsers = [] 
 }) {
-  const [curricula, setCurricula] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [activeMonthKey, setActiveMonthKey] = useState('');
+  // تهيئة الحالة الأولية مسبقاً بالجدول الفعلي لمنع أي شاشة فارغة
+  const initialDocs = useMemo(() => buildRealScheduleDocs(user?.fullName || 'أمين الخدمة'), [user?.fullName]);
+  const [curricula, setCurricula] = useState(initialDocs);
+  const [loading, setLoading] = useState(false);
+  const [activeMonthKey, setActiveMonthKey] = useState('2026-11');
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState(null);
   const [showAddMonthModal, setShowAddMonthModal] = useState(false);
@@ -100,6 +237,7 @@ export default function ServantWeeklyCurriculum({
   const [showPrintModal, setShowPrintModal] = useState(false);
   const [saving, setSaving] = useState(false);
   const [successToast, setSuccessToast] = useState('');
+  const hasAutoSeededRef = useRef(false);
 
   // استخراج قائمة خدام المنظومة المعتمدين للاختيار السريع
   const registeredServants = useMemo(() => {
@@ -115,6 +253,33 @@ export default function ServantWeeklyCurriculum({
     setTimeout(() => setSuccessToast(''), 4500);
   };
 
+  // دالة الحفظ الذاتي لجدول نوفمبر وديسمبر في قاعدة البيانات
+  const persistRealScheduleToFirestore = async (notifyUser = false) => {
+    setSaving(true);
+    try {
+      const [novDoc, decDoc] = buildRealScheduleDocs(user?.fullName || 'أمين الخدمة');
+      await setDoc(doc(db, 'service_weekly_curriculum', '2026-11'), {
+        ...novDoc,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+
+      await setDoc(doc(db, 'service_weekly_curriculum', '2026-12'), {
+        ...decDoc,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+
+      if (notifyUser) {
+        showToast('تم تثبيت وتحديث جدول الورقة الحقيقي بنجاح 📋');
+      }
+    } catch (err) {
+      console.warn('Auto-seed sync warning:', err);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   // المزامنة الحية مع مجموعة توزيع المنهج
   useEffect(() => {
     const q = query(collection(db, 'service_weekly_curriculum'), orderBy('year', 'desc'));
@@ -125,16 +290,19 @@ export default function ServantWeeklyCurriculum({
         return (b.month || 0) - (a.month || 0);
       });
 
-      setCurricula(list);
-      setLoading(false);
-
-      if (list.length > 0 && !activeMonthKey) {
-        // تحديد الشهر الحالي أو الأقرب افتراضياً
-        const curDate = new Date();
-        const curKey = `${curDate.getFullYear()}-${String(curDate.getMonth() + 1).padStart(2, '0')}`;
-        const match = list.find(c => c.id === curKey);
-        setActiveMonthKey(match ? match.id : list[0].id);
+      if (list.length === 0) {
+        // إذا كانت فارغة في قاعدة البيانات، نقوم بالحفظ التلقائي فوراً
+        if (!hasAutoSeededRef.current) {
+          hasAutoSeededRef.current = true;
+          persistRealScheduleToFirestore(false);
+        }
+      } else {
+        setCurricula(list);
+        if (!activeMonthKey || !list.some(c => c.id === activeMonthKey)) {
+          setActiveMonthKey(list[0]?.id || '2026-11');
+        }
       }
+      setLoading(false);
     }, (err) => {
       console.warn('Weekly curriculum sync warning:', err);
       setLoading(false);
@@ -145,7 +313,7 @@ export default function ServantWeeklyCurriculum({
 
   // المنهج المختار حالياً
   const currentMonthData = useMemo(() => {
-    return curricula.find(c => c.id === activeMonthKey) || null;
+    return curricula.find(c => c.id === activeMonthKey) || curricula[0] || null;
   }, [curricula, activeMonthKey]);
 
   // تهيئة وضع التعديل عند اختيار شهر
@@ -157,96 +325,6 @@ export default function ServantWeeklyCurriculum({
     }
     setIsEditing(false);
   }, [currentMonthData]);
-
-  // تجهيز البيانات الأولية الحقيقية من الجدول الورقي المعتمد للخدمة
-  const handleSeedInitialSchedule = async () => {
-    if (!window.confirm('هل تريد إضافة جدول شهر نوفمبر وديسمبر المعتمد بالبيانات الحقيقية؟')) return;
-    setSaving(true);
-    try {
-      // 1. شهر نوفمبر
-      const novFridays = generateFridaysForMonth(2026, 10); // 10 = نوفمبر
-      novFridays.forEach(f => {
-        if (f.date === '2026-11-13' || f.dayNumber === 13) {
-          f.session1.title = 'تك 25 - 44 (دراسة سفر التكوين)';
-          f.session1.speakerName = 'أغابي';
-          f.session2.title = 'مهارات خادم إعداد خدام';
-          f.session2.speakerName = 'عفاف';
-        } else if (f.date === '2026-11-20' || f.dayNumber === 20) {
-          f.session1.title = 'تك 45 - 50 (دراسة سفر التكوين)';
-          f.session1.speakerName = 'نادر';
-          f.session2.title = 'طقس الكنيسة القبطية';
-          f.session2.speakerName = 'هناء';
-        } else if (f.date === '2026-11-27' || f.dayNumber === 27) {
-          f.session1.title = 'خر 1 - 7 (دراسة سفر الخروج)';
-          f.session1.speakerName = 'هناء';
-          f.session2.title = 'طقس الكنيسة القبطية';
-          f.session2.speakerName = 'عفاف';
-        }
-      });
-
-      const novDoc = {
-        id: '2026-11',
-        year: 2026,
-        month: 11,
-        monthName: 'نوفمبر',
-        title: 'منهج شهر نوفمبر 2026',
-        published: true,
-        fridays: novFridays,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-        updatedBy: user?.fullName || 'خادم المسؤول'
-      };
-      await setDoc(doc(db, 'service_weekly_curriculum', '2026-11'), novDoc);
-
-      // 2. شهر ديسمبر
-      const decFridays = generateFridaysForMonth(2026, 11); // 11 = ديسمبر
-      decFridays.forEach(f => {
-        if (f.date === '2026-12-04' || f.dayNumber === 4) {
-          f.session1.title = 'خر 8 - 14 (دراسة سفر الخروج)';
-          f.session1.speakerName = 'عفاف';
-          f.session2.title = 'عقيدة أرثوذكسية';
-          f.session2.speakerName = 'نادر';
-        } else if (f.date === '2026-12-11' || f.dayNumber === 11) {
-          f.session1.title = 'خر 15 - 21 (دراسة سفر الخروج)';
-          f.session1.speakerName = 'نادر';
-          f.session2.title = 'عقيدة أرثوذكسية';
-          f.session2.speakerName = 'هناء';
-        } else if (f.date === '2026-12-18' || f.dayNumber === 18) {
-          f.session1.title = 'خر 22 - 28 (دراسة سفر الخروج)';
-          f.session1.speakerName = 'أغابي';
-          f.session2.title = 'عقيدة أرثوذكسية';
-          f.session2.speakerName = 'عفاف';
-        } else if (f.date === '2026-12-25' || f.dayNumber === 25) {
-          f.session1.title = 'خر 29 - 35 (دراسة سفر الخروج)';
-          f.session1.speakerName = 'عفاف';
-          f.session2.title = 'عقيدة أرثوذكسية';
-          f.session2.speakerName = 'هناء';
-        }
-      });
-
-      const decDoc = {
-        id: '2026-12',
-        year: 2026,
-        month: 12,
-        monthName: 'ديسمبر',
-        title: 'منهج شهر ديسمبر 2026',
-        published: true,
-        fridays: decFridays,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-        updatedBy: user?.fullName || 'خادم المسؤول'
-      };
-      await setDoc(doc(db, 'service_weekly_curriculum', '2026-12'), decDoc);
-
-      setActiveMonthKey('2026-11');
-      showToast('تم إدراج جدول شهري نوفمبر وديسمبر بنجاح 📋');
-    } catch (err) {
-      console.error('Error seeding initial schedule:', err);
-      alert('حدث خطأ أثناء إدراج البيانات الأولية.');
-    } finally {
-      setSaving(false);
-    }
-  };
 
   // إنشاء شهر جديد
   const handleCreateNewMonth = async () => {
@@ -304,7 +382,7 @@ export default function ServantWeeklyCurriculum({
         updatedBy: user?.fullName || 'أحد الخدام'
       };
 
-      await updateDoc(docRef, updatedObj);
+      await setDoc(docRef, updatedObj, { merge: true });
 
       // إرسال إشعار عام للخدام عند النشر
       if (publishToAll) {
@@ -444,7 +522,7 @@ export default function ServantWeeklyCurriculum({
     }
 
     const notifTitle = '📖 تذكير بتحضير فقرة إعداد الخدام';
-    const notifDesc = `نذكرك بأن عليك تحضير يوم الجمعة القادمة في موضوع: (${topic})، برجاء التحضير وإرسال التحضير لأمين الخدمة بحد أقصى يوم الأربعاء. ربنا يبارك تعبك.`;
+    const notifDesc = `نذكرك بأن عليك تحضير يوم الجمعة القادمة في موضوع: (${topic})، برجاء التحضير وإرساله لأمين الخدمة بحد أقصى يوم الأربعاء. ربنا يبارك تعبك.`;
 
     try {
       // 1. إضافة إشعار داخل التطبيق لحساب الخادم
@@ -551,11 +629,22 @@ export default function ServantWeeklyCurriculum({
               </h2>
             </div>
             <p className="text-xs text-slate-300 mt-1 leading-relaxed">
-              جدول لقاءات الجمعة وتوزيع الموضوعات على الخدام والمتكلمين مع التنبيهات المباشرة.
+              الجدول الزمني المعتمد لإعداد الخدام وتوزيع الموضوعات على الخدام والمتكلمين.
             </p>
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
+            <button
+              type="button"
+              onClick={() => persistRealScheduleToFirestore(true)}
+              disabled={saving}
+              className="px-3 py-1.5 rounded-xl bg-gold-400/20 hover:bg-gold-400/30 text-gold-200 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer border border-gold-400/30"
+              title="تثبيت أو إعادة تحديث جدول نوفمبر وديسمبر الفعلي في السيرفر"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${saving ? 'animate-spin' : ''}`} />
+              <span>تثبيت جدول الورقة الفعلي 📋</span>
+            </button>
+
             {curricula.length > 0 && (
               <button
                 type="button"
@@ -563,7 +652,7 @@ export default function ServantWeeklyCurriculum({
                 className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer border border-white/10"
               >
                 <Printer className="w-3.5 h-3.5 text-gold-300" />
-                <span>عرض الجدول للطباعة 🖨️</span>
+                <span>عرض للطباعة 🖨️</span>
               </button>
             )}
 
@@ -783,42 +872,6 @@ export default function ServantWeeklyCurriculum({
                 </div>
               </>
             )}
-          </div>
-        </div>
-      )}
-
-      {/* Empty State when no months exist */}
-      {!loading && curricula.length === 0 && (
-        <div className="bg-white rounded-2xl border border-dashed border-slate-300 p-8 text-center space-y-4">
-          <div className="w-12 h-12 rounded-full bg-gold-400/20 text-maroon-800 mx-auto flex items-center justify-center">
-            <Calendar className="w-6 h-6" />
-          </div>
-          <div>
-            <h3 className="text-sm font-black text-slate-800">
-              لا يوجد جدول توزيع منهج بعد
-            </h3>
-            <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
-              يمكنك إضافة شهر جديد لتوليد أيام الجمعة تلقائياً، أو إدراج جدول شهري نوفمبر وديسمبر المعتمد بالبيانات الحقيقية.
-            </p>
-          </div>
-          <div className="flex items-center justify-center gap-3 flex-wrap pt-2">
-            <button
-              type="button"
-              onClick={handleSeedInitialSchedule}
-              disabled={saving}
-              className="px-4 py-2 rounded-xl bg-maroon-800 hover:bg-maroon-900 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm cursor-pointer"
-            >
-              <Sparkles className="w-4 h-4 text-gold-300" />
-              <span>إدراج جدول شهري نوفمبر وديسمبر الحقيقي 📋</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setShowAddMonthModal(true)}
-              className="px-4 py-2 rounded-xl bg-gold-400 hover:bg-gold-500 text-maroon-950 text-xs font-black flex items-center gap-1.5 shadow-sm cursor-pointer"
-            >
-              <Plus className="w-4 h-4" />
-              <span>إنشاء شهر مخصص</span>
-            </button>
           </div>
         </div>
       )}
