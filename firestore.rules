@@ -56,6 +56,11 @@ service cloud.firestore {
       allow read, write: if true;
     }
 
+    // 7.1 جدول توزيع المنهج الأسبوعي
+    match /service_weekly_curriculum/{curriculumId} {
+      allow read, write: if true;
+    }
+
     // 8. بنك الأسئلة
     match /service_questions/{questionId} {
       allow read, write: if true;

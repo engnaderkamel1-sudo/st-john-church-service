@@ -255,14 +255,16 @@ export default function ServantWeeklyCurriculum({
     setSaving(true);
     try {
       const [novDoc, decDoc] = buildRealScheduleDocs(user?.fullName || 'أمين الخدمة');
-      await setDoc(doc(db, 'service_weekly_curriculum', '2026-11'), {
+      await setDoc(doc(db, 'service_curriculum', 'weekly_2026-11'), {
         ...novDoc,
+        isWeeklyCurriculum: true,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
       }, { merge: true });
 
-      await setDoc(doc(db, 'service_weekly_curriculum', '2026-12'), {
+      await setDoc(doc(db, 'service_curriculum', 'weekly_2026-12'), {
         ...decDoc,
+        isWeeklyCurriculum: true,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
       }, { merge: true });
@@ -277,13 +279,18 @@ export default function ServantWeeklyCurriculum({
     }
   };
 
-  // المزامنة الحية مع مجموعة توزيع المنهج
+  // المزامنة الحية مع مجموعة المنهج المعتمدة بصلاحيات كاملة
   useEffect(() => {
-    const q = query(collection(db, 'service_weekly_curriculum'), orderBy('year', 'desc'));
-    const unsub = onSnapshot(q, (snap) => {
-      const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const unsub = onSnapshot(collection(db, 'service_curriculum'), (snap) => {
+      const list = snap.docs
+        .filter(d => d.id.startsWith('weekly_') || d.data().isWeeklyCurriculum === true)
+        .map(d => {
+          const rawId = d.id.startsWith('weekly_') ? d.id.replace('weekly_', '') : d.id;
+          return { id: rawId, docId: d.id, ...d.data() };
+        });
+
       list.sort((a, b) => {
-        if (a.year !== b.year) return b.year - a.year;
+        if (a.year !== b.year) return (b.year || 0) - (a.year || 0);
         return (b.month || 0) - (a.month || 0);
       });
 
@@ -351,8 +358,11 @@ export default function ServantWeeklyCurriculum({
     setSaving(true);
     try {
       const generatedFridays = generateFridaysForMonth(newMonthYear, newMonthIndex);
+      const docKey = `weekly_${monthKey}`;
       const newDoc = {
         id: monthKey,
+        docId: docKey,
+        isWeeklyCurriculum: true,
         year: newMonthYear,
         month: monthNum,
         monthName: monthName,
@@ -364,7 +374,7 @@ export default function ServantWeeklyCurriculum({
         updatedBy: user?.fullName || 'خادم'
       };
 
-      await setDoc(doc(db, 'service_weekly_curriculum', monthKey), newDoc);
+      await setDoc(doc(db, 'service_curriculum', docKey), newDoc);
       setActiveMonthKey(monthKey);
       setShowAddMonthModal(false);
       setIsEditing(true);
@@ -382,9 +392,11 @@ export default function ServantWeeklyCurriculum({
     if (!editData) return;
     setSaving(true);
     try {
-      const docRef = doc(db, 'service_weekly_curriculum', editData.id);
+      const docKey = editData.docId || (editData.id.startsWith('weekly_') ? editData.id : `weekly_${editData.id}`);
+      const docRef = doc(db, 'service_curriculum', docKey);
       const updatedObj = {
         ...editData,
+        isWeeklyCurriculum: true,
         published: publishToAll ? true : editData.published,
         updatedAt: serverTimestamp(),
         updatedBy: user?.fullName || 'أحد الخدام'
@@ -415,7 +427,7 @@ export default function ServantWeeklyCurriculum({
       showToast(publishToAll ? 'تم حفظ ونشر المنهج وإشعار جميع الخدام بنجاح 📢' : 'تم حفظ التعديلات بنجاح 💾');
     } catch (err) {
       console.error('Error saving curriculum:', err);
-      alert('حدث خطأ أثناء حفظ جدول المنهج.');
+      alert('حدث خطأ أثناء حفظ جدول المنهج: ' + (err?.message || ''));
     } finally {
       setSaving(false);
     }
@@ -432,12 +444,15 @@ export default function ServantWeeklyCurriculum({
     }
 
     try {
-      await deleteDoc(doc(db, 'service_weekly_curriculum', activeMonthKey));
+      const docKey = currentMonthData?.docId || (activeMonthKey.startsWith('weekly_') ? activeMonthKey : `weekly_${activeMonthKey}`);
+      await deleteDoc(doc(db, 'service_curriculum', docKey));
       setActiveMonthKey('');
       showToast('تم حذف جدول الشهر بنجاح.');
     } catch (err) {
       console.error('Error deleting month:', err);
       alert('حدث خطأ أثناء الحذف.');
+    }
+  };
     }
   };
 
@@ -499,7 +514,8 @@ export default function ServantWeeklyCurriculum({
     // تسجيل حالة تمام الإرسال في قاعدة البيانات
     try {
       if (currentMonthData) {
-        const docRef = doc(db, 'service_weekly_curriculum', currentMonthData.id);
+        const docKey = currentMonthData.docId || (currentMonthData.id.startsWith('weekly_') ? currentMonthData.id : `weekly_${currentMonthData.id}`);
+        const docRef = doc(db, 'service_curriculum', docKey);
         const nextFridays = currentMonthData.fridays.map(f => {
           if (f.id === friday.id) {
             const targetSession = sessionKey === 'merged' ? f.mergedSession : f[sessionKey];
@@ -509,7 +525,7 @@ export default function ServantWeeklyCurriculum({
           }
           return f;
         });
-        await updateDoc(docRef, { fridays: nextFridays });
+        await updateDoc(docRef, { fridays: nextFridays }).catch(e => console.warn('Status update notice:', e));
         showToast(`تم فتح الواتساب بنجاح وإرسال التذكير لـ ${title} ${name} 💬`);
       }
     } catch (err) {
@@ -552,7 +568,8 @@ export default function ServantWeeklyCurriculum({
 
       // 3. تحديث حالة إرسال التذكير
       if (currentMonthData) {
-        const docRef = doc(db, 'service_weekly_curriculum', currentMonthData.id);
+        const docKey = currentMonthData.docId || (currentMonthData.id.startsWith('weekly_') ? currentMonthData.id : `weekly_${currentMonthData.id}`);
+        const docRef = doc(db, 'service_curriculum', docKey);
         const nextFridays = currentMonthData.fridays.map(f => {
           if (f.id === friday.id) {
             const targetSession = sessionKey === 'merged' ? f.mergedSession : f[sessionKey];
@@ -562,13 +579,14 @@ export default function ServantWeeklyCurriculum({
           }
           return f;
         });
-        await updateDoc(docRef, { fridays: nextFridays });
+        await updateDoc(docRef, { fridays: nextFridays }).catch(e => console.warn('Status update notice:', e));
       }
 
       showToast(`تم إرسال تذكير التحضير إلى الخادم (${servantName}) بنجاح 🔔`);
     } catch (err) {
       console.error('Error sending servant reminder:', err);
-      alert('حدث خطأ أثناء إرسال التنبيه.');
+      alert('حدث خطأ أثناء إرسال التنبيه: ' + (err?.message || ''));
+    }
     }
   };
 
