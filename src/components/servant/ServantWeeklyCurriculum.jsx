@@ -2,7 +2,8 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   Calendar, Users, User, Phone, MessageSquare, Send, Bell, 
   CheckCircle, Plus, Edit3, Save, Trash2, ChevronLeft, ChevronRight, 
-  Printer, Sparkles, AlertCircle, Share2, Eye, ShieldCheck, Check, RefreshCw, X
+  Printer, Sparkles, AlertCircle, Share2, Eye, ShieldCheck, Check, RefreshCw, X,
+  Camera, UploadCloud, FileText, Loader2
 } from 'lucide-react';
 import { 
   collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, 
@@ -10,6 +11,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { triggerServerPush } from '../../services/webPushService';
+import { extractCurriculumFromPaperImage } from '../../services/geminiService';
 
 // الأشهر باللغة العربية
 const ARABIC_MONTHS = [
@@ -66,7 +68,7 @@ function getSpeakerDisplayName(session) {
   return session.speakerName || session.externalName || 'لم يُحدد';
 }
 
-// دالة توليد أيام الجمعة لأي شهر وسنة
+// دالة توليد أيام الجمعة لأي شهر وسنة بأرقام غربية (1, 2, 3...)
 function generateFridaysForMonth(year, monthIndex) {
   const fridays = [];
   const date = new Date(year, monthIndex, 1);
@@ -132,7 +134,7 @@ function generateFridaysForMonth(year, monthIndex) {
   return fridays;
 }
 
-// بناء البيانات المعتمدة لشهري نوفمبر وديسمبر 2026 المطابقة للورقة الفعلية 100%
+// بناء البيانات المعتمدة لشهري نوفمبر وديسمبر 2026 بالأرقام الإنجليزية (1, 2, 3...)
 function buildRealScheduleDocs(uploadedByName = 'أمين الخدمة') {
   // 1. شهر نوفمبر 2026 (الجدول يبدأ رسمياً من 13 نوفمبر كما بالورقة المعتمدة)
   const novFridays = [
@@ -157,7 +159,7 @@ function buildRealScheduleDocs(uploadedByName = 'أمين الخدمة') {
       },
       session1: {
         subject: 'كتاب مقدس',
-        title: 'تك ٢٥ - ٤٤',
+        title: 'تك 25 - 44',
         speakerType: 'internal',
         speakerId: REAL_SERVANTS.aghapy.id,
         speakerName: REAL_SERVANTS.aghapy.name,
@@ -203,7 +205,7 @@ function buildRealScheduleDocs(uploadedByName = 'أمين الخدمة') {
       },
       session1: {
         subject: 'كتاب مقدس',
-        title: 'تك ٤٢ - ٥٠',
+        title: 'تك 42 - 50',
         speakerType: 'internal',
         speakerId: REAL_SERVANTS.nader.id,
         speakerName: REAL_SERVANTS.nader.name,
@@ -249,7 +251,7 @@ function buildRealScheduleDocs(uploadedByName = 'أمين الخدمة') {
       },
       session1: {
         subject: 'كتاب مقدس',
-        title: 'خر ١ - ٧',
+        title: 'خر 1 - 7',
         speakerType: 'internal',
         speakerId: REAL_SERVANTS.hanaa.id,
         speakerName: REAL_SERVANTS.hanaa.name,
@@ -312,7 +314,7 @@ function buildRealScheduleDocs(uploadedByName = 'أمين الخدمة') {
       },
       session1: {
         subject: 'كتاب مقدس',
-        title: 'خر ٨ - ١٤',
+        title: 'خر 8 - 14',
         speakerType: 'internal',
         speakerId: REAL_SERVANTS.afaf.id,
         speakerName: REAL_SERVANTS.afaf.name,
@@ -358,7 +360,7 @@ function buildRealScheduleDocs(uploadedByName = 'أمين الخدمة') {
       },
       session1: {
         subject: 'كتاب مقدس',
-        title: 'خر ١٥ - ٢١',
+        title: 'خر 15 - 21',
         speakerType: 'internal',
         speakerId: REAL_SERVANTS.nader.id,
         speakerName: REAL_SERVANTS.nader.name,
@@ -404,7 +406,7 @@ function buildRealScheduleDocs(uploadedByName = 'أمين الخدمة') {
       },
       session1: {
         subject: 'كتاب مقدس',
-        title: 'خر ٢٢ - ٢٨',
+        title: 'خر 22 - 28',
         speakerType: 'internal',
         speakerId: REAL_SERVANTS.aghapy.id,
         speakerName: REAL_SERVANTS.aghapy.name,
@@ -450,7 +452,7 @@ function buildRealScheduleDocs(uploadedByName = 'أمين الخدمة') {
       },
       session1: {
         subject: 'كتاب مقدس',
-        title: 'خر ٢٩ - ٣٥',
+        title: 'خر 29 - 35',
         speakerType: 'internal',
         speakerId: REAL_SERVANTS.afaf.id,
         speakerName: REAL_SERVANTS.afaf.name,
@@ -511,6 +513,15 @@ export default function ServantWeeklyCurriculum({
   const [editingFridayId, setEditingFridayId] = useState(null);
   const [singleFridayEdit, setSingleFridayEdit] = useState(null);
 
+  // حالة نافذة قراءة الورقة بالذكاء الاصطناعي
+  const [showAIScanModal, setShowAIScanModal] = useState(false);
+  const [aiSelectedFile, setAiSelectedFile] = useState(null);
+  const [aiPreviewUrl, setAiPreviewUrl] = useState(null);
+  const [aiScanning, setAiScanning] = useState(false);
+  const [aiExtractedData, setAiExtractedData] = useState(null);
+  const [aiTargetMonthKey, setAiTargetMonthKey] = useState('2026-11');
+  const [aiError, setAiError] = useState('');
+
   const [showAddMonthModal, setShowAddMonthModal] = useState(false);
   const [newMonthYear, setNewMonthYear] = useState(new Date().getFullYear());
   const [newMonthIndex, setNewMonthIndex] = useState(new Date().getMonth());
@@ -552,56 +563,23 @@ export default function ServantWeeklyCurriculum({
     setTimeout(() => setSuccessToast(''), 4500);
   };
 
-  // دالة الحفظ الذاتي لجدول نوفمبر وديسمبر في قاعدة البيانات
-  const persistRealScheduleToFirestore = async (notifyUser = false) => {
-    setSaving(true);
-    try {
-      const [novDoc, decDoc] = buildRealScheduleDocs(user?.fullName || 'أمين الخدمة');
-      await setDoc(doc(db, 'service_curriculum', 'weekly_2026-11'), {
-        ...novDoc,
-        isWeeklyCurriculum: true,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
-      }, { merge: true });
-
-      await setDoc(doc(db, 'service_curriculum', 'weekly_2026-12'), {
-        ...decDoc,
-        isWeeklyCurriculum: true,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
-      }, { merge: true });
-
-      if (notifyUser) {
-        showToast('تم تثبيت وتحديث جدول الورقة الحقيقي بنجاح 📋');
-      }
-    } catch (err) {
-      console.warn('Auto-seed sync warning:', err);
-    } finally {
-      setSaving(false);
-    }
-  };
-
   // المزامنة الحية مع مجموعة المنهج المعتمدة بصلاحيات كاملة
   useEffect(() => {
     const unsub = onSnapshot(collection(db, 'service_curriculum'), (snap) => {
       const list = snap.docs
-        .filter(d => d.id.startsWith('weekly_') || d.data().isWeeklyCurriculum === true)
+        .filter(d => (d.id.startsWith('weekly_') || d.data().isWeeklyCurriculum === true) && d.id !== 'weekly_curriculum_2026_11')
         .map(d => {
           const rawId = d.id.startsWith('weekly_') ? d.id.replace('weekly_', '') : d.id;
           return { id: rawId, docId: d.id, ...d.data() };
         });
 
+      // ترتيب تصاعدي من الأقدم للأحدث (نوفمبر أولاً ثم ديسمبر) ليظهر من اليمين للشمال في الواجهة العربية
       list.sort((a, b) => {
-        if (a.year !== b.year) return (b.year || 0) - (a.year || 0);
-        return (b.month || 0) - (a.month || 0);
+        if (a.year !== b.year) return (a.year || 0) - (b.year || 0);
+        return (a.month || 0) - (b.month || 0);
       });
 
-      if (list.length === 0) {
-        if (!hasAutoSeededRef.current) {
-          hasAutoSeededRef.current = true;
-          persistRealScheduleToFirestore(false);
-        }
-      } else {
+      if (list.length > 0) {
         // تنظيف أية حقول قديمة وتعيين المواد الافتراضية
         const sanitizedList = list.map(item => ({
           ...item,
@@ -795,7 +773,7 @@ export default function ServantWeeklyCurriculum({
         updatedBy: user?.fullName || 'أحد الخدام'
       });
 
-      // تحديث الحالة المحلية فوراً لضمان سرعة الاستجابة اللحظية
+      // تحديث الحالة المحلية فوراً
       setCurricula(prev => prev.map(c => {
         if (c.id === currentMonthData.id || c.docId === docKey) {
           return { ...c, fridays: nextFridays };
@@ -1033,6 +1011,172 @@ export default function ServantWeeklyCurriculum({
     });
   };
 
+  // === وظائف قراءة وتفريغ جدول المنهج من صورة بالذكاء الاصطناعي ===
+  const handleAIFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setAiSelectedFile(file);
+    setAiError('');
+    setAiExtractedData(null);
+    const url = URL.createObjectURL(file);
+    setAiPreviewUrl(url);
+  };
+
+  const fileToBase64 = (file) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = reader.result;
+        const base64 = result.split(',')[1];
+        resolve(base64);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleRunAIScan = async () => {
+    if (!aiSelectedFile) {
+      setAiError('يرجى اختيار أو التقاط صورة لورقة المنهج أولاً.');
+      return;
+    }
+    setAiScanning(true);
+    setAiError('');
+    try {
+      const base64 = await fileToBase64(aiSelectedFile);
+      const mimeType = aiSelectedFile.type || 'image/jpeg';
+      const targetMonthDoc = curricula.find(c => c.id === aiTargetMonthKey) || currentMonthData;
+
+      const result = await extractCurriculumFromPaperImage({
+        fileBase64: base64,
+        mimeType: mimeType,
+        customInstructions: `الشهر المستهدف: ${targetMonthDoc?.monthName || ''} لسنة ${targetMonthDoc?.year || 2026}. اكتب جميع الأرقام بالأرقام الإنجليزية (1, 2, 3...) حصراً.`
+      });
+
+      if (!result || !result.fridays || !Array.isArray(result.fridays) || result.fridays.length === 0) {
+        throw new Error('لم يتمكن الذكاء الاصطناعي من قراءة أي جمعات صالحة من الصورة. يرجى التأكد من وضوح الصورة وتناسق الأعمدة.');
+      }
+
+      // ربط أسماء الخدام المستخرجة بالخدام المسجلين في المنظومة
+      const matchServant = (name) => {
+        if (!name) return null;
+        const clean = name.trim().toLowerCase();
+        return registeredServants.find(s => {
+          const sName = (s.fullName || s.name || '').toLowerCase();
+          return sName.includes(clean) || clean.includes(sName);
+        });
+      };
+
+      const mappedFridays = result.fridays.map((extractedF, idx) => {
+        const dNum = extractedF.dayNumber || idx + 1;
+        const year = targetMonthDoc?.year || 2026;
+        const month = String(targetMonthDoc?.month || 11).padStart(2, '0');
+        const dayStr = String(dNum).padStart(2, '0');
+        const dateStr = extractedF.date || `${year}-${month}-${dayStr}`;
+
+        const s1Servant = matchServant(extractedF.session1?.speakerName);
+        const s2Servant = matchServant(extractedF.session2?.speakerName);
+        const mergedServant = matchServant(extractedF.mergedSession?.speakerName);
+
+        return {
+          id: `f_${dateStr}`,
+          date: dateStr,
+          displayDate: extractedF.displayDate || `الجمعة ${dNum} ${targetMonthDoc?.monthName || ''} ${year}`,
+          dayNumber: dNum,
+          isMerged: !!extractedF.isMerged,
+          notes: extractedF.notes || '',
+          mergedSession: {
+            subject: extractedF.mergedSession?.subject || 'ندوة عامة',
+            title: extractedF.mergedSession?.title || '',
+            speakerType: mergedServant ? 'internal' : (extractedF.mergedSession?.speakerType || 'internal'),
+            speakerId: mergedServant ? mergedServant.id : '',
+            speakerName: mergedServant ? mergedServant.fullName : (extractedF.mergedSession?.speakerName || ''),
+            speakerPhone: mergedServant ? mergedServant.phone : '',
+            externalTitle: extractedF.mergedSession?.externalTitle || 'أستاذ',
+            externalName: extractedF.mergedSession?.externalName || '',
+            externalPhone: extractedF.mergedSession?.externalPhone || '',
+            reminderSent: false,
+            whatsappSent: false
+          },
+          session1: {
+            subject: extractedF.session1?.subject || 'كتاب مقدس',
+            title: extractedF.session1?.title || '',
+            speakerType: s1Servant ? 'internal' : (extractedF.session1?.speakerType || 'internal'),
+            speakerId: s1Servant ? s1Servant.id : '',
+            speakerName: s1Servant ? s1Servant.fullName : (extractedF.session1?.speakerName || ''),
+            speakerPhone: s1Servant ? s1Servant.phone : '',
+            externalTitle: extractedF.session1?.externalTitle || 'طاسوني',
+            externalName: extractedF.session1?.externalName || '',
+            externalPhone: extractedF.session1?.externalPhone || '',
+            reminderSent: false,
+            whatsappSent: false
+          },
+          session2: {
+            subject: extractedF.session2?.subject || 'طقس',
+            title: extractedF.session2?.title || '',
+            speakerType: s2Servant ? 'internal' : (extractedF.session2?.speakerType || 'internal'),
+            speakerId: s2Servant ? s2Servant.id : '',
+            speakerName: s2Servant ? s2Servant.fullName : (extractedF.session2?.speakerName || ''),
+            speakerPhone: s2Servant ? s2Servant.phone : '',
+            externalTitle: extractedF.session2?.externalTitle || 'طاسوني',
+            externalName: extractedF.session2?.externalName || '',
+            externalPhone: extractedF.session2?.externalPhone || '',
+            reminderSent: false,
+            whatsappSent: false
+          }
+        };
+      });
+
+      setAiExtractedData({
+        ...result,
+        fridays: mappedFridays
+      });
+      showToast('تم فك الخط واستخراج بيانات الجدول بنجاح! راجعها واضغط اعتماد 🪄');
+    } catch (err) {
+      console.error('AI Scan error:', err);
+      setAiError(err.message || 'حدث خطأ أثناء قراءة الصورة بالذكاء الاصطناعي.');
+    } finally {
+      setAiScanning(false);
+    }
+  };
+
+  const handleApplyExtractedCurriculum = async () => {
+    if (!aiExtractedData || !aiExtractedData.fridays) return;
+    setSaving(true);
+    try {
+      const targetMonthDoc = curricula.find(c => c.id === aiTargetMonthKey) || currentMonthData;
+      if (!targetMonthDoc) throw new Error('الشهر المستهدف غير موجود.');
+
+      const docKey = targetMonthDoc.docId || (targetMonthDoc.id.startsWith('weekly_') ? targetMonthDoc.id : `weekly_${targetMonthDoc.id}`);
+      const docRef = doc(db, 'service_curriculum', docKey);
+
+      await updateDoc(docRef, {
+        fridays: aiExtractedData.fridays,
+        updatedAt: serverTimestamp(),
+        updatedBy: user?.fullName || 'الذكاء الاصطناعي'
+      });
+
+      // تحديث الحالة المحلية
+      setCurricula(prev => prev.map(c => {
+        if (c.id === targetMonthDoc.id || c.docId === docKey) {
+          return { ...c, fridays: aiExtractedData.fridays };
+        }
+        return c;
+      }));
+
+      setShowAIScanModal(false);
+      setAiExtractedData(null);
+      setAiSelectedFile(null);
+      setAiPreviewUrl(null);
+      showToast('تم اعتماد وتطبيق جدول المنهج المستخرج بنجاح في المنظومة 💾');
+    } catch (err) {
+      console.error('Error applying AI curriculum:', err);
+      alert('حدث خطأ أثناء تطبيق الجدول المستخرج: ' + (err?.message || ''));
+    } finally {
+      setSaving(false);
+    }
+  };
+
   // إرسال تذكير واتساب للمتكلم الخارجي (يدوياً حصراً)
   const handleSendWhatsAppToExternal = async (friday, session, sessionKey = 'session1') => {
     const title = session.externalTitle || 'أستاذ';
@@ -1138,12 +1282,13 @@ export default function ServantWeeklyCurriculum({
     }
   };
 
-  // حساب الجمعة القادمة لتسليط الضوء عليها والتنبيه الاستباقي
+  // حساب الجمعة القادمة الفعلي ليكون دائماً الأقرب زمنياً لليوم الحالي تصاعدياً
   const upcomingFridayInfo = useMemo(() => {
     if (!curricula || curricula.length === 0) return null;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
+    const allUpcoming = [];
     for (const c of curricula) {
       if (!c.fridays) continue;
       for (const f of c.fridays) {
@@ -1151,12 +1296,17 @@ export default function ServantWeeklyCurriculum({
         if (parts.length === 3) {
           const fDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
           if (fDate >= today) {
-            return { monthData: c, friday: f, dateObj: fDate };
+            allUpcoming.push({ monthData: c, friday: f, dateObj: fDate });
           }
         }
       }
     }
-    return null;
+
+    if (allUpcoming.length === 0) return null;
+
+    // ترتيب تصاعدي دقيق للحصول على الجمعة الأقرب لليوم
+    allUpcoming.sort((a, b) => a.dateObj.getTime() - b.dateObj.getTime());
+    return allUpcoming[0];
   }, [curricula]);
 
   // إرسال تنبيه للمشرف وأمين الخدمة في حال وجود متكلم خارجي لم يتم تذكيره
@@ -1207,15 +1357,22 @@ export default function ServantWeeklyCurriculum({
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
+            {/* زر قراءة وتفريغ الورقة بالذكاء الاصطناعي */}
             <button
               type="button"
-              onClick={() => persistRealScheduleToFirestore(true)}
-              disabled={saving}
+              onClick={() => {
+                setAiTargetMonthKey(activeMonthKey || '2026-11');
+                setAiSelectedFile(null);
+                setAiPreviewUrl(null);
+                setAiExtractedData(null);
+                setAiError('');
+                setShowAIScanModal(true);
+              }}
               className="px-3 py-1.5 rounded-xl bg-gold-400/20 hover:bg-gold-400/30 text-gold-200 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer border border-gold-400/30"
-              title="تثبيت أو إعادة تحديث جدول نوفمبر وديسمبر الفعلي في السيرفر"
+              title="قراءة وتفريغ ورقة المنهج بالذكاء الاصطناعي"
             >
-              <RefreshCw className={`w-3.5 h-3.5 ${saving ? 'animate-spin' : ''}`} />
-              <span>تثبيت جدول الورقة الفعلي 📋</span>
+              <Sparkles className="w-3.5 h-3.5 text-gold-300 animate-pulse" />
+              <span>قراءة الجدول من صورة 📸</span>
             </button>
 
             {curricula.length > 0 && (
@@ -1240,7 +1397,7 @@ export default function ServantWeeklyCurriculum({
           </div>
         </div>
 
-        {/* Month Selector Pills */}
+        {/* Month Selector Pills (مرتبة من اليمين إلى اليسار تصاعدياً) */}
         {curricula.length > 0 && (
           <div className="mt-4 pt-3 border-t border-white/10 flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
             {curricula.map((item) => {
@@ -1908,7 +2065,7 @@ export default function ServantWeeklyCurriculum({
                                     handleUpdateSessionField(fIdx, 'session1', 'title', e.target.value);
                                   }
                                 }}
-                                placeholder="مثال: تك ٢٥ - ٤٤ (أو اتركه فارغاً)"
+                                placeholder="مثال: تك 25 - 44 (أو اتركه فارغاً)"
                                 className="w-full px-2.5 py-1 text-xs rounded-xl border border-slate-300 font-bold"
                               />
                             </div>
@@ -2281,6 +2438,165 @@ export default function ServantWeeklyCurriculum({
                 </div>
               );
             })}
+          </div>
+        </div>
+      )}
+
+      {/* AI Curriculum Paper Scanner Modal */}
+      {showAIScanModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-4 sm:p-5 space-y-4 shadow-2xl border border-gold-300/40 my-auto">
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-xl bg-gold-400/10 text-maroon-900 border border-gold-400/20">
+                  <Sparkles className="w-4 h-4 text-gold-600" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-slate-900">
+                    قراءة جدول المنهج من صورة بالذكاء الاصطناعي 📸
+                  </h3>
+                  <p className="text-[11px] text-slate-500">
+                    التقط صورة لورقة المنهج المكتوبة بخط اليد وسيقوم النظام بتفريغها تلقائياً.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAIScanModal(false)}
+                className="text-slate-400 hover:text-slate-600 text-sm font-bold cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Error Message */}
+            {aiError && (
+              <div className="p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2 font-medium">
+                <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                <span>{aiError}</span>
+              </div>
+            )}
+
+            {/* Month Target Selection */}
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                تطبيق المنهج المستخرج على شهر:
+              </label>
+              <select
+                value={aiTargetMonthKey}
+                onChange={(e) => setAiTargetMonthKey(e.target.value)}
+                className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 font-bold bg-white"
+              >
+                {curricula.map(c => (
+                  <option key={c.id} value={c.id}>{c.title || `${c.monthName} ${c.year}`}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Image Upload Area */}
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                صورة ورقة المنهج (تصوير بالكاميرا أو رفع ملف):
+              </label>
+              <div className="border-2 border-dashed border-slate-300 hover:border-gold-400 rounded-2xl p-4 text-center cursor-pointer transition-all bg-slate-50/50 relative">
+                <input
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  onChange={handleAIFileChange}
+                  className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                />
+                {aiPreviewUrl ? (
+                  <div className="space-y-2">
+                    <img 
+                      src={aiPreviewUrl} 
+                      alt="ورقة المنهج" 
+                      className="max-h-48 mx-auto rounded-xl shadow-xs border border-slate-200 object-contain"
+                    />
+                    <p className="text-[11px] text-emerald-700 font-bold">
+                      ✓ تم اختيار الصورة ({aiSelectedFile?.name}). اضغط لتغييرها إن أردت.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="py-4 space-y-2">
+                    <div className="w-10 h-10 rounded-full bg-gold-400/20 text-maroon-900 mx-auto flex items-center justify-center">
+                      <Camera className="w-5 h-5 text-gold-600" />
+                    </div>
+                    <p className="text-xs font-bold text-slate-700">
+                      اضغط لالتقاط صورة للورقة بالكاميرا أو اختيارها من الجهاز
+                    </p>
+                    <p className="text-[10px] text-slate-500">
+                      يدعم صور خط اليد والجداول المطبوعة بصيغ JPG, PNG, WEBP
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Extracted Preview */}
+            {aiExtractedData && (
+              <div className="space-y-2 border border-emerald-200 bg-emerald-50/40 rounded-xl p-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-black text-emerald-900 flex items-center gap-1.5">
+                    <CheckCircle className="w-4 h-4 text-emerald-600" />
+                    تم استخراج {aiExtractedData.fridays?.length || 0} جمعات بنجاح ✨
+                  </span>
+                </div>
+                <div className="max-h-36 overflow-y-auto space-y-1.5 text-xs text-slate-700 divide-y divide-emerald-100">
+                  {aiExtractedData.fridays?.map((f, idx) => (
+                    <div key={idx} className="pt-1.5 first:pt-0 flex items-center justify-between">
+                      <span className="font-bold text-slate-900">{f.displayDate}:</span>
+                      <span className="text-[11px] text-slate-600">
+                        {f.session1?.subject} ({f.session1?.title || '-'}) - {f.session1?.speakerName || 'بدون متكلم'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Actions */}
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setShowAIScanModal(false)}
+                className="px-3 py-1.5 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 cursor-pointer"
+              >
+                إلغاء
+              </button>
+
+              {!aiExtractedData ? (
+                <button
+                  type="button"
+                  onClick={handleRunAIScan}
+                  disabled={aiScanning || !aiSelectedFile}
+                  className="px-4 py-2 rounded-xl bg-maroon-800 hover:bg-maroon-900 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs cursor-pointer disabled:opacity-50"
+                >
+                  {aiScanning ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin text-gold-300" />
+                      <span>جارٍ فك الخط وقراءة الورقة...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-3.5 h-3.5 text-gold-300" />
+                      <span>بدء استخراج الجدول 🪄</span>
+                    </>
+                  )}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleApplyExtractedCurriculum}
+                  disabled={saving}
+                  className="px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-black flex items-center gap-1.5 shadow-xs cursor-pointer"
+                >
+                  <Save className="w-3.5 h-3.5" />
+                  <span>اعتماد وتطبيق على جدول الشهر 💾</span>
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}
