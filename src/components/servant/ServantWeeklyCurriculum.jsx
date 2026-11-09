@@ -66,7 +66,6 @@ function generateFridaysForMonth(year, monthIndex) {
         notes: '',
         mergedSession: {
           title: '',
-          time: '11:00 ص',
           speakerType: 'internal',
           speakerId: '',
           speakerName: '',
@@ -78,7 +77,6 @@ function generateFridaysForMonth(year, monthIndex) {
         },
         session1: {
           title: '',
-          time: '11:00 ص',
           speakerType: 'internal',
           speakerId: '',
           speakerName: '',
@@ -90,7 +88,6 @@ function generateFridaysForMonth(year, monthIndex) {
         },
         session2: {
           title: '',
-          time: '12:15 م',
           speakerType: 'internal',
           speakerId: '',
           speakerName: '',
@@ -297,9 +294,20 @@ export default function ServantWeeklyCurriculum({
           persistRealScheduleToFirestore(false);
         }
       } else {
-        setCurricula(list);
-        if (!activeMonthKey || !list.some(c => c.id === activeMonthKey)) {
-          setActiveMonthKey(list[0]?.id || '2026-11');
+        // ضمان تنظيف أي أوقات قديمة تلقائياً لتظهر دائماً كفقرة أولى وثانية فقط
+        const sanitizedList = list.map(item => ({
+          ...item,
+          fridays: (item.fridays || []).map(f => {
+            const cleanF = { ...f };
+            if (cleanF.session1) { delete cleanF.session1.time; }
+            if (cleanF.session2) { delete cleanF.session2.time; }
+            if (cleanF.mergedSession) { delete cleanF.mergedSession.time; }
+            return cleanF;
+          })
+        }));
+        setCurricula(sanitizedList);
+        if (!activeMonthKey || !sanitizedList.some(c => c.id === activeMonthKey)) {
+          setActiveMonthKey(sanitizedList[0]?.id || '2026-11');
         }
       }
       setLoading(false);
@@ -470,7 +478,6 @@ export default function ServantWeeklyCurriculum({
     const name = session.externalName || 'المتكلم';
     const topic = session.title || 'فقرة الخدمة';
     const dateText = friday.displayDate;
-    const timeText = session.time || '11:00 ص';
     const phone = (session.externalPhone || '').replace(/\D/g, '');
 
     if (!phone) {
@@ -479,7 +486,7 @@ export default function ServantWeeklyCurriculum({
     }
 
     // الصياغة المعتمدة كنسياً وتنظيمياً
-    const msg = `سلام ونعمة ${title} ${name}، نذكرك إن عليك فقرة باسم (${topic}) في إعداد خدام يوم ${dateText} الساعة ${timeText}، في انتظارك، وربنا يعوض تعب محبتك.`;
+    const msg = `سلام ونعمة ${title} ${name}، نذكرك إن عليك فقرة باسم (${topic}) في إعداد خدام يوم ${dateText}، في انتظارك، وربنا يعوض تعب محبتك.`;
 
     let cleanPhone = phone;
     if (cleanPhone.startsWith('0')) {
@@ -760,9 +767,6 @@ export default function ServantWeeklyCurriculum({
                   <span className="font-black text-maroon-900">
                     فقرة موحدة / ندوة: {upcomingFridayInfo.friday.mergedSession?.title || 'لم يُحدد موضوع'}
                   </span>
-                  <span className="text-[10px] text-slate-500 font-mono">
-                    {upcomingFridayInfo.friday.mergedSession?.time}
-                  </span>
                 </div>
                 <div className="flex items-center justify-between gap-2 mt-2 pt-2 border-t border-slate-100">
                   <span className="text-slate-600 font-bold">
@@ -796,9 +800,8 @@ export default function ServantWeeklyCurriculum({
                 {/* Session 1 */}
                 <div className="p-2.5 rounded-xl bg-white border border-amber-200 flex flex-col justify-between">
                   <div>
-                    <div className="flex items-center justify-between gap-1 text-[11px] text-slate-500">
+                    <div className="text-[11px] text-slate-500 pb-0.5">
                       <span className="font-black text-maroon-900">فقرة أولى:</span>
-                      <span className="font-mono">{upcomingFridayInfo.friday.session1?.time}</span>
                     </div>
                     <p className="font-bold text-slate-800 mt-1">
                       {upcomingFridayInfo.friday.session1?.title || 'لم يُحدد موضوع'}
@@ -835,9 +838,8 @@ export default function ServantWeeklyCurriculum({
                 {/* Session 2 */}
                 <div className="p-2.5 rounded-xl bg-white border border-amber-200 flex flex-col justify-between">
                   <div>
-                    <div className="flex items-center justify-between gap-1 text-[11px] text-slate-500">
+                    <div className="text-[11px] text-slate-500 pb-0.5">
                       <span className="font-black text-maroon-900">فقرة ثانية:</span>
-                      <span className="font-mono">{upcomingFridayInfo.friday.session2?.time}</span>
                     </div>
                     <p className="font-bold text-slate-800 mt-1">
                       {upcomingFridayInfo.friday.session2?.title || 'لم يُحدد موضوع'}
@@ -1013,17 +1015,6 @@ export default function ServantWeeklyCurriculum({
                   <div className="bg-amber-50/60 border border-amber-200/80 rounded-xl p-3 space-y-2">
                     <div className="flex items-center justify-between text-xs font-bold text-amber-950">
                       <span>فقرة موحدة / ندوة / لقاء مفتوح 🌟</span>
-                      {isEditing ? (
-                        <input
-                          type="text"
-                          value={friday.mergedSession?.time || ''}
-                          onChange={(e) => handleUpdateSessionField(fIdx, 'merged', 'time', e.target.value)}
-                          placeholder="التوقيت"
-                          className="w-24 px-2 py-0.5 text-xs rounded-lg border border-amber-300 bg-white"
-                        />
-                      ) : (
-                        <span className="text-slate-600 font-mono text-[11px]">{friday.mergedSession?.time || '11:00 ص'}</span>
-                      )}
                     </div>
 
                     {isEditing ? (
@@ -1149,21 +1140,10 @@ export default function ServantWeeklyCurriculum({
                     {/* الفقرة الأولى */}
                     <div className="bg-white border border-slate-200 rounded-xl p-3 space-y-2">
                       <div className="flex items-center justify-between text-xs font-bold text-maroon-950 border-b border-slate-100 pb-1.5">
-                        <span className="flex items-center gap-1">
+                        <span className="flex items-center gap-1.5">
                           <span className="w-2 h-2 rounded-full bg-gold-400" />
-                          فقرة أولى (دراسة كتاب / موضوع رئيسي)
+                          فقرة أولى
                         </span>
-                        {isEditing ? (
-                          <input
-                            type="text"
-                            value={friday.session1?.time || ''}
-                            onChange={(e) => handleUpdateSessionField(fIdx, 'session1', 'time', e.target.value)}
-                            placeholder="11:00 ص"
-                            className="w-20 px-2 py-0.5 text-xs rounded-lg border border-slate-300"
-                          />
-                        ) : (
-                          <span className="text-slate-500 font-mono text-[11px]">{friday.session1?.time || '11:00 ص'}</span>
-                        )}
                       </div>
 
                       {isEditing ? (
@@ -1272,21 +1252,10 @@ export default function ServantWeeklyCurriculum({
                     {/* الفقرة الثانية */}
                     <div className="bg-white border border-slate-200 rounded-xl p-3 space-y-2">
                       <div className="flex items-center justify-between text-xs font-bold text-maroon-950 border-b border-slate-100 pb-1.5">
-                        <span className="flex items-center gap-1">
+                        <span className="flex items-center gap-1.5">
                           <span className="w-2 h-2 rounded-full bg-amber-500" />
-                          فقرة ثانية (طقس / عقيدة / مهارات)
+                          فقرة ثانية
                         </span>
-                        {isEditing ? (
-                          <input
-                            type="text"
-                            value={friday.session2?.time || ''}
-                            onChange={(e) => handleUpdateSessionField(fIdx, 'session2', 'time', e.target.value)}
-                            placeholder="12:15 م"
-                            className="w-20 px-2 py-0.5 text-xs rounded-lg border border-slate-300"
-                          />
-                        ) : (
-                          <span className="text-slate-500 font-mono text-[11px]">{friday.session2?.time || '12:15 م'}</span>
-                        )}
                       </div>
 
                       {isEditing ? (
