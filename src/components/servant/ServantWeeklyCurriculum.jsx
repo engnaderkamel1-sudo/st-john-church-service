@@ -55,6 +55,17 @@ const REAL_SERVANTS = {
   }
 };
 
+// دالة مساعدة للحصول على اسم المتكلم بوضوح مهما كان نوعه
+function getSpeakerDisplayName(session) {
+  if (!session) return 'لم يُحدد';
+  if (session.speakerType === 'external') {
+    const title = session.externalTitle || 'أستاذ';
+    const name = session.externalName || session.speakerName || 'المتكلم';
+    return `${title} ${name}`;
+  }
+  return session.speakerName || session.externalName || 'لم يُحدد';
+}
+
 // دالة توليد أيام الجمعة لأي شهر وسنة
 function generateFridaysForMonth(year, monthIndex) {
   const fridays = [];
@@ -508,12 +519,31 @@ export default function ServantWeeklyCurriculum({
   const [successToast, setSuccessToast] = useState('');
   const hasAutoSeededRef = useRef(false);
 
-  // استخراج قائمة خدام المنظومة المعتمدين للاختيار السريع
+  // استخراج قائمة خدام المنظومة المعتمدين مع دمج الخدام الأساسيين لضمان تواجدهم دائماً
   const registeredServants = useMemo(() => {
-    return (allUsers || []).filter(u => 
-      (u.role === 'servant' || u.role === 'servant_leader' || u.role === 'admin') &&
-      u.status !== 'inactive' && u.status !== 'suspended' && u.status !== 'rejected'
-    );
+    const baseServants = [
+      { id: 'vB3UKbTyDTQz3XhDIPBQ', fullName: 'طاسوني اغابي اسحق', phone: '01225278458' },
+      { id: '7QfEDKZXwTB1QdtB6slC', fullName: 'Nader Reda Labib', phone: '01275571569' },
+      { id: 'TEjV6XAHf3cYmGkjnnCc', fullName: 'هناء فكري شفيق', phone: '01226862261' },
+      { id: '0zzWT0Bs2PcQdJN77C8A', fullName: 'عفاف كمال عبدالنور', phone: '01024682928' }
+    ];
+
+    const map = new Map();
+    baseServants.forEach(s => map.set(s.id, s));
+
+    (allUsers || []).forEach(u => {
+      const isServant = u.role === 'servant' || u.role === 'servant_leader' || u.role === 'admin';
+      const isActive = u.status !== 'inactive' && u.status !== 'suspended' && u.status !== 'rejected';
+      if (isServant && isActive && u.id) {
+        map.set(u.id, {
+          id: u.id,
+          fullName: u.fullName || u.name || 'خادم',
+          phone: u.phone || ''
+        });
+      }
+    });
+
+    return Array.from(map.values());
   }, [allUsers]);
 
   // إظهار رسالة تأكيد مؤقتة
@@ -618,9 +648,6 @@ export default function ServantWeeklyCurriculum({
     } else {
       setEditData(null);
     }
-    setIsEditing(false);
-    setEditingFridayId(null);
-    setSingleFridayEdit(null);
   }, [currentMonthData]);
 
   // إنشاء شهر جديد
@@ -686,6 +713,9 @@ export default function ServantWeeklyCurriculum({
 
       await setDoc(docRef, updatedObj, { merge: true });
 
+      // تحديث الحالة محلياً فوراً
+      setCurricula(prev => prev.map(c => (c.id === editData.id || c.docId === docKey) ? { ...updatedObj } : c));
+
       // إرسال إشعار عام للخدام عند النشر
       if (publishToAll) {
         await addDoc(collection(db, 'notifications'), {
@@ -747,14 +777,16 @@ export default function ServantWeeklyCurriculum({
     setSingleFridayEdit(null);
   };
 
+  // حفظ تعديل الجمعة المنفردة وتحديث قاعدة البيانات والحالة المحلية ذرّياً
   const handleSaveSingleFriday = async () => {
     if (!singleFridayEdit || !currentMonthData) return;
     setSaving(true);
     try {
       const docKey = currentMonthData.docId || (currentMonthData.id.startsWith('weekly_') ? currentMonthData.id : `weekly_${currentMonthData.id}`);
       const docRef = doc(db, 'service_curriculum', docKey);
+      
       const nextFridays = (currentMonthData.fridays || []).map(f => 
-        f.id === singleFridayEdit.id ? singleFridayEdit : f
+        f.id === singleFridayEdit.id ? JSON.parse(JSON.stringify(singleFridayEdit)) : f
       );
 
       await updateDoc(docRef, {
@@ -763,9 +795,17 @@ export default function ServantWeeklyCurriculum({
         updatedBy: user?.fullName || 'أحد الخدام'
       });
 
+      // تحديث الحالة المحلية فوراً لضمان سرعة الاستجابة اللحظية
+      setCurricula(prev => prev.map(c => {
+        if (c.id === currentMonthData.id || c.docId === docKey) {
+          return { ...c, fridays: nextFridays };
+        }
+        return c;
+      }));
+
       setEditingFridayId(null);
       setSingleFridayEdit(null);
-      showToast('تم حفظ تعديلات لقاء الجمعة بنجاح 💾');
+      showToast('تم حفظ وتحديث اسم المتكلم والبيانات بنجاح 💾');
     } catch (err) {
       console.error('Error saving single friday:', err);
       alert('حدث خطأ أثناء حفظ تعديلات الجمعة: ' + (err?.message || ''));
@@ -791,6 +831,13 @@ export default function ServantWeeklyCurriculum({
         updatedAt: serverTimestamp(),
         updatedBy: user?.fullName || 'أحد الخدام'
       });
+
+      setCurricula(prev => prev.map(c => {
+        if (c.id === currentMonthData.id || c.docId === docKey) {
+          return { ...c, fridays: nextFridays };
+        }
+        return c;
+      }));
 
       if (editingFridayId === fridayId) {
         setEditingFridayId(null);
@@ -864,6 +911,12 @@ export default function ServantWeeklyCurriculum({
         fridays: nextFridays,
         updatedAt: serverTimestamp()
       });
+      setCurricula(prev => prev.map(c => {
+        if (c.id === currentMonthData.id || c.docId === docKey) {
+          return { ...c, fridays: nextFridays };
+        }
+        return c;
+      }));
       setEditingFridayId(newFridayId);
       setSingleFridayEdit(newFriday);
       showToast('تمت إضافة الجمعة، يمكنك كتابة تفاصيلها وحفظها الآن ✏️');
@@ -877,75 +930,118 @@ export default function ServantWeeklyCurriculum({
 
   // دمج / فك دمج خانات الجمعة
   const handleToggleMergeFriday = (fridayIndex) => {
-    if (!editData) return;
-    const nextFridays = [...editData.fridays];
-    const fr = nextFridays[fridayIndex];
-    fr.isMerged = !fr.isMerged;
-    setEditData({ ...editData, fridays: nextFridays });
+    setEditData(prev => {
+      if (!prev || !prev.fridays) return prev;
+      const nextFridays = [...prev.fridays];
+      const fr = { ...nextFridays[fridayIndex] };
+      fr.isMerged = !fr.isMerged;
+      nextFridays[fridayIndex] = fr;
+      return { ...prev, fridays: nextFridays };
+    });
   };
 
   const handleToggleMergeSingleFriday = () => {
-    if (!singleFridayEdit) return;
-    setSingleFridayEdit({
-      ...singleFridayEdit,
-      isMerged: !singleFridayEdit.isMerged
+    setSingleFridayEdit(prev => {
+      if (!prev) return prev;
+      return { ...prev, isMerged: !prev.isMerged };
     });
   };
 
   // تعديل بيانات فقرة معينة في وضع التعديل العام
   const handleUpdateSessionField = (fridayIndex, sessionKey, field, value) => {
-    if (!editData) return;
-    const nextFridays = [...editData.fridays];
-    const fr = nextFridays[fridayIndex];
-    if (sessionKey === 'merged') {
-      fr.mergedSession = { ...fr.mergedSession, [field]: value };
-    } else {
-      fr[sessionKey] = { ...fr[sessionKey], [field]: value };
-    }
-    setEditData({ ...editData, fridays: nextFridays });
+    setEditData(prev => {
+      if (!prev || !prev.fridays) return prev;
+      const nextFridays = [...prev.fridays];
+      const fr = { ...nextFridays[fridayIndex] };
+      if (sessionKey === 'merged') {
+        fr.mergedSession = { ...fr.mergedSession, [field]: value };
+      } else {
+        fr[sessionKey] = { ...fr[sessionKey], [field]: value };
+      }
+      nextFridays[fridayIndex] = fr;
+      return { ...prev, fridays: nextFridays };
+    });
   };
 
+  // اختيار خادم من القائمة في التعديل العام ذرّياً
   const handleSelectInternalSpeaker = (fridayIndex, sessionKey, servantId) => {
     const servant = registeredServants.find(s => s.id === servantId);
     if (!servant) return;
-    handleUpdateSessionField(fridayIndex, sessionKey, 'speakerId', servant.id);
-    handleUpdateSessionField(fridayIndex, sessionKey, 'speakerName', servant.fullName);
-    handleUpdateSessionField(fridayIndex, sessionKey, 'speakerPhone', servant.phone || '');
+    const cleanName = servant.fullName || servant.name || '';
+    const cleanPhone = servant.phone || '';
+
+    setEditData(prev => {
+      if (!prev || !prev.fridays) return prev;
+      const nextFridays = [...prev.fridays];
+      const fr = { ...nextFridays[fridayIndex] };
+      const updatedSession = {
+        ...(sessionKey === 'merged' ? fr.mergedSession : fr[sessionKey]),
+        speakerType: 'internal',
+        speakerId: servant.id,
+        speakerName: cleanName,
+        speakerPhone: cleanPhone
+      };
+
+      if (sessionKey === 'merged') {
+        fr.mergedSession = updatedSession;
+      } else {
+        fr[sessionKey] = updatedSession;
+      }
+      nextFridays[fridayIndex] = fr;
+      return { ...prev, fridays: nextFridays };
+    });
   };
 
-  // تعديل بيانات فقرة معينة في وضع تعديل الكارت المنفرد
+  // تعديل بيانات فقرة معينة في وضع تعديل الكارت المنفرد باستخدام الحالة الدالية
   const handleUpdateSingleSessionField = (sessionKey, field, value) => {
-    if (!singleFridayEdit) return;
-    if (sessionKey === 'merged') {
-      setSingleFridayEdit({
-        ...singleFridayEdit,
-        mergedSession: { ...singleFridayEdit.mergedSession, [field]: value }
-      });
-    } else {
-      setSingleFridayEdit({
-        ...singleFridayEdit,
-        [sessionKey]: { ...singleFridayEdit[sessionKey], [field]: value }
-      });
-    }
+    setSingleFridayEdit(prev => {
+      if (!prev) return prev;
+      const targetSession = sessionKey === 'merged' ? prev.mergedSession : prev[sessionKey];
+      const updatedSession = {
+        ...targetSession,
+        [field]: value
+      };
+      if (sessionKey === 'merged') {
+        return { ...prev, mergedSession: updatedSession };
+      }
+      return { ...prev, [sessionKey]: updatedSession };
+    });
   };
 
+  // اختيار خادم من القائمة في تعديل الكارت المنفرد وتحديث اسمه وهاتفه ومعرفه ذرّياً
   const handleSelectSingleInternalSpeaker = (sessionKey, servantId) => {
     const servant = registeredServants.find(s => s.id === servantId);
     if (!servant) return;
-    handleUpdateSingleSessionField(sessionKey, 'speakerId', servant.id);
-    handleUpdateSingleSessionField(sessionKey, 'speakerName', servant.fullName);
-    handleUpdateSingleSessionField(sessionKey, 'speakerPhone', servant.phone || '');
+    const cleanName = servant.fullName || servant.name || '';
+    const cleanPhone = servant.phone || '';
+
+    setSingleFridayEdit(prev => {
+      if (!prev) return prev;
+      const targetSession = sessionKey === 'merged' ? prev.mergedSession : prev[sessionKey];
+      const updatedSession = {
+        ...targetSession,
+        speakerType: 'internal',
+        speakerId: servant.id,
+        speakerName: cleanName,
+        speakerPhone: cleanPhone
+      };
+
+      if (sessionKey === 'merged') {
+        return { ...prev, mergedSession: updatedSession };
+      }
+      return { ...prev, [sessionKey]: updatedSession };
+    });
   };
 
   // إرسال تذكير واتساب للمتكلم الخارجي (يدوياً حصراً)
   const handleSendWhatsAppToExternal = async (friday, session, sessionKey = 'session1') => {
     const title = session.externalTitle || 'أستاذ';
-    const name = session.externalName || 'المتكلم';
+    const name = session.externalName || session.speakerName || 'المتكلم';
     const topic = session.title 
       ? `${session.subject || 'فقرة'} (${session.title})` 
       : (session.subject || 'فقرة الخدمة');
     const dateText = friday.displayDate;
-    const phone = (session.externalPhone || '').replace(/\D/g, '');
+    const phone = (session.externalPhone || session.speakerPhone || '').replace(/\D/g, '');
 
     if (!phone) {
       alert('يرجى التأكد من كتابة رقم الواتساب الخاص بالمتكلم أولاً.');
@@ -987,7 +1083,7 @@ export default function ServantWeeklyCurriculum({
   // إرسال تذكير داخلي لخادم بالمنظومة (Web Push + In-App Notification)
   const handleSendInternalServantReminder = async (friday, session, sessionKey = 'session1') => {
     const servantId = session.speakerId;
-    const servantName = session.speakerName || 'الخادم';
+    const servantName = getSpeakerDisplayName(session);
     const topic = session.title 
       ? `${session.subject || 'فقرة'} (${session.title})` 
       : (session.subject || 'فقرة الخدمة');
@@ -1210,7 +1306,7 @@ export default function ServantWeeklyCurriculum({
                 className="px-3 py-1.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs cursor-pointer transition-all"
               >
                 <MessageSquare className="w-3.5 h-3.5" />
-                <span>إرسال واتساب لـ ({item.session.externalTitle} {item.session.externalName || 'المتكلم'})</span>
+                <span>إرسال واتساب لـ ({getSpeakerDisplayName(item.session)})</span>
               </button>
             ))}
           </div>
@@ -1242,9 +1338,7 @@ export default function ServantWeeklyCurriculum({
                 </div>
                 <div className="flex items-center justify-between gap-2 mt-2 pt-2 border-t border-slate-100">
                   <span className="text-slate-600 font-bold">
-                    المتكلم: {upcomingFridayInfo.friday.mergedSession?.speakerType === 'external'
-                      ? `${upcomingFridayInfo.friday.mergedSession?.externalTitle} ${upcomingFridayInfo.friday.mergedSession?.externalName}`
-                      : upcomingFridayInfo.friday.mergedSession?.speakerName || 'لم يُحدد'}
+                    المتكلم: {getSpeakerDisplayName(upcomingFridayInfo.friday.mergedSession)}
                   </span>
                   {upcomingFridayInfo.friday.mergedSession?.speakerType === 'external' ? (
                     <button
@@ -1284,9 +1378,7 @@ export default function ServantWeeklyCurriculum({
                   </div>
                   <div className="flex items-center justify-between gap-2 mt-2 pt-2 border-t border-slate-100">
                     <span className="text-slate-600 font-bold truncate">
-                      {upcomingFridayInfo.friday.session1?.speakerType === 'external'
-                        ? `${upcomingFridayInfo.friday.session1?.externalTitle} ${upcomingFridayInfo.friday.session1?.externalName}`
-                        : upcomingFridayInfo.friday.session1?.speakerName || 'لم يُحدد'}
+                      المتكلم: {getSpeakerDisplayName(upcomingFridayInfo.friday.session1)}
                     </span>
                     {upcomingFridayInfo.friday.session1?.speakerType === 'external' ? (
                       <button
@@ -1325,9 +1417,7 @@ export default function ServantWeeklyCurriculum({
                   </div>
                   <div className="flex items-center justify-between gap-2 mt-2 pt-2 border-t border-slate-100">
                     <span className="text-slate-600 font-bold truncate">
-                      {upcomingFridayInfo.friday.session2?.speakerType === 'external'
-                        ? `${upcomingFridayInfo.friday.session2?.externalTitle} ${upcomingFridayInfo.friday.session2?.externalName}`
-                        : upcomingFridayInfo.friday.session2?.speakerName || 'لم يُحدد'}
+                      المتكلم: {getSpeakerDisplayName(upcomingFridayInfo.friday.session2)}
                     </span>
                     {upcomingFridayInfo.friday.session2?.speakerType === 'external' ? (
                       <button
@@ -1460,7 +1550,7 @@ export default function ServantWeeklyCurriculum({
           <div className="p-3.5 space-y-3.5">
             {((isEditing ? editData?.fridays : currentMonthData?.fridays) || []).map((friday, fIdx) => {
               const isThisFridayEditing = isEditing || editingFridayId === friday.id;
-              const activeFriday = editingFridayId === friday.id ? singleFridayEdit : friday;
+              const activeFriday = editingFridayId === friday.id ? (singleFridayEdit || friday) : (isEditing ? friday : friday);
 
               return (
                 <div 
@@ -1667,7 +1757,7 @@ export default function ServantWeeklyCurriculum({
                                 <label className="block text-[10px] font-bold text-slate-600 mb-0.5">اسم المتكلم</label>
                                 <input
                                   type="text"
-                                  value={activeFriday.mergedSession?.externalName || ''}
+                                  value={activeFriday.mergedSession?.externalName || activeFriday.mergedSession?.speakerName || ''}
                                   onChange={(e) => {
                                     if (editingFridayId === friday.id) {
                                       handleUpdateSingleSessionField('merged', 'externalName', e.target.value);
@@ -1683,7 +1773,7 @@ export default function ServantWeeklyCurriculum({
                                 <label className="block text-[10px] font-bold text-slate-600 mb-0.5">رقم الواتساب</label>
                                 <input
                                   type="tel"
-                                  value={activeFriday.mergedSession?.externalPhone || ''}
+                                  value={activeFriday.mergedSession?.externalPhone || activeFriday.mergedSession?.speakerPhone || ''}
                                   onChange={(e) => {
                                     if (editingFridayId === friday.id) {
                                       handleUpdateSingleSessionField('merged', 'externalPhone', e.target.value);
@@ -1697,24 +1787,42 @@ export default function ServantWeeklyCurriculum({
                               </div>
                             </div>
                           ) : (
-                            <div>
-                              <label className="block text-[10px] font-bold text-slate-600 mb-0.5">اختيار الخادم من المنظومة</label>
-                              <select
-                                value={activeFriday.mergedSession?.speakerId || ''}
-                                onChange={(e) => {
-                                  if (editingFridayId === friday.id) {
-                                    handleSelectSingleInternalSpeaker('merged', e.target.value);
-                                  } else {
-                                    handleSelectInternalSpeaker(fIdx, 'merged', e.target.value);
-                                  }
-                                }}
-                                className="w-full px-2 py-1.5 text-xs rounded-xl border border-slate-300 bg-white font-bold"
-                              >
-                                <option value="">-- اضغط لاختيار الخادم المسؤول --</option>
-                                {registeredServants.map(s => (
-                                  <option key={s.id} value={s.id}>{s.fullName} ({s.phone || 'بدون هاتف'})</option>
-                                ))}
-                              </select>
+                            <div className="space-y-1.5 pt-1">
+                              <div>
+                                <label className="block text-[10px] font-bold text-slate-600 mb-0.5">اختيار الخادم من القائمة</label>
+                                <select
+                                  value={activeFriday.mergedSession?.speakerId || ''}
+                                  onChange={(e) => {
+                                    if (editingFridayId === friday.id) {
+                                      handleSelectSingleInternalSpeaker('merged', e.target.value);
+                                    } else {
+                                      handleSelectInternalSpeaker(fIdx, 'merged', e.target.value);
+                                    }
+                                  }}
+                                  className="w-full px-2 py-1.5 text-xs rounded-xl border border-slate-300 bg-white font-bold"
+                                >
+                                  <option value="">-- اضغط لاختيار الخادم المسؤول --</option>
+                                  {registeredServants.map(s => (
+                                    <option key={s.id} value={s.id}>{s.fullName} ({s.phone || 'بدون هاتف'})</option>
+                                  ))}
+                                </select>
+                              </div>
+                              <div>
+                                <label className="block text-[10px] font-bold text-slate-600 mb-0.5">اسم المتكلم المعروض (يمكن تعديله يدوياً)</label>
+                                <input
+                                  type="text"
+                                  value={activeFriday.mergedSession?.speakerName || ''}
+                                  onChange={(e) => {
+                                    if (editingFridayId === friday.id) {
+                                      handleUpdateSingleSessionField('merged', 'speakerName', e.target.value);
+                                    } else {
+                                      handleUpdateSessionField(fIdx, 'merged', 'speakerName', e.target.value);
+                                    }
+                                  }}
+                                  placeholder="اسم الخادم المتكلم..."
+                                  className="w-full px-2 py-1 text-xs rounded-lg border border-slate-300 font-bold"
+                                />
+                              </div>
                             </div>
                           )}
                         </div>
@@ -1726,9 +1834,7 @@ export default function ServantWeeklyCurriculum({
                             </p>
                             <p className="text-[11px] text-slate-600 mt-0.5">
                               <span className="font-bold">المتكلم:</span>{' '}
-                              {friday.mergedSession?.speakerType === 'external'
-                                ? `${friday.mergedSession?.externalTitle || 'أستاذ'} ${friday.mergedSession?.externalName || 'المتكلم'} (خارجي 💬)`
-                                : friday.mergedSession?.speakerName || 'لم يُحدد'}
+                              {getSpeakerDisplayName(friday.mergedSession)}
                             </p>
                           </div>
 
@@ -1842,63 +1948,93 @@ export default function ServantWeeklyCurriculum({
 
                             {activeFriday.session1?.speakerType === 'external' ? (
                               <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5 pt-0.5">
-                                <select
-                                  value={activeFriday.session1?.externalTitle || 'طاسوني'}
-                                  onChange={(e) => {
-                                    if (editingFridayId === friday.id) {
-                                      handleUpdateSingleSessionField('session1', 'externalTitle', e.target.value);
-                                    } else {
-                                      handleUpdateSessionField(fIdx, 'session1', 'externalTitle', e.target.value);
-                                    }
-                                  }}
-                                  className="px-2 py-1 text-xs rounded-lg border border-slate-300 bg-white font-bold"
-                                >
-                                  {EXTERNAL_TITLES.map(t => <option key={t} value={t}>{t}</option>)}
-                                </select>
-                                <input
-                                  type="text"
-                                  value={activeFriday.session1?.externalName || ''}
-                                  onChange={(e) => {
-                                    if (editingFridayId === friday.id) {
-                                      handleUpdateSingleSessionField('session1', 'externalName', e.target.value);
-                                    } else {
-                                      handleUpdateSessionField(fIdx, 'session1', 'externalName', e.target.value);
-                                    }
-                                  }}
-                                  placeholder="الاسم"
-                                  className="px-2 py-1 text-xs rounded-lg border border-slate-300 font-bold"
-                                />
-                                <input
-                                  type="tel"
-                                  value={activeFriday.session1?.externalPhone || ''}
-                                  onChange={(e) => {
-                                    if (editingFridayId === friday.id) {
-                                      handleUpdateSingleSessionField('session1', 'externalPhone', e.target.value);
-                                    } else {
-                                      handleUpdateSessionField(fIdx, 'session1', 'externalPhone', e.target.value);
-                                    }
-                                  }}
-                                  placeholder="الواتساب"
-                                  className="px-2 py-1 text-xs rounded-lg border border-slate-300 font-mono"
-                                />
+                                <div>
+                                  <label className="block text-[10px] font-bold text-slate-600 mb-0.5">اللقب</label>
+                                  <select
+                                    value={activeFriday.session1?.externalTitle || 'طاسوني'}
+                                    onChange={(e) => {
+                                      if (editingFridayId === friday.id) {
+                                        handleUpdateSingleSessionField('session1', 'externalTitle', e.target.value);
+                                      } else {
+                                        handleUpdateSessionField(fIdx, 'session1', 'externalTitle', e.target.value);
+                                      }
+                                    }}
+                                    className="w-full px-2 py-1 text-xs rounded-lg border border-slate-300 bg-white font-bold"
+                                  >
+                                    {EXTERNAL_TITLES.map(t => <option key={t} value={t}>{t}</option>)}
+                                  </select>
+                                </div>
+                                <div>
+                                  <label className="block text-[10px] font-bold text-slate-600 mb-0.5">اسم المتكلم</label>
+                                  <input
+                                    type="text"
+                                    value={activeFriday.session1?.externalName || activeFriday.session1?.speakerName || ''}
+                                    onChange={(e) => {
+                                      if (editingFridayId === friday.id) {
+                                        handleUpdateSingleSessionField('session1', 'externalName', e.target.value);
+                                      } else {
+                                        handleUpdateSessionField(fIdx, 'session1', 'externalName', e.target.value);
+                                      }
+                                    }}
+                                    placeholder="الاسم"
+                                    className="w-full px-2 py-1 text-xs rounded-lg border border-slate-300 font-bold"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-[10px] font-bold text-slate-600 mb-0.5">رقم الواتساب</label>
+                                  <input
+                                    type="tel"
+                                    value={activeFriday.session1?.externalPhone || activeFriday.session1?.speakerPhone || ''}
+                                    onChange={(e) => {
+                                      if (editingFridayId === friday.id) {
+                                        handleUpdateSingleSessionField('session1', 'externalPhone', e.target.value);
+                                      } else {
+                                        handleUpdateSessionField(fIdx, 'session1', 'externalPhone', e.target.value);
+                                      }
+                                    }}
+                                    placeholder="الواتساب"
+                                    className="w-full px-2 py-1 text-xs rounded-lg border border-slate-300 font-mono"
+                                  />
+                                </div>
                               </div>
                             ) : (
-                              <select
-                                value={activeFriday.session1?.speakerId || ''}
-                                onChange={(e) => {
-                                  if (editingFridayId === friday.id) {
-                                    handleSelectSingleInternalSpeaker('session1', e.target.value);
-                                  } else {
-                                    handleSelectInternalSpeaker(fIdx, 'session1', e.target.value);
-                                  }
-                                }}
-                                className="w-full px-2 py-1 text-xs rounded-xl border border-slate-300 bg-white font-bold"
-                              >
-                                <option value="">-- اختيار الخادم المتكلم --</option>
-                                {registeredServants.map(s => (
-                                  <option key={s.id} value={s.id}>{s.fullName}</option>
-                                ))}
-                              </select>
+                              <div className="space-y-1.5 pt-0.5">
+                                <div>
+                                  <label className="block text-[10px] font-bold text-slate-600 mb-0.5">اختيار الخادم من القائمة</label>
+                                  <select
+                                    value={activeFriday.session1?.speakerId || ''}
+                                    onChange={(e) => {
+                                      if (editingFridayId === friday.id) {
+                                        handleSelectSingleInternalSpeaker('session1', e.target.value);
+                                      } else {
+                                        handleSelectInternalSpeaker(fIdx, 'session1', e.target.value);
+                                      }
+                                    }}
+                                    className="w-full px-2 py-1 text-xs rounded-xl border border-slate-300 bg-white font-bold"
+                                  >
+                                    <option value="">-- اختيار الخادم المتكلم --</option>
+                                    {registeredServants.map(s => (
+                                      <option key={s.id} value={s.id}>{s.fullName}</option>
+                                    ))}
+                                  </select>
+                                </div>
+                                <div>
+                                  <label className="block text-[10px] font-bold text-slate-600 mb-0.5">اسم المتكلم المعروض (يمكن تعديله يدوياً)</label>
+                                  <input
+                                    type="text"
+                                    value={activeFriday.session1?.speakerName || ''}
+                                    onChange={(e) => {
+                                      if (editingFridayId === friday.id) {
+                                        handleUpdateSingleSessionField('session1', 'speakerName', e.target.value);
+                                      } else {
+                                        handleUpdateSessionField(fIdx, 'session1', 'speakerName', e.target.value);
+                                      }
+                                    }}
+                                    placeholder="اسم الخادم المتكلم..."
+                                    className="w-full px-2 py-1 text-xs rounded-lg border border-slate-300 font-bold"
+                                  />
+                                </div>
+                              </div>
                             )}
                           </div>
                         ) : (
@@ -1908,9 +2044,7 @@ export default function ServantWeeklyCurriculum({
                             </p>
                             <div className="flex items-center justify-between gap-2 pt-1 border-t border-slate-100">
                               <span className="text-[11px] text-slate-600 font-bold truncate">
-                                المتكلم: {friday.session1?.speakerType === 'external'
-                                  ? `${friday.session1?.externalTitle || 'أستاذ'} ${friday.session1?.externalName || 'المتكلم'}`
-                                  : friday.session1?.speakerName || 'لم يُحدد'}
+                                المتكلم: {getSpeakerDisplayName(friday.session1)}
                               </span>
                               {friday.session1?.speakerType === 'external' ? (
                                 <button
@@ -2021,63 +2155,93 @@ export default function ServantWeeklyCurriculum({
 
                             {activeFriday.session2?.speakerType === 'external' ? (
                               <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5 pt-0.5">
-                                <select
-                                  value={activeFriday.session2?.externalTitle || 'طاسوني'}
-                                  onChange={(e) => {
-                                    if (editingFridayId === friday.id) {
-                                      handleUpdateSingleSessionField('session2', 'externalTitle', e.target.value);
-                                    } else {
-                                      handleUpdateSessionField(fIdx, 'session2', 'externalTitle', e.target.value);
-                                    }
-                                  }}
-                                  className="px-2 py-1 text-xs rounded-lg border border-slate-300 bg-white font-bold"
-                                >
-                                  {EXTERNAL_TITLES.map(t => <option key={t} value={t}>{t}</option>)}
-                                </select>
-                                <input
-                                  type="text"
-                                  value={activeFriday.session2?.externalName || ''}
-                                  onChange={(e) => {
-                                    if (editingFridayId === friday.id) {
-                                      handleUpdateSingleSessionField('session2', 'externalName', e.target.value);
-                                    } else {
-                                      handleUpdateSessionField(fIdx, 'session2', 'externalName', e.target.value);
-                                    }
-                                  }}
-                                  placeholder="الاسم"
-                                  className="px-2 py-1 text-xs rounded-lg border border-slate-300 font-bold"
-                                />
-                                <input
-                                  type="tel"
-                                  value={activeFriday.session2?.externalPhone || ''}
-                                  onChange={(e) => {
-                                    if (editingFridayId === friday.id) {
-                                      handleUpdateSingleSessionField('session2', 'externalPhone', e.target.value);
-                                    } else {
-                                      handleUpdateSessionField(fIdx, 'session2', 'externalPhone', e.target.value);
-                                    }
-                                  }}
-                                  placeholder="الواتساب"
-                                  className="px-2 py-1 text-xs rounded-lg border border-slate-300 font-mono"
-                                />
+                                <div>
+                                  <label className="block text-[10px] font-bold text-slate-600 mb-0.5">اللقب</label>
+                                  <select
+                                    value={activeFriday.session2?.externalTitle || 'طاسوني'}
+                                    onChange={(e) => {
+                                      if (editingFridayId === friday.id) {
+                                        handleUpdateSingleSessionField('session2', 'externalTitle', e.target.value);
+                                      } else {
+                                        handleUpdateSessionField(fIdx, 'session2', 'externalTitle', e.target.value);
+                                      }
+                                    }}
+                                    className="w-full px-2 py-1 text-xs rounded-lg border border-slate-300 bg-white font-bold"
+                                  >
+                                    {EXTERNAL_TITLES.map(t => <option key={t} value={t}>{t}</option>)}
+                                  </select>
+                                </div>
+                                <div>
+                                  <label className="block text-[10px] font-bold text-slate-600 mb-0.5">اسم المتكلم</label>
+                                  <input
+                                    type="text"
+                                    value={activeFriday.session2?.externalName || activeFriday.session2?.speakerName || ''}
+                                    onChange={(e) => {
+                                      if (editingFridayId === friday.id) {
+                                        handleUpdateSingleSessionField('session2', 'externalName', e.target.value);
+                                      } else {
+                                        handleUpdateSessionField(fIdx, 'session2', 'externalName', e.target.value);
+                                      }
+                                    }}
+                                    placeholder="الاسم"
+                                    className="w-full px-2 py-1 text-xs rounded-lg border border-slate-300 font-bold"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-[10px] font-bold text-slate-600 mb-0.5">رقم الواتساب</label>
+                                  <input
+                                    type="tel"
+                                    value={activeFriday.session2?.externalPhone || activeFriday.session2?.speakerPhone || ''}
+                                    onChange={(e) => {
+                                      if (editingFridayId === friday.id) {
+                                        handleUpdateSingleSessionField('session2', 'externalPhone', e.target.value);
+                                      } else {
+                                        handleUpdateSessionField(fIdx, 'session2', 'externalPhone', e.target.value);
+                                      }
+                                    }}
+                                    placeholder="الواتساب"
+                                    className="w-full px-2 py-1 text-xs rounded-lg border border-slate-300 font-mono"
+                                  />
+                                </div>
                               </div>
                             ) : (
-                              <select
-                                value={activeFriday.session2?.speakerId || ''}
-                                onChange={(e) => {
-                                  if (editingFridayId === friday.id) {
-                                    handleSelectSingleInternalSpeaker('session2', e.target.value);
-                                  } else {
-                                    handleSelectInternalSpeaker(fIdx, 'session2', e.target.value);
-                                  }
-                                }}
-                                className="w-full px-2 py-1 text-xs rounded-xl border border-slate-300 bg-white font-bold"
-                              >
-                                <option value="">-- اختيار الخادم المتكلم --</option>
-                                {registeredServants.map(s => (
-                                  <option key={s.id} value={s.id}>{s.fullName}</option>
-                                ))}
-                              </select>
+                              <div className="space-y-1.5 pt-0.5">
+                                <div>
+                                  <label className="block text-[10px] font-bold text-slate-600 mb-0.5">اختيار الخادم من القائمة</label>
+                                  <select
+                                    value={activeFriday.session2?.speakerId || ''}
+                                    onChange={(e) => {
+                                      if (editingFridayId === friday.id) {
+                                        handleSelectSingleInternalSpeaker('session2', e.target.value);
+                                      } else {
+                                        handleSelectInternalSpeaker(fIdx, 'session2', e.target.value);
+                                      }
+                                    }}
+                                    className="w-full px-2 py-1 text-xs rounded-xl border border-slate-300 bg-white font-bold"
+                                  >
+                                    <option value="">-- اختيار الخادم المتكلم --</option>
+                                    {registeredServants.map(s => (
+                                      <option key={s.id} value={s.id}>{s.fullName}</option>
+                                    ))}
+                                  </select>
+                                </div>
+                                <div>
+                                  <label className="block text-[10px] font-bold text-slate-600 mb-0.5">اسم المتكلم المعروض (يمكن تعديله يدوياً)</label>
+                                  <input
+                                    type="text"
+                                    value={activeFriday.session2?.speakerName || ''}
+                                    onChange={(e) => {
+                                      if (editingFridayId === friday.id) {
+                                        handleUpdateSingleSessionField('session2', 'speakerName', e.target.value);
+                                      } else {
+                                        handleUpdateSessionField(fIdx, 'session2', 'speakerName', e.target.value);
+                                      }
+                                    }}
+                                    placeholder="اسم الخادم المتكلم..."
+                                    className="w-full px-2 py-1 text-xs rounded-lg border border-slate-300 font-bold"
+                                  />
+                                </div>
+                              </div>
                             )}
                           </div>
                         ) : (
@@ -2087,9 +2251,7 @@ export default function ServantWeeklyCurriculum({
                             </p>
                             <div className="flex items-center justify-between gap-2 pt-1 border-t border-slate-100">
                               <span className="text-[11px] text-slate-600 font-bold truncate">
-                                المتكلم: {friday.session2?.speakerType === 'external'
-                                  ? `${friday.session2?.externalTitle || 'أستاذ'} ${friday.session2?.externalName || 'المتكلم'}`
-                                  : friday.session2?.speakerName || 'لم يُحدد'}
+                                المتكلم: {getSpeakerDisplayName(friday.session2)}
                               </span>
                               {friday.session2?.speakerType === 'external' ? (
                                 <button
@@ -2251,9 +2413,7 @@ export default function ServantWeeklyCurriculum({
                             🌟 {f.mergedSession?.title || f.mergedSession?.subject || 'فقرة موحدة / ندوة'} 
                             {' — '}
                             <span className="text-slate-700">
-                              المتكلم: {f.mergedSession?.speakerType === 'external'
-                                ? `${f.mergedSession?.externalTitle || 'أستاذ'} ${f.mergedSession?.externalName || 'المتكلم'}`
-                                : f.mergedSession?.speakerName}
+                              المتكلم: {getSpeakerDisplayName(f.mergedSession)}
                             </span>
                           </td>
                         </tr>
@@ -2272,17 +2432,13 @@ export default function ServantWeeklyCurriculum({
                           {s1Desc}
                         </td>
                         <td className="p-2.5 font-black text-maroon-900 border-l border-slate-200 whitespace-nowrap">
-                          {f.session1?.speakerType === 'external'
-                            ? `${f.session1?.externalTitle || 'أستاذ'} ${f.session1?.externalName || 'المتكلم'}`
-                            : f.session1?.speakerName || '-'}
+                          {getSpeakerDisplayName(f.session1)}
                         </td>
                         <td className="p-2.5 font-medium text-slate-800 border-l border-slate-200">
                           {s2Desc}
                         </td>
                         <td className="p-2.5 font-black text-maroon-900 whitespace-nowrap">
-                          {f.session2?.speakerType === 'external'
-                            ? `${f.session2?.externalTitle || 'أستاذ'} ${f.session2?.externalName || 'المتكلم'}`
-                            : f.session2?.speakerName || '-'}
+                          {getSpeakerDisplayName(f.session2)}
                         </td>
                       </tr>
                     );
