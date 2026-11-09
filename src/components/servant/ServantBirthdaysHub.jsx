@@ -137,6 +137,15 @@ export default function ServantBirthdaysHub({ allUsers = [], getGradeTitle, onSe
     );
   };
 
+  const getWhatsAppGreetingMessage = (u, isToday = true) => {
+    const greetingTime = isToday ? 'وعيد ميلاد سعيد!' : 'وعيد ميلاد سعيد مقدماً!';
+    const cohortTitle = u.grade === 'elisha' 
+      ? 'فصل أليشع النبي - اعداد خدام  كنيسه القديس ماريوحنا المعمدان' 
+      : 'فصل بولس الرسول - اعداد خدام  كنيسه القديس ماريوحنا المعمدان';
+
+    return `كل سنة وأنت طيب يا ${u.fullName}، سنة حلوة ومباركة مع يسوع ${greetingTime} 🎊\n${cohortTitle}`;
+  };
+
   return (
     <div className="space-y-6 text-right">
       {/* Header Banner */}
@@ -325,7 +334,7 @@ export default function ServantBirthdaysHub({ allUsers = [], getGradeTitle, onSe
                   {u.phone && (
                     <>
                       <a
-                        href={`https://wa.me/20${u.phone.replace(/^0+/, '')}?text=${encodeURIComponent(`كل سنة وأنت طيب يا ${u.fullName}، سنة حلوة ومباركة مع بابا يسوع وعيد ميلاد سعيد! 🎂🎉 أسرة خدمة القديس يوحنا المعمدان`)}`}
+                        href={`https://wa.me/20${u.phone.replace(/^0+/, '')}?text=${encodeURIComponent(getWhatsAppGreetingMessage(u, true))}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         onClick={(e) => e.stopPropagation()}
@@ -401,7 +410,7 @@ export default function ServantBirthdaysHub({ allUsers = [], getGradeTitle, onSe
                   {u.phone && (
                     <>
                       <a
-                        href={`https://wa.me/20${u.phone.replace(/^0+/, '')}?text=${encodeURIComponent(`كل سنة وأنت طيب يا ${u.fullName}، سنة حلوة ومباركة مع بابا يسوع وعيد ميلاد سعيد مقدماً! 🎂🎉 أسرة خدمة القديس يوحنا المعمدان`)}`}
+                        href={`https://wa.me/20${u.phone.replace(/^0+/, '')}?text=${encodeURIComponent(getWhatsAppGreetingMessage(u, false))}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         onClick={(e) => e.stopPropagation()}
@@ -471,7 +480,7 @@ export default function ServantBirthdaysHub({ allUsers = [], getGradeTitle, onSe
                   {u.phone && (
                     <div className="flex items-center gap-1">
                       <a
-                        href={`https://wa.me/20${u.phone.replace(/^0+/, '')}?text=${encodeURIComponent(`كل سنة وأنت طيب يا ${u.fullName}، سنة حلوة ومباركة مع بابا يسوع وعيد ميلاد سعيد مقدماً! 🎂🎉 أسرة خدمة القديس يوحنا المعمدان`)}`}
+                        href={`https://wa.me/20${u.phone.replace(/^0+/, '')}?text=${encodeURIComponent(getWhatsAppGreetingMessage(u, false))}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         onClick={(e) => e.stopPropagation()}
