@@ -200,6 +200,7 @@ export default function AutoUpdateWatcher() {
               onClick={() => setJustUpdated(false)}
               className="p-1 text-slate-400 hover:text-white rounded-lg transition-colors shrink-0"
               aria-label="إغلاق"
+              title="إغلاق"
             >
               <X className="w-4 h-4" />
             </button>
