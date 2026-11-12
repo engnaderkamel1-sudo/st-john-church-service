@@ -1193,6 +1193,10 @@ export default function ServantWeeklyCurriculum({
     }
 
     const isWednesday = reminderType === 'wednesday';
+    const alreadySent = isWednesday ? session.whatsappWednesdaySent : session.whatsappSent;
+    if (alreadySent && !window.confirm('تم إرسال هذا التذكير مسبقاً، هل تريد إعادة إرساله؟')) {
+      return;
+    }
 
     const msg = isWednesday
       ? `صباح الخير وسلام ونعمة ${title} ${name}، نذكركم بكل محبة بلقائنا المبارك يوم الجمعة القادمة (${dateText}) في خدمة إعداد خدام، في موضوع: (${topic}). ننتظر بركة حضوركم وكلمتكم بكل شوق، وربنا يعوض تعب محبتكم.`
@@ -1272,6 +1276,10 @@ export default function ServantWeeklyCurriculum({
     }
 
     const isWednesday = reminderType === 'wednesday';
+    const alreadySent = isWednesday ? session.wednesdayReminderSent : session.reminderSent;
+    if (alreadySent && !window.confirm('تم إرسال هذا التذكير مسبقاً، هل تريد إعادة إرساله؟')) {
+      return;
+    }
 
     const notifTitle = isWednesday
       ? '🕊️ تذكير محبة قبل لقاء الجمعة'
@@ -1354,6 +1362,65 @@ export default function ServantWeeklyCurriculum({
       console.error('Error sending servant reminder:', err);
       alert('حدث خطأ أثناء إرسال التنبيه: ' + (err?.message || ''));
     }
+  };
+
+  // عرض أزرار التذكير بشكل موحد وواضح الحالة (قبل وبعد الإرسال)
+  const renderReminderButtons = (friday, session, sessionKey = 'session1', wrapperClass = 'flex flex-wrap items-center gap-1.5') => {
+    if (!session) return null;
+
+    if (session.speakerType === 'external') {
+      const firstSent = Boolean(session.whatsappSent);
+      const wedSent = Boolean(session.whatsappWednesdaySent);
+      return (
+        <div className={wrapperClass}>
+          <button
+            type="button"
+            onClick={() => handleSendWhatsAppToExternal(friday, session, sessionKey, 'first')}
+            className={`px-2 py-1 rounded-lg text-white text-[11px] font-bold flex items-center gap-1 cursor-pointer shrink-0 transition-colors ${
+              firstSent ? 'bg-emerald-700 hover:bg-emerald-800' : 'bg-teal-700 hover:bg-teal-800'
+            }`}
+          >
+            <MessageSquare className="w-3 h-3 shrink-0" />
+            <span>{firstSent ? 'تم واتساب التحضير ✅' : 'واتساب التحضير 💬'}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => handleSendWhatsAppToExternal(friday, session, sessionKey, 'wednesday')}
+            className={`px-2 py-1 rounded-lg text-white text-[11px] font-bold flex items-center gap-1 cursor-pointer shrink-0 transition-colors ${
+              wedSent ? 'bg-emerald-700 hover:bg-emerald-800' : 'bg-amber-600 hover:bg-amber-700'
+            }`}
+          >
+            <span>{wedSent ? 'تم واتساب الأربعاء ✅' : 'واتساب الأربعاء 🕊️'}</span>
+          </button>
+        </div>
+      );
+    }
+
+    const firstSent = Boolean(session.reminderSent);
+    const wedSent = Boolean(session.wednesdayReminderSent);
+    return (
+      <div className={wrapperClass}>
+        <button
+          type="button"
+          onClick={() => handleSendInternalServantReminder(friday, session, sessionKey, 'first')}
+          className={`px-2 py-1 rounded-lg text-white text-[11px] font-bold flex items-center gap-1 cursor-pointer shrink-0 transition-colors ${
+            firstSent ? 'bg-emerald-700 hover:bg-emerald-800' : 'bg-maroon-800 hover:bg-maroon-900'
+          }`}
+        >
+          <Bell className="w-3 h-3 text-gold-300 shrink-0" />
+          <span>{firstSent ? 'تم تذكير التحضير ✅' : 'تذكير التحضير'}</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => handleSendInternalServantReminder(friday, session, sessionKey, 'wednesday')}
+          className={`px-2 py-1 rounded-lg text-white text-[11px] font-bold flex items-center gap-1 cursor-pointer shrink-0 transition-colors ${
+            wedSent ? 'bg-emerald-700 hover:bg-emerald-800' : 'bg-amber-600 hover:bg-amber-700'
+          }`}
+        >
+          <span>{wedSent ? 'تم تذكير الأربعاء ✅' : 'تذكير الأربعاء 🕊️'}</span>
+        </button>
+      </div>
+    );
   };
 
   // حساب الجمعة القادمة الفعلي ليكون دائماً الأقرب زمنياً لليوم الحالي تصاعدياً
@@ -1571,43 +1638,7 @@ export default function ServantWeeklyCurriculum({
                   <span className="text-slate-600 font-bold">
                     المتكلم: {getSpeakerDisplayName(upcomingFridayInfo.friday.mergedSession)}
                   </span>
-                  {upcomingFridayInfo.friday.mergedSession?.speakerType === 'external' ? (
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      <button
-                        type="button"
-                        onClick={() => handleSendWhatsAppToExternal(upcomingFridayInfo.friday, upcomingFridayInfo.friday.mergedSession, 'merged', 'first')}
-                        className="px-2.5 py-1 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-[11px] font-bold flex items-center gap-1 cursor-pointer"
-                      >
-                        <MessageSquare className="w-3 h-3" />
-                        <span>{upcomingFridayInfo.friday.mergedSession?.whatsappSent ? 'واتساب ✅' : 'واتساب 💬'}</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleSendWhatsAppToExternal(upcomingFridayInfo.friday, upcomingFridayInfo.friday.mergedSession, 'merged', 'wednesday')}
-                        className="px-2.5 py-1 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-[11px] font-bold flex items-center gap-1 cursor-pointer"
-                      >
-                        <span>{upcomingFridayInfo.friday.mergedSession?.whatsappWednesdaySent ? 'واتساب الأربعاء ✅' : 'واتساب الأربعاء 🕊️'}</span>
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      <button
-                        type="button"
-                        onClick={() => handleSendInternalServantReminder(upcomingFridayInfo.friday, upcomingFridayInfo.friday.mergedSession, 'merged', 'first')}
-                        className="px-2.5 py-1 rounded-lg bg-maroon-800 hover:bg-maroon-900 text-white text-[11px] font-bold flex items-center gap-1 cursor-pointer"
-                      >
-                        <Bell className="w-3 h-3 text-gold-300" />
-                        <span>{upcomingFridayInfo.friday.mergedSession?.reminderSent ? 'تم تذكير التحضير ✅' : 'تذكير التحضير 🔔'}</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleSendInternalServantReminder(upcomingFridayInfo.friday, upcomingFridayInfo.friday.mergedSession, 'merged', 'wednesday')}
-                        className="px-2.5 py-1 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-[11px] font-bold flex items-center gap-1 cursor-pointer"
-                      >
-                        <span>{upcomingFridayInfo.friday.mergedSession?.wednesdayReminderSent ? 'تم تذكير الأربعاء ✅' : 'تذكير الأربعاء 🕊️'}</span>
-                      </button>
-                    </div>
-                  )}
+                  {renderReminderButtons(upcomingFridayInfo.friday, upcomingFridayInfo.friday.mergedSession, 'merged')}
                 </div>
               </div>
             ) : (
@@ -1629,43 +1660,7 @@ export default function ServantWeeklyCurriculum({
                     <span className="text-slate-600 font-bold truncate">
                       المتكلم: {getSpeakerDisplayName(upcomingFridayInfo.friday.session1)}
                     </span>
-                    {upcomingFridayInfo.friday.session1?.speakerType === 'external' ? (
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => handleSendWhatsAppToExternal(upcomingFridayInfo.friday, upcomingFridayInfo.friday.session1, 'session1', 'first')}
-                          className="px-2 py-1 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-[11px] font-bold flex items-center gap-1 cursor-pointer shrink-0"
-                        >
-                          <MessageSquare className="w-3 h-3" />
-                          <span>{upcomingFridayInfo.friday.session1?.whatsappSent ? 'واتساب ✅' : 'واتساب 💬'}</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleSendWhatsAppToExternal(upcomingFridayInfo.friday, upcomingFridayInfo.friday.session1, 'session1', 'wednesday')}
-                          className="px-2 py-1 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-[11px] font-bold flex items-center gap-1 cursor-pointer shrink-0"
-                        >
-                          <span>{upcomingFridayInfo.friday.session1?.whatsappWednesdaySent ? 'الأربعاء ✅' : 'الأربعاء 🕊️'}</span>
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => handleSendInternalServantReminder(upcomingFridayInfo.friday, upcomingFridayInfo.friday.session1, 'session1', 'first')}
-                          className="px-2 py-1 rounded-lg bg-maroon-800 hover:bg-maroon-900 text-white text-[11px] font-bold flex items-center gap-1 cursor-pointer shrink-0"
-                        >
-                          <Bell className="w-3 h-3 text-gold-300" />
-                          <span>{upcomingFridayInfo.friday.session1?.reminderSent ? 'تم التذكير ✅' : 'تذكير التحضير'}</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleSendInternalServantReminder(upcomingFridayInfo.friday, upcomingFridayInfo.friday.session1, 'session1', 'wednesday')}
-                          className="px-2 py-1 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-[11px] font-bold flex items-center gap-1 cursor-pointer shrink-0"
-                        >
-                          <span>{upcomingFridayInfo.friday.session1?.wednesdayReminderSent ? 'الأربعاء ✅' : 'الأربعاء 🕊️'}</span>
-                        </button>
-                      </div>
-                    )}
+                    {renderReminderButtons(upcomingFridayInfo.friday, upcomingFridayInfo.friday.session1, 'session1')}
                   </div>
                 </div>
 
@@ -1686,43 +1681,7 @@ export default function ServantWeeklyCurriculum({
                     <span className="text-slate-600 font-bold truncate">
                       المتكلم: {getSpeakerDisplayName(upcomingFridayInfo.friday.session2)}
                     </span>
-                    {upcomingFridayInfo.friday.session2?.speakerType === 'external' ? (
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => handleSendWhatsAppToExternal(upcomingFridayInfo.friday, upcomingFridayInfo.friday.session2, 'session2', 'first')}
-                          className="px-2 py-1 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-[11px] font-bold flex items-center gap-1 cursor-pointer shrink-0"
-                        >
-                          <MessageSquare className="w-3 h-3" />
-                          <span>{upcomingFridayInfo.friday.session2?.whatsappSent ? 'واتساب ✅' : 'واتساب 💬'}</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleSendWhatsAppToExternal(upcomingFridayInfo.friday, upcomingFridayInfo.friday.session2, 'session2', 'wednesday')}
-                          className="px-2 py-1 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-[11px] font-bold flex items-center gap-1 cursor-pointer shrink-0"
-                        >
-                          <span>{upcomingFridayInfo.friday.session2?.whatsappWednesdaySent ? 'الأربعاء ✅' : 'الأربعاء 🕊️'}</span>
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => handleSendInternalServantReminder(upcomingFridayInfo.friday, upcomingFridayInfo.friday.session2, 'session2', 'first')}
-                          className="px-2 py-1 rounded-lg bg-maroon-800 hover:bg-maroon-900 text-white text-[11px] font-bold flex items-center gap-1 cursor-pointer shrink-0"
-                        >
-                          <Bell className="w-3 h-3 text-gold-300" />
-                          <span>{upcomingFridayInfo.friday.session2?.reminderSent ? 'تم التذكير ✅' : 'تذكير التحضير'}</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleSendInternalServantReminder(upcomingFridayInfo.friday, upcomingFridayInfo.friday.session2, 'session2', 'wednesday')}
-                          className="px-2 py-1 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-[11px] font-bold flex items-center gap-1 cursor-pointer shrink-0"
-                        >
-                          <span>{upcomingFridayInfo.friday.session2?.wednesdayReminderSent ? 'الأربعاء ✅' : 'الأربعاء 🕊️'}</span>
-                        </button>
-                      </div>
-                    )}
+                    {renderReminderButtons(upcomingFridayInfo.friday, upcomingFridayInfo.friday.session2, 'session2')}
                   </div>
                 </div>
               </>
@@ -2123,43 +2082,7 @@ export default function ServantWeeklyCurriculum({
                             </p>
                           </div>
 
-                          {friday.mergedSession?.speakerType === 'external' ? (
-                            <div className="flex flex-wrap items-center gap-1.5 self-start sm:self-auto">
-                              <button
-                                type="button"
-                                onClick={() => handleSendWhatsAppToExternal(friday, friday.mergedSession, 'merged', 'first')}
-                                className="px-2.5 py-1 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-2xs"
-                              >
-                                <MessageSquare className="w-3.5 h-3.5" />
-                                <span>{friday.mergedSession?.whatsappSent ? 'واتساب ✅' : 'تذكير واتساب 💬'}</span>
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleSendWhatsAppToExternal(friday, friday.mergedSession, 'merged', 'wednesday')}
-                                className="px-2.5 py-1 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-2xs"
-                              >
-                                <span>{friday.mergedSession?.whatsappWednesdaySent ? 'واتساب الأربعاء ✅' : 'واتساب الأربعاء 🕊️'}</span>
-                              </button>
-                            </div>
-                          ) : (
-                            <div className="flex flex-wrap items-center gap-1.5 self-start sm:self-auto">
-                              <button
-                                type="button"
-                                onClick={() => handleSendInternalServantReminder(friday, friday.mergedSession, 'merged', 'first')}
-                                className="px-2.5 py-1 rounded-xl bg-maroon-800 hover:bg-maroon-900 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-2xs"
-                              >
-                                <Bell className="w-3.5 h-3.5 text-gold-300" />
-                                <span>{friday.mergedSession?.reminderSent ? 'تم تذكير التحضير ✅' : 'تذكير التحضير 🔔'}</span>
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleSendInternalServantReminder(friday, friday.mergedSession, 'merged', 'wednesday')}
-                                className="px-2.5 py-1 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-2xs"
-                              >
-                                <span>{friday.mergedSession?.wednesdayReminderSent ? 'تم تذكير الأربعاء ✅' : 'تذكير الأربعاء 🕊️'}</span>
-                              </button>
-                            </div>
-                          )}
+                          {renderReminderButtons(friday, friday.mergedSession, 'merged', 'flex flex-wrap items-center gap-1.5 self-start sm:self-auto')}
                         </div>
                       )}
                     </div>
@@ -2349,43 +2272,7 @@ export default function ServantWeeklyCurriculum({
                               <span className="text-[11px] text-slate-600 font-bold truncate">
                                 المتكلم: {getSpeakerDisplayName(friday.session1)}
                               </span>
-                              {friday.session1?.speakerType === 'external' ? (
-                                <div className="flex flex-wrap items-center gap-1">
-                                  <button
-                                    type="button"
-                                    onClick={() => handleSendWhatsAppToExternal(friday, friday.session1, 'session1', 'first')}
-                                    className="px-2 py-0.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-[11px] font-bold flex items-center gap-1 cursor-pointer shrink-0"
-                                  >
-                                    <MessageSquare className="w-3 h-3" />
-                                    <span>{friday.session1?.whatsappSent ? 'واتساب ✅' : 'واتساب 💬'}</span>
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleSendWhatsAppToExternal(friday, friday.session1, 'session1', 'wednesday')}
-                                    className="px-2 py-0.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-[11px] font-bold flex items-center gap-1 cursor-pointer shrink-0"
-                                  >
-                                    <span>{friday.session1?.whatsappWednesdaySent ? 'الأربعاء ✅' : 'الأربعاء 🕊️'}</span>
-                                  </button>
-                                </div>
-                              ) : (
-                                <div className="flex flex-wrap items-center gap-1">
-                                  <button
-                                    type="button"
-                                    onClick={() => handleSendInternalServantReminder(friday, friday.session1, 'session1', 'first')}
-                                    className="px-2 py-0.5 rounded-lg bg-maroon-800 hover:bg-maroon-900 text-white text-[11px] font-bold flex items-center gap-1 cursor-pointer shrink-0"
-                                  >
-                                    <Bell className="w-3 h-3 text-gold-300" />
-                                    <span>{friday.session1?.reminderSent ? 'تم التذكير ✅' : 'تذكير'}</span>
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleSendInternalServantReminder(friday, friday.session1, 'session1', 'wednesday')}
-                                    className="px-2 py-0.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-[11px] font-bold flex items-center gap-1 cursor-pointer shrink-0"
-                                  >
-                                    <span>{friday.session1?.wednesdayReminderSent ? 'الأربعاء ✅' : 'الأربعاء 🕊️'}</span>
-                                  </button>
-                                </div>
-                              )}
+                              {renderReminderButtons(friday, friday.session1, 'session1', 'flex flex-wrap items-center gap-1')}
                             </div>
                           </div>
                         )}
@@ -2574,43 +2461,7 @@ export default function ServantWeeklyCurriculum({
                               <span className="text-[11px] text-slate-600 font-bold truncate">
                                 المتكلم: {getSpeakerDisplayName(friday.session2)}
                               </span>
-                              {friday.session2?.speakerType === 'external' ? (
-                                <div className="flex flex-wrap items-center gap-1">
-                                  <button
-                                    type="button"
-                                    onClick={() => handleSendWhatsAppToExternal(friday, friday.session2, 'session2', 'first')}
-                                    className="px-2 py-0.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-[11px] font-bold flex items-center gap-1 cursor-pointer shrink-0"
-                                  >
-                                    <MessageSquare className="w-3 h-3" />
-                                    <span>{friday.session2?.whatsappSent ? 'واتساب ✅' : 'واتساب 💬'}</span>
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleSendWhatsAppToExternal(friday, friday.session2, 'session2', 'wednesday')}
-                                    className="px-2 py-0.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-[11px] font-bold flex items-center gap-1 cursor-pointer shrink-0"
-                                  >
-                                    <span>{friday.session2?.whatsappWednesdaySent ? 'الأربعاء ✅' : 'الأربعاء 🕊️'}</span>
-                                  </button>
-                                </div>
-                              ) : (
-                                <div className="flex flex-wrap items-center gap-1">
-                                  <button
-                                    type="button"
-                                    onClick={() => handleSendInternalServantReminder(friday, friday.session2, 'session2', 'first')}
-                                    className="px-2 py-0.5 rounded-lg bg-maroon-800 hover:bg-maroon-900 text-white text-[11px] font-bold flex items-center gap-1 cursor-pointer shrink-0"
-                                  >
-                                    <Bell className="w-3 h-3 text-gold-300" />
-                                    <span>{friday.session2?.reminderSent ? 'تم التذكير ✅' : 'تذكير'}</span>
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleSendInternalServantReminder(friday, friday.session2, 'session2', 'wednesday')}
-                                    className="px-2 py-0.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-[11px] font-bold flex items-center gap-1 cursor-pointer shrink-0"
-                                  >
-                                    <span>{friday.session2?.wednesdayReminderSent ? 'الأربعاء ✅' : 'الأربعاء 🕊️'}</span>
-                                  </button>
-                                </div>
-                              )}
+                              {renderReminderButtons(friday, friday.session2, 'session2', 'flex flex-wrap items-center gap-1')}
                             </div>
                           </div>
                         )}
