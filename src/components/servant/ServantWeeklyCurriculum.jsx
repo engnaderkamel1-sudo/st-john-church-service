@@ -1178,7 +1178,7 @@ export default function ServantWeeklyCurriculum({
   };
 
   // إرسال تذكير واتساب للمتكلم الخارجي (يدوياً حصراً)
-  const handleSendWhatsAppToExternal = async (friday, session, sessionKey = 'session1') => {
+  const handleSendWhatsAppToExternal = async (friday, session, sessionKey = 'session1', reminderType = 'first') => {
     const title = session.externalTitle || 'أستاذ';
     const name = session.externalName || session.speakerName || 'المتكلم';
     const topic = session.title 
@@ -1192,7 +1192,11 @@ export default function ServantWeeklyCurriculum({
       return;
     }
 
-    const msg = `سلام ونعمة ${title} ${name}، نذكرك إن عليك فقرة باسم (${topic}) في إعداد خدام يوم ${dateText}، في انتظارك، وربنا يعوض تعب محبتك.`;
+    const isWednesday = reminderType === 'wednesday';
+
+    const msg = isWednesday
+      ? `صباح الخير وسلام ونعمة ${title} ${name}، نذكركم بكل محبة بلقائنا المبارك يوم الجمعة القادمة (${dateText}) في خدمة إعداد خدام، في موضوع: (${topic}). ننتظر بركة حضوركم وكلمتكم بكل شوق، وربنا يعوض تعب محبتكم.`
+      : `سلام ونعمة ${title} ${name}، نذكرك إن عليك فقرة باسم (${topic}) في إعداد خدام يوم ${dateText}، في انتظارك، وربنا يعوض تعب محبتك.`;
 
     let cleanPhone = phone;
     if (cleanPhone.startsWith('0')) {
@@ -1211,7 +1215,11 @@ export default function ServantWeeklyCurriculum({
           if (f.id === friday.id) {
             const targetSession = sessionKey === 'merged' ? f.mergedSession : f[sessionKey];
             if (targetSession) {
-              targetSession.whatsappSent = true;
+              if (isWednesday) {
+                targetSession.whatsappWednesdaySent = true;
+              } else {
+                targetSession.whatsappSent = true;
+              }
             }
           }
           return f;
@@ -1220,8 +1228,12 @@ export default function ServantWeeklyCurriculum({
       }
 
       // إرسال إشعار متابعة لأمين الخدمة والمشرف العام
-      const leaderTitle = '💬 متابعة المنهج: تذكير واتساب لمتكلم خارجي';
-      const leaderDesc = `تم إرسال تذكير الواتساب للمتكلم الخارجي (${title} ${name}) بخصوص فقرة: (${topic}) ليوم الجمعة (${dateText}).`;
+      const leaderTitle = isWednesday
+        ? '🕊️ متابعة المنهج: تذكير واتساب الأربعاء لمتكلم خارجي'
+        : '💬 متابعة المنهج: تذكير واتساب لمتكلم خارجي';
+      const leaderDesc = isWednesday
+        ? `تم إرسال تذكير واتساب الأربعاء للمتكلم الخارجي (${title} ${name}) بخصوص فقرة: (${topic}) ليوم الجمعة (${dateText}).`
+        : `تم إرسال تذكير الواتساب للمتكلم الخارجي (${title} ${name}) بخصوص فقرة: (${topic}) ليوم الجمعة (${dateText}).`;
 
       await addDoc(collection(db, 'notifications'), {
         targetUserId: 'LEADERSHIP',
@@ -1560,14 +1572,23 @@ export default function ServantWeeklyCurriculum({
                     المتكلم: {getSpeakerDisplayName(upcomingFridayInfo.friday.mergedSession)}
                   </span>
                   {upcomingFridayInfo.friday.mergedSession?.speakerType === 'external' ? (
-                    <button
-                      type="button"
-                      onClick={() => handleSendWhatsAppToExternal(upcomingFridayInfo.friday, upcomingFridayInfo.friday.mergedSession, 'merged')}
-                      className="px-2.5 py-1 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-[11px] font-bold flex items-center gap-1 cursor-pointer"
-                    >
-                      <MessageSquare className="w-3 h-3" />
-                      <span>{upcomingFridayInfo.friday.mergedSession?.whatsappSent ? 'إعادة إرسال واتساب' : 'إرسال واتساب 💬'}</span>
-                    </button>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => handleSendWhatsAppToExternal(upcomingFridayInfo.friday, upcomingFridayInfo.friday.mergedSession, 'merged', 'first')}
+                        className="px-2.5 py-1 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-[11px] font-bold flex items-center gap-1 cursor-pointer"
+                      >
+                        <MessageSquare className="w-3 h-3" />
+                        <span>{upcomingFridayInfo.friday.mergedSession?.whatsappSent ? 'واتساب ✅' : 'واتساب 💬'}</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleSendWhatsAppToExternal(upcomingFridayInfo.friday, upcomingFridayInfo.friday.mergedSession, 'merged', 'wednesday')}
+                        className="px-2.5 py-1 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-[11px] font-bold flex items-center gap-1 cursor-pointer"
+                      >
+                        <span>{upcomingFridayInfo.friday.mergedSession?.whatsappWednesdaySent ? 'واتساب الأربعاء ✅' : 'واتساب الأربعاء 🕊️'}</span>
+                      </button>
+                    </div>
                   ) : (
                     <div className="flex flex-wrap items-center gap-1.5">
                       <button
@@ -1609,14 +1630,23 @@ export default function ServantWeeklyCurriculum({
                       المتكلم: {getSpeakerDisplayName(upcomingFridayInfo.friday.session1)}
                     </span>
                     {upcomingFridayInfo.friday.session1?.speakerType === 'external' ? (
-                      <button
-                        type="button"
-                        onClick={() => handleSendWhatsAppToExternal(upcomingFridayInfo.friday, upcomingFridayInfo.friday.session1, 'session1')}
-                        className="px-2 py-1 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-[11px] font-bold flex items-center gap-1 cursor-pointer shrink-0"
-                      >
-                        <MessageSquare className="w-3 h-3" />
-                        <span>{upcomingFridayInfo.friday.session1?.whatsappSent ? 'تذكير واتساب ✅' : 'واتساب 💬'}</span>
-                      </button>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => handleSendWhatsAppToExternal(upcomingFridayInfo.friday, upcomingFridayInfo.friday.session1, 'session1', 'first')}
+                          className="px-2 py-1 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-[11px] font-bold flex items-center gap-1 cursor-pointer shrink-0"
+                        >
+                          <MessageSquare className="w-3 h-3" />
+                          <span>{upcomingFridayInfo.friday.session1?.whatsappSent ? 'واتساب ✅' : 'واتساب 💬'}</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleSendWhatsAppToExternal(upcomingFridayInfo.friday, upcomingFridayInfo.friday.session1, 'session1', 'wednesday')}
+                          className="px-2 py-1 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-[11px] font-bold flex items-center gap-1 cursor-pointer shrink-0"
+                        >
+                          <span>{upcomingFridayInfo.friday.session1?.whatsappWednesdaySent ? 'الأربعاء ✅' : 'الأربعاء 🕊️'}</span>
+                        </button>
+                      </div>
                     ) : (
                       <div className="flex flex-wrap items-center gap-1.5">
                         <button
@@ -1657,14 +1687,23 @@ export default function ServantWeeklyCurriculum({
                       المتكلم: {getSpeakerDisplayName(upcomingFridayInfo.friday.session2)}
                     </span>
                     {upcomingFridayInfo.friday.session2?.speakerType === 'external' ? (
-                      <button
-                        type="button"
-                        onClick={() => handleSendWhatsAppToExternal(upcomingFridayInfo.friday, upcomingFridayInfo.friday.session2, 'session2')}
-                        className="px-2 py-1 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-[11px] font-bold flex items-center gap-1 cursor-pointer shrink-0"
-                      >
-                        <MessageSquare className="w-3 h-3" />
-                        <span>{upcomingFridayInfo.friday.session2?.whatsappSent ? 'تذكير واتساب ✅' : 'واتساب 💬'}</span>
-                      </button>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => handleSendWhatsAppToExternal(upcomingFridayInfo.friday, upcomingFridayInfo.friday.session2, 'session2', 'first')}
+                          className="px-2 py-1 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-[11px] font-bold flex items-center gap-1 cursor-pointer shrink-0"
+                        >
+                          <MessageSquare className="w-3 h-3" />
+                          <span>{upcomingFridayInfo.friday.session2?.whatsappSent ? 'واتساب ✅' : 'واتساب 💬'}</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleSendWhatsAppToExternal(upcomingFridayInfo.friday, upcomingFridayInfo.friday.session2, 'session2', 'wednesday')}
+                          className="px-2 py-1 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-[11px] font-bold flex items-center gap-1 cursor-pointer shrink-0"
+                        >
+                          <span>{upcomingFridayInfo.friday.session2?.whatsappWednesdaySent ? 'الأربعاء ✅' : 'الأربعاء 🕊️'}</span>
+                        </button>
+                      </div>
                     ) : (
                       <div className="flex flex-wrap items-center gap-1.5">
                         <button
@@ -2085,14 +2124,23 @@ export default function ServantWeeklyCurriculum({
                           </div>
 
                           {friday.mergedSession?.speakerType === 'external' ? (
-                            <button
-                              type="button"
-                              onClick={() => handleSendWhatsAppToExternal(friday, friday.mergedSession, 'merged')}
-                              className="px-2.5 py-1 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-2xs self-start sm:self-auto"
-                            >
-                              <MessageSquare className="w-3.5 h-3.5" />
-                              <span>{friday.mergedSession?.whatsappSent ? 'إعادة إرسال واتساب 💬' : 'إرسال تذكير واتساب 💬'}</span>
-                            </button>
+                            <div className="flex flex-wrap items-center gap-1.5 self-start sm:self-auto">
+                              <button
+                                type="button"
+                                onClick={() => handleSendWhatsAppToExternal(friday, friday.mergedSession, 'merged', 'first')}
+                                className="px-2.5 py-1 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                              >
+                                <MessageSquare className="w-3.5 h-3.5" />
+                                <span>{friday.mergedSession?.whatsappSent ? 'واتساب ✅' : 'تذكير واتساب 💬'}</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleSendWhatsAppToExternal(friday, friday.mergedSession, 'merged', 'wednesday')}
+                                className="px-2.5 py-1 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                              >
+                                <span>{friday.mergedSession?.whatsappWednesdaySent ? 'واتساب الأربعاء ✅' : 'واتساب الأربعاء 🕊️'}</span>
+                              </button>
+                            </div>
                           ) : (
                             <div className="flex flex-wrap items-center gap-1.5 self-start sm:self-auto">
                               <button
@@ -2302,14 +2350,23 @@ export default function ServantWeeklyCurriculum({
                                 المتكلم: {getSpeakerDisplayName(friday.session1)}
                               </span>
                               {friday.session1?.speakerType === 'external' ? (
-                                <button
-                                  type="button"
-                                  onClick={() => handleSendWhatsAppToExternal(friday, friday.session1, 'session1')}
-                                  className="px-2 py-0.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-[11px] font-bold flex items-center gap-1 cursor-pointer shrink-0"
-                                >
-                                  <MessageSquare className="w-3 h-3" />
-                                  <span>{friday.session1?.whatsappSent ? 'واتساب ✅' : 'واتساب 💬'}</span>
-                                </button>
+                                <div className="flex flex-wrap items-center gap-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleSendWhatsAppToExternal(friday, friday.session1, 'session1', 'first')}
+                                    className="px-2 py-0.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-[11px] font-bold flex items-center gap-1 cursor-pointer shrink-0"
+                                  >
+                                    <MessageSquare className="w-3 h-3" />
+                                    <span>{friday.session1?.whatsappSent ? 'واتساب ✅' : 'واتساب 💬'}</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleSendWhatsAppToExternal(friday, friday.session1, 'session1', 'wednesday')}
+                                    className="px-2 py-0.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-[11px] font-bold flex items-center gap-1 cursor-pointer shrink-0"
+                                  >
+                                    <span>{friday.session1?.whatsappWednesdaySent ? 'الأربعاء ✅' : 'الأربعاء 🕊️'}</span>
+                                  </button>
+                                </div>
                               ) : (
                                 <div className="flex flex-wrap items-center gap-1">
                                   <button
@@ -2518,14 +2575,23 @@ export default function ServantWeeklyCurriculum({
                                 المتكلم: {getSpeakerDisplayName(friday.session2)}
                               </span>
                               {friday.session2?.speakerType === 'external' ? (
-                                <button
-                                  type="button"
-                                  onClick={() => handleSendWhatsAppToExternal(friday, friday.session2, 'session2')}
-                                  className="px-2 py-0.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-[11px] font-bold flex items-center gap-1 cursor-pointer shrink-0"
-                                >
-                                  <MessageSquare className="w-3 h-3" />
-                                  <span>{friday.session2?.whatsappSent ? 'واتساب ✅' : 'واتساب 💬'}</span>
-                                </button>
+                                <div className="flex flex-wrap items-center gap-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleSendWhatsAppToExternal(friday, friday.session2, 'session2', 'first')}
+                                    className="px-2 py-0.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-[11px] font-bold flex items-center gap-1 cursor-pointer shrink-0"
+                                  >
+                                    <MessageSquare className="w-3 h-3" />
+                                    <span>{friday.session2?.whatsappSent ? 'واتساب ✅' : 'واتساب 💬'}</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleSendWhatsAppToExternal(friday, friday.session2, 'session2', 'wednesday')}
+                                    className="px-2 py-0.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-[11px] font-bold flex items-center gap-1 cursor-pointer shrink-0"
+                                  >
+                                    <span>{friday.session2?.whatsappWednesdaySent ? 'الأربعاء ✅' : 'الأربعاء 🕊️'}</span>
+                                  </button>
+                                </div>
                               ) : (
                                 <div className="flex flex-wrap items-center gap-1">
                                   <button

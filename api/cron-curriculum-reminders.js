@@ -195,9 +195,45 @@ export default async function handler(req, res) {
 
           const speakerType = sMap.speakerType?.stringValue || 'internal';
           const speakerId = sMap.speakerId?.stringValue || '';
+
+          if (speakerType === 'external') {
+            const extFlagName = isWednesday ? 'whatsappWednesdaySent' : 'whatsappSent';
+            const extAlreadySent = Boolean(sMap[extFlagName]?.booleanValue);
+            if (!extAlreadySent) {
+              const extTitle = sMap.externalTitle?.stringValue || 'أستاذ';
+              const extName = sMap.externalName?.stringValue || sMap.speakerName?.stringValue || 'المتكلم الخارجي';
+              const subject = sMap.subject?.stringValue || 'فقرة';
+              const titleText = sMap.title?.stringValue || '';
+              const topic = titleText ? `${subject} (${titleText})` : subject;
+
+              const extLeaderTitle = isWednesday
+                ? '🕊️ متابعة المنهج: تذكير واتساب الأربعاء للمتكلم الخارجي'
+                : '💬 متابعة المنهج: تذكير واتساب للمتكلم الخارجي';
+              const extLeaderDesc = isWednesday
+                ? `تذكير للإدارة: يرجى إرسال رسالة واتساب الأربعاء للمتكلم الخارجي (${extTitle} ${extName}) لفقرة (${topic}) يوم الجمعة (${displayDate}) من لوحة المنهج.`
+                : `تذكير للإدارة: يرجى إرسال رسالة واتساب للمتكلم الخارجي (${extTitle} ${extName}) لفقرة (${topic}) يوم الجمعة القادمة (${displayDate}) من لوحة المنهج.`;
+
+              const extLdrDocId = `curr_ext_ldr_${reminderType}_${fridayId}_${entry.key}`;
+              const shouldSendExtPrompt = await createNotificationDoc(extLdrDocId, 'LEADERSHIP', extLeaderTitle, extLeaderDesc);
+              if (shouldSendExtPrompt && leadershipSubs.length > 0) {
+                await sendWebPushToSubs(leadershipSubs, extLeaderTitle, extLeaderDesc, extLdrDocId);
+              }
+
+              dispatched.push({
+                fridayId,
+                sessionKey: entry.key,
+                speakerType: 'external',
+                servantName: `${extTitle} ${extName}`,
+                reminderType,
+                leadershipPrompted: shouldSendExtPrompt
+              });
+            }
+            continue;
+          }
+
           const alreadySent = Boolean(sMap[flagFieldName]?.booleanValue);
 
-          if (speakerType !== 'internal' || !speakerId || alreadySent) {
+          if (!speakerId || alreadySent) {
             continue;
           }
 
