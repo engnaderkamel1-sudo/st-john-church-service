@@ -80,7 +80,7 @@ export default async function handler(req, res) {
     const force = queryParams.force === 'true' || bodyParams.force === true;
     const forcedType = queryParams.type || bodyParams.type; // 'first' | 'wednesday'
 
-    // 1. Determine Cairo date & day of week (0=Sun .. 3=Wed .. 5=Fri)
+    // 1. Determine Cairo date & day of week (0=Sun .. 3=Wed .. 6=Sat)
     const now = new Date();
     const cairoDateStr = formatCairoDateStr(now);
     const [cY, cM, cD] = cairoDateStr.split('-').map(Number);
@@ -93,13 +93,11 @@ export default async function handler(req, res) {
     if (force && (forcedType === 'first' || forcedType === 'wednesday')) {
       reminderType = forcedType;
       const daysUntilFriday = (5 - dayOfWeek + 7) % 7 || 7;
-      targetFridayDateStr = forcedType === 'first'
-        ? addDaysToDateStr(cairoDateStr, daysUntilFriday)
-        : addDaysToDateStr(cairoDateStr, (5 - dayOfWeek + 7) % 7);
-    } else if (dayOfWeek === 5) {
-      // Friday morning -> remind speakers for NEXT Friday (+7 days)
+      targetFridayDateStr = addDaysToDateStr(cairoDateStr, daysUntilFriday);
+    } else if (dayOfWeek === 6) {
+      // Saturday morning -> remind speakers for UPCOMING Friday (+6 days)
       reminderType = 'first';
-      targetFridayDateStr = addDaysToDateStr(cairoDateStr, 7);
+      targetFridayDateStr = addDaysToDateStr(cairoDateStr, 6);
     } else if (dayOfWeek === 3) {
       // Wednesday morning -> friendly reminder for UPCOMING Friday (+2 days)
       reminderType = 'wednesday';
@@ -109,7 +107,7 @@ export default async function handler(req, res) {
         skipped: true,
         cairoDate: cairoDateStr,
         dayOfWeek,
-        message: 'Automatic curriculum reminders run only on Wednesdays and Fridays.'
+        message: 'Automatic curriculum reminders run only on Saturdays and Wednesdays.'
       });
     }
 
