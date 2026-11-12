@@ -1217,28 +1217,65 @@ export default function ServantWeeklyCurriculum({
           return f;
         });
         await updateDoc(docRef, { fridays: nextFridays }).catch(e => console.warn('Status update notice:', e));
-        showToast(`تم فتح الواتساب بنجاح وإرسال التذكير لـ ${title} ${name} 💬`);
       }
+
+      // إرسال إشعار متابعة لأمين الخدمة والمشرف العام
+      const leaderTitle = '💬 متابعة المنهج: تذكير واتساب لمتكلم خارجي';
+      const leaderDesc = `تم إرسال تذكير الواتساب للمتكلم الخارجي (${title} ${name}) بخصوص فقرة: (${topic}) ليوم الجمعة (${dateText}).`;
+
+      await addDoc(collection(db, 'notifications'), {
+        targetUserId: 'LEADERSHIP',
+        title: leaderTitle,
+        desc: leaderDesc,
+        time: 'الآن',
+        type: 'weekly_curriculum',
+        createdAt: serverTimestamp()
+      }).catch(() => {});
+
+      triggerServerPush({
+        targetUserId: 'LEADERSHIP',
+        title: leaderTitle,
+        body: leaderDesc,
+        url: '/'
+      }).catch(() => {});
+
+      showToast(`تم فتح الواتساب بنجاح وإرسال التذكير لـ ${title} ${name} 💬`);
     } catch (err) {
       console.warn('Notice updating whatsapp status:', err);
     }
   };
 
-  // إرسال تذكير داخلي لخادم بالمنظومة (Web Push + In-App Notification)
-  const handleSendInternalServantReminder = async (friday, session, sessionKey = 'session1') => {
+  // إرسال تذكير داخلي لخادم بالمنظومة (Web Push + In-App Notification + إشعار متابعة للإدارة)
+  const handleSendInternalServantReminder = async (friday, session, sessionKey = 'session1', reminderType = 'first') => {
     const servantId = session.speakerId;
     const servantName = getSpeakerDisplayName(session);
     const topic = session.title 
       ? `${session.subject || 'فقرة'} (${session.title})` 
       : (session.subject || 'فقرة الخدمة');
+    const dateText = friday.displayDate || '';
 
     if (!servantId) {
       alert('يرجى اختيار الخادم المسجل أولاً لإرسال التنبيه لحسابه.');
       return;
     }
 
-    const notifTitle = '📖 تذكير بتحضير فقرة إعداد الخدام';
-    const notifDesc = `نذكرك بأن عليك تحضير يوم الجمعة القادمة في موضوع: (${topic})، برجاء التحضير وإرساله لأمين الخدمة بحد أقصى يوم الأربعاء. ربنا يبارك تعبك.`;
+    const isWednesday = reminderType === 'wednesday';
+
+    const notifTitle = isWednesday
+      ? '🕊️ تذكير محبة قبل لقاء الجمعة'
+      : '📖 بركة تحضير كلمة الخدمة القادمة';
+
+    const notifDesc = isWednesday
+      ? `صباح الخير وسلام ونعمة، تذكير ودي وبسيط بأن لقاء الجمعة (${dateText}) على الأبواب، ويسعدنا مراجعة أو مشاركة تحضير موضوع: (${topic}) مع أمين الخدمة قبل اللقاء. نصلي أن يستخدمك الرب بقوة في هذه الكلمة.`
+      : `سلام ونعمة يا خادمنا المبارك، نذكرك بكل محبة بأن عليك بركة تحضير موضوع: (${topic}) ليوم الجمعة القادمة (${dateText}). ربنا يبارك تعبك ووقتك ليكون سبباً في بركة ونمو جميع إخوتك.`;
+
+    const leaderTitle = isWednesday
+      ? '🕊️ متابعة المنهج: تذكير الأربعاء الودي'
+      : '📋 متابعة المنهج: تذكير التحضير الأول';
+
+    const leaderDesc = isWednesday
+      ? `تم إرسال تذكير الأربعاء الودي للخادم (${servantName}) لمراجعة وتحضيرات كلمة الجمعة (${dateText}) في موضوع: (${topic}).`
+      : `تم إرسال رسالة التذكير الأولى للخادم (${servantName}) لتحضير فقرة: (${topic}) ليوم الجمعة (${dateText}).`;
 
     try {
       // 1. إضافة إشعار داخل التطبيق لحساب الخادم
@@ -1251,7 +1288,7 @@ export default function ServantWeeklyCurriculum({
         createdAt: serverTimestamp()
       });
 
-      // 2. إرسال Push Notification للهاتف
+      // 2. إرسال Push Notification لهاتف الخادم
       triggerServerPush({
         targetUserId: servantId,
         title: notifTitle,
@@ -1259,7 +1296,24 @@ export default function ServantWeeklyCurriculum({
         url: '/'
       }).catch(() => {});
 
-      // 3. تحديث حالة إرسال التذكير
+      // 3. إرسال إشعار متابعة فوري لأمين الخدمة والمشرف العام
+      await addDoc(collection(db, 'notifications'), {
+        targetUserId: 'LEADERSHIP',
+        title: leaderTitle,
+        desc: leaderDesc,
+        time: 'الآن',
+        type: 'weekly_curriculum',
+        createdAt: serverTimestamp()
+      });
+
+      triggerServerPush({
+        targetUserId: 'LEADERSHIP',
+        title: leaderTitle,
+        body: leaderDesc,
+        url: '/'
+      }).catch(() => {});
+
+      // 4. تحديث حالة إرسال التذكير في الجدول
       if (currentMonthData) {
         const docKey = currentMonthData.docId || (currentMonthData.id.startsWith('weekly_') ? currentMonthData.id : `weekly_${currentMonthData.id}`);
         const docRef = doc(db, 'service_curriculum', docKey);
@@ -1267,7 +1321,11 @@ export default function ServantWeeklyCurriculum({
           if (f.id === friday.id) {
             const targetSession = sessionKey === 'merged' ? f.mergedSession : f[sessionKey];
             if (targetSession) {
-              targetSession.reminderSent = true;
+              if (isWednesday) {
+                targetSession.wednesdayReminderSent = true;
+              } else {
+                targetSession.reminderSent = true;
+              }
             }
           }
           return f;
@@ -1275,7 +1333,11 @@ export default function ServantWeeklyCurriculum({
         await updateDoc(docRef, { fridays: nextFridays }).catch(e => console.warn('Status update notice:', e));
       }
 
-      showToast(`تم إرسال تذكير التحضير إلى الخادم (${servantName}) بنجاح 🔔`);
+      showToast(
+        isWednesday
+          ? `تم إرسال تذكير الأربعاء الودي إلى الخادم (${servantName}) وإخطار القيادة 🕊️`
+          : `تم إرسال تذكير التحضير إلى الخادم (${servantName}) وإخطار القيادة 🔔`
+      );
     } catch (err) {
       console.error('Error sending servant reminder:', err);
       alert('حدث خطأ أثناء إرسال التنبيه: ' + (err?.message || ''));
@@ -1507,14 +1569,23 @@ export default function ServantWeeklyCurriculum({
                       <span>{upcomingFridayInfo.friday.mergedSession?.whatsappSent ? 'إعادة إرسال واتساب' : 'إرسال واتساب 💬'}</span>
                     </button>
                   ) : (
-                    <button
-                      type="button"
-                      onClick={() => handleSendInternalServantReminder(upcomingFridayInfo.friday, upcomingFridayInfo.friday.mergedSession, 'merged')}
-                      className="px-2.5 py-1 rounded-lg bg-maroon-800 hover:bg-maroon-900 text-white text-[11px] font-bold flex items-center gap-1 cursor-pointer"
-                    >
-                      <Bell className="w-3 h-3 text-gold-300" />
-                      <span>{upcomingFridayInfo.friday.mergedSession?.reminderSent ? 'تم التذكير 🔔' : 'إرسال تذكير التحضير'}</span>
-                    </button>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => handleSendInternalServantReminder(upcomingFridayInfo.friday, upcomingFridayInfo.friday.mergedSession, 'merged', 'first')}
+                        className="px-2.5 py-1 rounded-lg bg-maroon-800 hover:bg-maroon-900 text-white text-[11px] font-bold flex items-center gap-1 cursor-pointer"
+                      >
+                        <Bell className="w-3 h-3 text-gold-300" />
+                        <span>{upcomingFridayInfo.friday.mergedSession?.reminderSent ? 'تم تذكير التحضير ✅' : 'تذكير التحضير 🔔'}</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleSendInternalServantReminder(upcomingFridayInfo.friday, upcomingFridayInfo.friday.mergedSession, 'merged', 'wednesday')}
+                        className="px-2.5 py-1 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-[11px] font-bold flex items-center gap-1 cursor-pointer"
+                      >
+                        <span>{upcomingFridayInfo.friday.mergedSession?.wednesdayReminderSent ? 'تم تذكير الأربعاء ✅' : 'تذكير الأربعاء 🕊️'}</span>
+                      </button>
+                    </div>
                   )}
                 </div>
               </div>
@@ -1533,7 +1604,7 @@ export default function ServantWeeklyCurriculum({
                       {upcomingFridayInfo.friday.session1?.title || upcomingFridayInfo.friday.session1?.subject || 'لم يُحدد'}
                     </p>
                   </div>
-                  <div className="flex items-center justify-between gap-2 mt-2 pt-2 border-t border-slate-100">
+                  <div className="flex flex-wrap items-center justify-between gap-2 mt-2 pt-2 border-t border-slate-100">
                     <span className="text-slate-600 font-bold truncate">
                       المتكلم: {getSpeakerDisplayName(upcomingFridayInfo.friday.session1)}
                     </span>
@@ -1547,14 +1618,23 @@ export default function ServantWeeklyCurriculum({
                         <span>{upcomingFridayInfo.friday.session1?.whatsappSent ? 'تذكير واتساب ✅' : 'واتساب 💬'}</span>
                       </button>
                     ) : (
-                      <button
-                        type="button"
-                        onClick={() => handleSendInternalServantReminder(upcomingFridayInfo.friday, upcomingFridayInfo.friday.session1, 'session1')}
-                        className="px-2 py-1 rounded-lg bg-maroon-800 hover:bg-maroon-900 text-white text-[11px] font-bold flex items-center gap-1 cursor-pointer shrink-0"
-                      >
-                        <Bell className="w-3 h-3 text-gold-300" />
-                        <span>{upcomingFridayInfo.friday.session1?.reminderSent ? 'تم التذكير ✅' : 'تذكير التحضير'}</span>
-                      </button>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => handleSendInternalServantReminder(upcomingFridayInfo.friday, upcomingFridayInfo.friday.session1, 'session1', 'first')}
+                          className="px-2 py-1 rounded-lg bg-maroon-800 hover:bg-maroon-900 text-white text-[11px] font-bold flex items-center gap-1 cursor-pointer shrink-0"
+                        >
+                          <Bell className="w-3 h-3 text-gold-300" />
+                          <span>{upcomingFridayInfo.friday.session1?.reminderSent ? 'تم التذكير ✅' : 'تذكير التحضير'}</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleSendInternalServantReminder(upcomingFridayInfo.friday, upcomingFridayInfo.friday.session1, 'session1', 'wednesday')}
+                          className="px-2 py-1 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-[11px] font-bold flex items-center gap-1 cursor-pointer shrink-0"
+                        >
+                          <span>{upcomingFridayInfo.friday.session1?.wednesdayReminderSent ? 'الأربعاء ✅' : 'الأربعاء 🕊️'}</span>
+                        </button>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -1572,7 +1652,7 @@ export default function ServantWeeklyCurriculum({
                       {upcomingFridayInfo.friday.session2?.title || upcomingFridayInfo.friday.session2?.subject || 'لم يُحدد'}
                     </p>
                   </div>
-                  <div className="flex items-center justify-between gap-2 mt-2 pt-2 border-t border-slate-100">
+                  <div className="flex flex-wrap items-center justify-between gap-2 mt-2 pt-2 border-t border-slate-100">
                     <span className="text-slate-600 font-bold truncate">
                       المتكلم: {getSpeakerDisplayName(upcomingFridayInfo.friday.session2)}
                     </span>
@@ -1586,14 +1666,23 @@ export default function ServantWeeklyCurriculum({
                         <span>{upcomingFridayInfo.friday.session2?.whatsappSent ? 'تذكير واتساب ✅' : 'واتساب 💬'}</span>
                       </button>
                     ) : (
-                      <button
-                        type="button"
-                        onClick={() => handleSendInternalServantReminder(upcomingFridayInfo.friday, upcomingFridayInfo.friday.session2, 'session2')}
-                        className="px-2 py-1 rounded-lg bg-maroon-800 hover:bg-maroon-900 text-white text-[11px] font-bold flex items-center gap-1 cursor-pointer shrink-0"
-                      >
-                        <Bell className="w-3 h-3 text-gold-300" />
-                        <span>{upcomingFridayInfo.friday.session2?.reminderSent ? 'تم التذكير ✅' : 'تذكير التحضير'}</span>
-                      </button>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => handleSendInternalServantReminder(upcomingFridayInfo.friday, upcomingFridayInfo.friday.session2, 'session2', 'first')}
+                          className="px-2 py-1 rounded-lg bg-maroon-800 hover:bg-maroon-900 text-white text-[11px] font-bold flex items-center gap-1 cursor-pointer shrink-0"
+                        >
+                          <Bell className="w-3 h-3 text-gold-300" />
+                          <span>{upcomingFridayInfo.friday.session2?.reminderSent ? 'تم التذكير ✅' : 'تذكير التحضير'}</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleSendInternalServantReminder(upcomingFridayInfo.friday, upcomingFridayInfo.friday.session2, 'session2', 'wednesday')}
+                          className="px-2 py-1 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-[11px] font-bold flex items-center gap-1 cursor-pointer shrink-0"
+                        >
+                          <span>{upcomingFridayInfo.friday.session2?.wednesdayReminderSent ? 'الأربعاء ✅' : 'الأربعاء 🕊️'}</span>
+                        </button>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -2005,14 +2094,23 @@ export default function ServantWeeklyCurriculum({
                               <span>{friday.mergedSession?.whatsappSent ? 'إعادة إرسال واتساب 💬' : 'إرسال تذكير واتساب 💬'}</span>
                             </button>
                           ) : (
-                            <button
-                              type="button"
-                              onClick={() => handleSendInternalServantReminder(friday, friday.mergedSession, 'merged')}
-                              className="px-2.5 py-1 rounded-xl bg-maroon-800 hover:bg-maroon-900 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-2xs self-start sm:self-auto"
-                            >
-                              <Bell className="w-3.5 h-3.5 text-gold-300" />
-                              <span>{friday.mergedSession?.reminderSent ? 'تم إرسال التنبيه ✅' : 'إرسال تذكير التحضير 🔔'}</span>
-                            </button>
+                            <div className="flex flex-wrap items-center gap-1.5 self-start sm:self-auto">
+                              <button
+                                type="button"
+                                onClick={() => handleSendInternalServantReminder(friday, friday.mergedSession, 'merged', 'first')}
+                                className="px-2.5 py-1 rounded-xl bg-maroon-800 hover:bg-maroon-900 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                              >
+                                <Bell className="w-3.5 h-3.5 text-gold-300" />
+                                <span>{friday.mergedSession?.reminderSent ? 'تم تذكير التحضير ✅' : 'تذكير التحضير 🔔'}</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleSendInternalServantReminder(friday, friday.mergedSession, 'merged', 'wednesday')}
+                                className="px-2.5 py-1 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                              >
+                                <span>{friday.mergedSession?.wednesdayReminderSent ? 'تم تذكير الأربعاء ✅' : 'تذكير الأربعاء 🕊️'}</span>
+                              </button>
+                            </div>
                           )}
                         </div>
                       )}
@@ -2213,14 +2311,23 @@ export default function ServantWeeklyCurriculum({
                                   <span>{friday.session1?.whatsappSent ? 'واتساب ✅' : 'واتساب 💬'}</span>
                                 </button>
                               ) : (
-                                <button
-                                  type="button"
-                                  onClick={() => handleSendInternalServantReminder(friday, friday.session1, 'session1')}
-                                  className="px-2 py-0.5 rounded-lg bg-maroon-800 hover:bg-maroon-900 text-white text-[11px] font-bold flex items-center gap-1 cursor-pointer shrink-0"
-                                >
-                                  <Bell className="w-3 h-3 text-gold-300" />
-                                  <span>{friday.session1?.reminderSent ? 'تم التذكير ✅' : 'تذكير'}</span>
-                                </button>
+                                <div className="flex flex-wrap items-center gap-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleSendInternalServantReminder(friday, friday.session1, 'session1', 'first')}
+                                    className="px-2 py-0.5 rounded-lg bg-maroon-800 hover:bg-maroon-900 text-white text-[11px] font-bold flex items-center gap-1 cursor-pointer shrink-0"
+                                  >
+                                    <Bell className="w-3 h-3 text-gold-300" />
+                                    <span>{friday.session1?.reminderSent ? 'تم التذكير ✅' : 'تذكير'}</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleSendInternalServantReminder(friday, friday.session1, 'session1', 'wednesday')}
+                                    className="px-2 py-0.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-[11px] font-bold flex items-center gap-1 cursor-pointer shrink-0"
+                                  >
+                                    <span>{friday.session1?.wednesdayReminderSent ? 'الأربعاء ✅' : 'الأربعاء 🕊️'}</span>
+                                  </button>
+                                </div>
                               )}
                             </div>
                           </div>
@@ -2420,14 +2527,23 @@ export default function ServantWeeklyCurriculum({
                                   <span>{friday.session2?.whatsappSent ? 'واتساب ✅' : 'واتساب 💬'}</span>
                                 </button>
                               ) : (
-                                <button
-                                  type="button"
-                                  onClick={() => handleSendInternalServantReminder(friday, friday.session2, 'session2')}
-                                  className="px-2 py-0.5 rounded-lg bg-maroon-800 hover:bg-maroon-900 text-white text-[11px] font-bold flex items-center gap-1 cursor-pointer shrink-0"
-                                >
-                                  <Bell className="w-3 h-3 text-gold-300" />
-                                  <span>{friday.session2?.reminderSent ? 'تم التذكير ✅' : 'تذكير'}</span>
-                                </button>
+                                <div className="flex flex-wrap items-center gap-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleSendInternalServantReminder(friday, friday.session2, 'session2', 'first')}
+                                    className="px-2 py-0.5 rounded-lg bg-maroon-800 hover:bg-maroon-900 text-white text-[11px] font-bold flex items-center gap-1 cursor-pointer shrink-0"
+                                  >
+                                    <Bell className="w-3 h-3 text-gold-300" />
+                                    <span>{friday.session2?.reminderSent ? 'تم التذكير ✅' : 'تذكير'}</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleSendInternalServantReminder(friday, friday.session2, 'session2', 'wednesday')}
+                                    className="px-2 py-0.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-[11px] font-bold flex items-center gap-1 cursor-pointer shrink-0"
+                                  >
+                                    <span>{friday.session2?.wednesdayReminderSent ? 'الأربعاء ✅' : 'الأربعاء 🕊️'}</span>
+                                  </button>
+                                </div>
                               )}
                             </div>
                           </div>
