@@ -3,6 +3,7 @@ import { RefreshCw, Sparkles, X, CheckCircle2 } from 'lucide-react';
 
 const JUST_UPDATED_KEY = 'app_just_updated_at';
 const AUTO_RELOAD_GUARD_KEY = 'app_auto_reload_guard_at';
+const LAST_ASSET_SRC_KEY = 'app_last_asset_src';
 
 export default function AutoUpdateWatcher() {
   const [updateAvailable, setUpdateAvailable] = useState(false);
@@ -77,6 +78,19 @@ export default function AutoUpdateWatcher() {
     const currentScript = document.querySelector('script[src*="assets/"], script[src*="src/main"]');
     const currentLink = document.querySelector('link[rel="stylesheet"][href*="assets/"]');
     const initialSrc = (currentScript ? currentScript.getAttribute('src') : '') + '|' + (currentLink ? currentLink.getAttribute('href') : '');
+
+    // Detect if the browser loaded a newer version directly on open (without going through applyUpdate)
+    if (initialSrc && initialSrc.includes('assets/')) {
+      try {
+        const prevAssetSrc = localStorage.getItem(LAST_ASSET_SRC_KEY);
+        if (prevAssetSrc && prevAssetSrc !== initialSrc) {
+          setJustUpdated(true);
+        }
+        localStorage.setItem(LAST_ASSET_SRC_KEY, initialSrc);
+      } catch {
+        // ignore storage errors
+      }
+    }
 
     const handleDetectedUpdate = () => {
       const isStartupWindow = Date.now() - mountTime < 8000;
