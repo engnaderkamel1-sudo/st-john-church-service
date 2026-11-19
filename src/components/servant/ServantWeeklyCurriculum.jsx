@@ -12,6 +12,7 @@ import {
 import { db } from '../../firebase';
 import { triggerServerPush } from '../../services/webPushService';
 import { extractCurriculumFromPaperImage } from '../../services/geminiService';
+import ServantCurriculumShiftModal from './ServantCurriculumShiftModal';
 
 // الأشهر باللغة العربية
 const ARABIC_MONTHS = [
@@ -526,6 +527,8 @@ export default function ServantWeeklyCurriculum({
   const [newMonthYear, setNewMonthYear] = useState(new Date().getFullYear());
   const [newMonthIndex, setNewMonthIndex] = useState(new Date().getMonth());
   const [showPrintModal, setShowPrintModal] = useState(false);
+  const [showShiftModal, setShowShiftModal] = useState(false);
+  const [shiftStartFridayId, setShiftStartFridayId] = useState(null);
   const [saving, setSaving] = useState(false);
   const [successToast, setSuccessToast] = useState('');
   const hasAutoSeededRef = useRef(false);
@@ -901,6 +904,33 @@ export default function ServantWeeklyCurriculum({
     } catch (err) {
       console.error('Error adding friday:', err);
       alert('حدث خطأ أثناء إضافة الجمعة.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // تطبيق الترحيل الذكي للجدول وحفظ كافة الشهور المتأثرة في قاعدة البيانات
+  const handleApplyCurriculumShift = async (updatedCurriculaList) => {
+    if (!updatedCurriculaList || !updatedCurriculaList.length) return;
+    setSaving(true);
+    try {
+      for (const mDoc of updatedCurriculaList) {
+        const docKey = mDoc.docId || (mDoc.id.startsWith('weekly_') ? mDoc.id : `weekly_${mDoc.id}`);
+        const docRef = doc(db, 'service_curriculum', docKey);
+        await setDoc(docRef, {
+          ...mDoc,
+          isWeeklyCurriculum: true,
+          updatedAt: serverTimestamp(),
+          updatedBy: user?.fullName || 'أمين الخدمة'
+        }, { merge: true });
+      }
+
+      setCurricula(updatedCurriculaList);
+      setShowShiftModal(false);
+      showToast('تم ترحيل المنهج بنجاح وتحديث كافة الأسابيع والشهور 🚀');
+    } catch (err) {
+      console.error('Error applying shift:', err);
+      alert('حدث خطأ أثناء ترحيل المنهج: ' + (err?.message || ''));
     } finally {
       setSaving(false);
     }
@@ -1498,6 +1528,22 @@ export default function ServantWeeklyCurriculum({
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
+            {/* زر ترحيل وإعادة تدوير المنهج عابر للشهور */}
+            {curricula.length > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  setShiftStartFridayId(null);
+                  setShowShiftModal(true);
+                }}
+                className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-maroon-950 text-xs font-black flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
+                title="ترحيل وإعادة تدوير فقرات المنهج عابر للشهور"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                <span>ترحيل المنهج ⏩</span>
+              </button>
+            )}
+
             {/* زر قراءة وتفريغ الورقة بالذكاء الاصطناعي */}
             <button
               type="button"
@@ -1871,6 +1917,19 @@ export default function ServantWeeklyCurriculum({
                         </button>
                       ) : (
                         <>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShiftStartFridayId(friday.id);
+                              setShowShiftModal(true);
+                            }}
+                            className="px-2.5 py-1 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 text-xs font-bold flex items-center gap-1 cursor-pointer transition-all shadow-2xs"
+                            title="ترحيل المنهج بدءاً من هذه الجمعة"
+                          >
+                            <RefreshCw className="w-3.5 h-3.5 text-amber-700" />
+                            <span>ترحيل بدءاً من هنا ⏩</span>
+                          </button>
+
                           <button
                             type="button"
                             onClick={() => handleStartEditFriday(friday)}
@@ -2798,6 +2857,16 @@ export default function ServantWeeklyCurriculum({
           </div>
         </div>
       )}
+
+      {/* نافذة ترحيل وإعادة تدوير المنهج الذكي */}
+      <ServantCurriculumShiftModal
+        isOpen={showShiftModal}
+        onClose={() => setShowShiftModal(false)}
+        curricula={curricula}
+        initialFridayId={shiftStartFridayId}
+        onApplyShift={handleApplyCurriculumShift}
+        saving={saving}
+      />
     </div>
   );
 }
