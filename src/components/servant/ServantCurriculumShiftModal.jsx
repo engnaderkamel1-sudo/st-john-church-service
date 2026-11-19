@@ -20,6 +20,9 @@ function getSessionSummary(session) {
   if (!session || (!session.title && !session.speakerName && !session.externalName)) {
     return '— فارغ —';
   }
+  if (session.isPostponedSlot || session.speakerName === 'مرحّل' || session.title === 'تم الترحيل للأسبوع التالي ⏩') {
+    return '📦 تم الترحيل للأسبوع التالي';
+  }
   const title = session.title ? `«${session.title}»` : 'بدون عنوان';
   const speaker = getSpeakerText(session);
   return `${session.subject || 'فقرة'}: ${title} (${speaker})`;
@@ -220,22 +223,25 @@ export default function ServantCurriculumShiftModal({
         }
       }
 
-      // إفراغ خانة الجمعة الأولى التي تأجلت
+      // إفراغ وتحديد خانة الجمعة الأولى التي تأجلت
       const firstF = chain[0].friday;
       if (shiftScope === 'session1') {
         const origSubject = firstF.session1?.subject || 'كتاب مقدس';
         firstF.session1 = {
           subject: origSubject,
-          title: '',
+          title: 'تم الترحيل للأسبوع التالي ⏩',
           speakerType: 'internal',
           speakerId: '',
-          speakerName: '',
+          speakerName: 'مرحّل',
+          isPostponedSlot: true,
           speakerPhone: '',
           externalTitle: 'طاسوني',
           externalName: '',
           externalPhone: '',
           reminderSent: false,
-          whatsappSent: false
+          wednesdayReminderSent: false,
+          whatsappSent: false,
+          whatsappWednesdaySent: false
         };
         firstF.notes = firstF.notes 
           ? `${firstF.notes} | تأجلت فقرة ${origSubject}` 
@@ -244,23 +250,26 @@ export default function ServantCurriculumShiftModal({
         const origSubject = firstF.session2?.subject || 'طقس';
         firstF.session2 = {
           subject: origSubject,
-          title: '',
+          title: 'تم الترحيل للأسبوع التالي ⏩',
           speakerType: 'internal',
           speakerId: '',
-          speakerName: '',
+          speakerName: 'مرحّل',
+          isPostponedSlot: true,
           speakerPhone: '',
           externalTitle: 'طاسوني',
           externalName: '',
           externalPhone: '',
           reminderSent: false,
-          whatsappSent: false
+          wednesdayReminderSent: false,
+          whatsappSent: false,
+          whatsappWednesdaySent: false
         };
         firstF.notes = firstF.notes 
           ? `${firstF.notes} | تأجلت فقرة ${origSubject}` 
           : `تأجلت فقرة ${origSubject} للأسبوع التالي`;
       } else if (shiftScope === 'all') {
-        firstF.session1 = { subject: 'كتاب مقدس', title: '', speakerType: 'internal', speakerId: '', speakerName: '', speakerPhone: '', externalTitle: 'طاسوني', externalName: '', externalPhone: '', reminderSent: false, whatsappSent: false };
-        firstF.session2 = { subject: 'طقس', title: '', speakerType: 'internal', speakerId: '', speakerName: '', speakerPhone: '', externalTitle: 'طاسوني', externalName: '', externalPhone: '', reminderSent: false, whatsappSent: false };
+        firstF.session1 = { subject: 'كتاب مقدس', title: 'تم الترحيل للأسبوع التالي ⏩', speakerType: 'internal', speakerId: '', speakerName: 'مرحّل', isPostponedSlot: true, speakerPhone: '', externalTitle: 'طاسوني', externalName: '', externalPhone: '', reminderSent: false, wednesdayReminderSent: false, whatsappSent: false, whatsappWednesdaySent: false };
+        firstF.session2 = { subject: 'طقس', title: 'تم الترحيل للأسبوع التالي ⏩', speakerType: 'internal', speakerId: '', speakerName: 'مرحّل', isPostponedSlot: true, speakerPhone: '', externalTitle: 'طاسوني', externalName: '', externalPhone: '', reminderSent: false, wednesdayReminderSent: false, whatsappSent: false, whatsappWednesdaySent: false };
         firstF.isMerged = false;
         firstF.notes = firstF.notes 
           ? `${firstF.notes} | تأجل لقاء الخدمة بالكامل` 

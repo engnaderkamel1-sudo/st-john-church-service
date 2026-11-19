@@ -61,6 +61,9 @@ const REAL_SERVANTS = {
 // دالة مساعدة للحصول على اسم المتكلم بوضوح مهما كان نوعه
 function getSpeakerDisplayName(session) {
   if (!session) return 'لم يُحدد';
+  if (session.speakerName === 'مرحّل' || session.isPostponedSlot) {
+    return 'مرحّل';
+  }
   if (session.speakerType === 'external') {
     const title = session.externalTitle || 'أستاذ';
     const name = session.externalName || session.speakerName || 'المتكلم';
@@ -583,26 +586,93 @@ export default function ServantWeeklyCurriculum({
       });
 
       if (list.length > 0) {
-        // تنظيف أية حقول قديمة وتعيين المواد الافتراضية
-        const sanitizedList = list.map(item => ({
-          ...item,
-          fridays: (item.fridays || []).map(f => {
+        // تنظيف أية حقول قديمة وتعيين المواد الافتراضية وتصحيح التذكيرات للأسابيع القادمة
+        const todayStr = '2026-11-20';
+        let hasFixesToPersist = false;
+        const docsToPersist = [];
+
+        const sanitizedList = list.map(item => {
+          let itemModified = false;
+          const cleanFridays = (item.fridays || []).map(f => {
             const cleanF = { ...f };
             if (cleanF.session1) {
               delete cleanF.session1.time;
               if (!cleanF.session1.subject) cleanF.session1.subject = 'كتاب مقدس';
+              // إذا كان الأسبوع بعد 20 نوفمبر (مثل 27 نوفمبر وما بعده)، يجب ألا يحمل تذكيرات سابقة موروثة
+              if (cleanF.date > todayStr) {
+                if (cleanF.session1.reminderSent || cleanF.session1.wednesdayReminderSent) {
+                  cleanF.session1.reminderSent = false;
+                  cleanF.session1.wednesdayReminderSent = false;
+                  cleanF.session1.whatsappSent = false;
+                  cleanF.session1.whatsappWednesdaySent = false;
+                  itemModified = true;
+                }
+              }
+              // تصحيح خانة الترحيل إذا كانت فارغة بسبب الترحيل السابق
+              if ((!cleanF.session1.title || cleanF.session1.title === 'لم يُحدد موضوع') && (!cleanF.session1.speakerName || cleanF.session1.speakerName === 'لم يُحدد') && cleanF.notes?.includes('تأجلت')) {
+                cleanF.session1.title = 'تم الترحيل للأسبوع التالي ⏩';
+                cleanF.session1.speakerName = 'مرحّل';
+                cleanF.session1.isPostponedSlot = true;
+                cleanF.session1.reminderSent = false;
+                cleanF.session1.wednesdayReminderSent = false;
+                itemModified = true;
+              }
             }
             if (cleanF.session2) {
               delete cleanF.session2.time;
               if (!cleanF.session2.subject) cleanF.session2.subject = 'طقس';
+              if (cleanF.date > todayStr) {
+                if (cleanF.session2.reminderSent || cleanF.session2.wednesdayReminderSent) {
+                  cleanF.session2.reminderSent = false;
+                  cleanF.session2.wednesdayReminderSent = false;
+                  cleanF.session2.whatsappSent = false;
+                  cleanF.session2.whatsappWednesdaySent = false;
+                  itemModified = true;
+                }
+              }
+              if ((!cleanF.session2.title || cleanF.session2.title === 'لم يُحدد موضوع') && (!cleanF.session2.speakerName || cleanF.session2.speakerName === 'لم يُحدد') && cleanF.notes?.includes('تأجلت')) {
+                cleanF.session2.title = 'تم الترحيل للأسبوع التالي ⏩';
+                cleanF.session2.speakerName = 'مرحّل';
+                cleanF.session2.isPostponedSlot = true;
+                cleanF.session2.reminderSent = false;
+                cleanF.session2.wednesdayReminderSent = false;
+                itemModified = true;
+              }
             }
             if (cleanF.mergedSession) {
               delete cleanF.mergedSession.time;
               if (!cleanF.mergedSession.subject) cleanF.mergedSession.subject = 'ندوة عامة';
+              if (cleanF.date > todayStr) {
+                if (cleanF.mergedSession.reminderSent || cleanF.mergedSession.wednesdayReminderSent) {
+                  cleanF.mergedSession.reminderSent = false;
+                  cleanF.mergedSession.wednesdayReminderSent = false;
+                  cleanF.mergedSession.whatsappSent = false;
+                  cleanF.mergedSession.whatsappWednesdaySent = false;
+                  itemModified = true;
+                }
+              }
             }
             return cleanF;
-          })
-        }));
+          });
+
+          if (itemModified) {
+            hasFixesToPersist = true;
+            docsToPersist.push({ ...item, fridays: cleanFridays });
+          }
+
+          return {
+            ...item,
+            fridays: cleanFridays
+          };
+        });
+
+        // حفظ التصحيح الصامت في قاعدة البيانات لمنع تكراره
+        if (hasFixesToPersist && docsToPersist.length > 0) {
+          docsToPersist.forEach(d => {
+            const docKey = d.docId || (d.id.startsWith('weekly_') ? d.id : `weekly_${d.id}`);
+            updateDoc(doc(db, 'service_curriculum', docKey), { fridays: d.fridays }).catch(() => {});
+          });
+        }
         setCurricula(sanitizedList);
         if (!activeMonthKey || !sanitizedList.some(c => c.id === activeMonthKey)) {
           setActiveMonthKey(sanitizedList[0]?.id || '2026-11');
@@ -2463,6 +2533,21 @@ export default function ServantWeeklyCurriculum({
                               </div>
                             )}
                           </div>
+                        ) : (friday.session1?.isPostponedSlot || friday.session1?.speakerName === 'مرحّل' || friday.session1?.title === 'تم الترحيل للأسبوع التالي ⏩') ? (
+                          <div className="bg-amber-50/70 border border-amber-200/80 rounded-xl p-2.5 text-xs space-y-1">
+                            <div className="flex items-center justify-between gap-1">
+                              <span className="font-black text-amber-950 flex items-center gap-1.5">
+                                <span>📦 تم الترحيل للأسبوع التالي ⏩</span>
+                              </span>
+                              <span className="text-[10px] bg-amber-200 text-amber-900 px-2 py-0.5 rounded-md font-black">
+                                مرحّل
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between gap-2 pt-1 border-t border-amber-200/60 text-[11px] text-amber-900 font-bold">
+                              <span>المتكلم: مرحّل</span>
+                              <span className="text-amber-700 font-medium">تأجل للأسبوع القادم</span>
+                            </div>
+                          </div>
                         ) : (
                           <div className="space-y-1.5">
                             <p className="text-xs font-black text-slate-800">
@@ -2656,6 +2741,21 @@ export default function ServantWeeklyCurriculum({
                                 </div>
                               </div>
                             )}
+                          </div>
+                        ) : (friday.session2?.isPostponedSlot || friday.session2?.speakerName === 'مرحّل' || friday.session2?.title === 'تم الترحيل للأسبوع التالي ⏩') ? (
+                          <div className="bg-amber-50/70 border border-amber-200/80 rounded-xl p-2.5 text-xs space-y-1">
+                            <div className="flex items-center justify-between gap-1">
+                              <span className="font-black text-amber-950 flex items-center gap-1.5">
+                                <span>📦 تم الترحيل للأسبوع التالي ⏩</span>
+                              </span>
+                              <span className="text-[10px] bg-amber-200 text-amber-900 px-2 py-0.5 rounded-md font-black">
+                                مرحّل
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between gap-2 pt-1 border-t border-amber-200/60 text-[11px] text-amber-900 font-bold">
+                              <span>المتكلم: مرحّل</span>
+                              <span className="text-amber-700 font-medium">تأجل للأسبوع القادم</span>
+                            </div>
                           </div>
                         ) : (
                           <div className="space-y-1.5">
