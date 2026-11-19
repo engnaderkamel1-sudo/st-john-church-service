@@ -169,20 +169,54 @@ export default function ServantCurriculumShiftModal({
         });
       }
 
-      // تنفيذ الزحلقة للأمام من النهاية للبداية
+      // تنفيذ الزحلقة للأمام من النهاية للبداية مع تصفير التذكيرات للأسابيع القادمة
       for (let i = chain.length - 1; i >= 1; i--) {
         const currentF = chain[i].friday;
         const prevF = chain[i - 1].friday;
 
         if (shiftScope === 'session1') {
           currentF.session1 = JSON.parse(JSON.stringify(prevF.session1));
+          currentF.session1.reminderSent = false;
+          currentF.session1.wednesdayReminderSent = false;
+          currentF.session1.whatsappSent = false;
+          currentF.session1.whatsappWednesdaySent = false;
         } else if (shiftScope === 'session2') {
           currentF.session2 = JSON.parse(JSON.stringify(prevF.session2));
+          currentF.session2.reminderSent = false;
+          currentF.session2.wednesdayReminderSent = false;
+          currentF.session2.whatsappSent = false;
+          currentF.session2.whatsappWednesdaySent = false;
         } else if (shiftScope === 'all') {
           currentF.session1 = JSON.parse(JSON.stringify(prevF.session1));
           currentF.session2 = JSON.parse(JSON.stringify(prevF.session2));
           currentF.isMerged = prevF.isMerged;
           currentF.mergedSession = JSON.parse(JSON.stringify(prevF.mergedSession));
+          currentF.session1.reminderSent = false;
+          currentF.session1.wednesdayReminderSent = false;
+          currentF.session1.whatsappSent = false;
+          currentF.session1.whatsappWednesdaySent = false;
+          currentF.session2.reminderSent = false;
+          currentF.session2.wednesdayReminderSent = false;
+          currentF.session2.whatsappSent = false;
+          currentF.session2.whatsappWednesdaySent = false;
+          if (currentF.mergedSession) {
+            currentF.mergedSession.reminderSent = false;
+            currentF.mergedSession.wednesdayReminderSent = false;
+            currentF.mergedSession.whatsappSent = false;
+            currentF.mergedSession.whatsappWednesdaySent = false;
+          }
+        }
+      }
+
+      // اعتماد إرسال التنبيه التلقائي للجمعة القادمة مباشرة
+      if (chain[1]?.friday) {
+        if (shiftScope === 'session1' || shiftScope === 'all') {
+          chain[1].friday.session1.reminderSent = true;
+          chain[1].friday.session1.wednesdayReminderSent = true;
+        }
+        if (shiftScope === 'session2' || shiftScope === 'all') {
+          chain[1].friday.session2.reminderSent = true;
+          chain[1].friday.session2.wednesdayReminderSent = true;
         }
       }
 
@@ -286,11 +320,48 @@ export default function ServantCurriculumShiftModal({
       };
     });
 
+    // تجهيز حمولة الإشعارات التلقائية الفورية
+    const upcomingF = chain[1]?.friday || null;
+    const postponedServants = [];
+    for (let i = 2; i < chain.length; i++) {
+      const f = chain[i].friday;
+      if (shiftScope === 'session1' || shiftScope === 'all') {
+        const s = f.session1;
+        if (s?.speakerId && s?.speakerType === 'internal') {
+          postponedServants.push({
+            servantId: s.speakerId,
+            servantName: s.speakerName,
+            topic: [s.subject, s.title].filter(Boolean).join(' - ') || 'كلمة الخدمة',
+            dateText: f.displayDate
+          });
+        }
+      }
+      if (shiftScope === 'session2' || shiftScope === 'all') {
+        const s = f.session2;
+        if (s?.speakerId && s?.speakerType === 'internal') {
+          postponedServants.push({
+            servantId: s.speakerId,
+            servantName: s.speakerName,
+            topic: [s.subject, s.title].filter(Boolean).join(' - ') || 'كلمة الخدمة',
+            dateText: f.displayDate
+          });
+        }
+      }
+    }
+
+    const notificationPayload = {
+      startFridayDisplayDate: chain[0]?.friday?.displayDate || '',
+      upcomingFriday: upcomingF,
+      upcomingSessionKey: shiftScope,
+      postponedServants
+    };
+
     return {
       updatedCurricula: clonedCurricula,
       comparisons,
       extraFridayCreated,
-      totalShiftedWeeks: chain.length
+      totalShiftedWeeks: chain.length,
+      notificationPayload
     };
   }, [allFridays, selectedFridayId, shiftScope, direction, skipMerged, curricula]);
 
@@ -298,7 +369,7 @@ export default function ServantCurriculumShiftModal({
 
   const handleConfirm = () => {
     if (!previewData || !previewData.updatedCurricula) return;
-    onApplyShift(previewData.updatedCurricula);
+    onApplyShift(previewData.updatedCurricula, previewData.notificationPayload);
   };
 
   return (
@@ -455,6 +526,15 @@ export default function ServantCurriculumShiftModal({
               </div>
             </div>
           )}
+
+          {/* تنبيه الإشعارات التلقائية الفورية */}
+          <div className="bg-amber-500/10 border border-amber-500/30 text-amber-950 rounded-2xl p-3 flex items-start gap-2.5 text-xs font-medium">
+            <Bell className="w-5 h-5 text-amber-800 shrink-0 mt-0.5" />
+            <div>
+              <span className="font-black text-amber-950 block">إشعارات وتنبيهات تلقائية فورية عند الاعتماد:</span>
+              سيتم فوراً إرسال إشعار عاجل للخادم المكلف بالجمعة القادمة، وإشعارات تأجيل للخدام المؤجلين، وإشعار تقرير لأمين الخدمة والمشرف العام.
+            </div>
+          </div>
 
           {/* جدول المعاينة الحية قبل الاعتماد */}
           <div className="space-y-2">

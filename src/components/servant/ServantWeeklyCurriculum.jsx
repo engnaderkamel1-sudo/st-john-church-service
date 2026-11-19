@@ -909,11 +909,12 @@ export default function ServantWeeklyCurriculum({
     }
   };
 
-  // تطبيق الترحيل الذكي للجدول وحفظ كافة الشهور المتأثرة في قاعدة البيانات
-  const handleApplyCurriculumShift = async (updatedCurriculaList) => {
+  // تطبيق الترحيل الذكي للجدول وحفظ كافة الشهور المتأثرة وبث التنبيهات التلقائية
+  const handleApplyCurriculumShift = async (updatedCurriculaList, notificationPayload) => {
     if (!updatedCurriculaList || !updatedCurriculaList.length) return;
     setSaving(true);
     try {
+      // 1. حفظ وثائق الشهور في قاعدة البيانات
       for (const mDoc of updatedCurriculaList) {
         const docKey = mDoc.docId || (mDoc.id.startsWith('weekly_') ? mDoc.id : `weekly_${mDoc.id}`);
         const docRef = doc(db, 'service_curriculum', docKey);
@@ -925,14 +926,134 @@ export default function ServantWeeklyCurriculum({
         }, { merge: true });
       }
 
+      // 2. إرسال التنبيهات التلقائية الفورية للخدام وقيادة الخدمة
+      if (notificationPayload) {
+        const { upcomingFriday, upcomingSessionKey, postponedServants, startFridayDisplayDate } = notificationPayload;
+
+        // أ. تنبيه عاجل للخادم القادم الذي أصبحت كلمته في الجمعة القادمة مباشرة
+        if (upcomingFriday) {
+          const sessionsToNotify = [];
+          if (upcomingSessionKey === 'session1' || upcomingSessionKey === 'all') {
+            if (upcomingFriday.session1?.speakerId && upcomingFriday.session1?.speakerType === 'internal') {
+              sessionsToNotify.push(upcomingFriday.session1);
+            }
+          }
+          if (upcomingSessionKey === 'session2' || upcomingSessionKey === 'all') {
+            if (upcomingFriday.session2?.speakerId && upcomingFriday.session2?.speakerType === 'internal') {
+              sessionsToNotify.push(upcomingFriday.session2);
+            }
+          }
+
+          for (const s of sessionsToNotify) {
+            const topic = [s.subject, s.title].filter(Boolean).join(' - ') || 'كلمة الخدمة';
+            const notifTitle = '⚠️ تعديل في جدول الخدمة: موعد كلمتك القادمة';
+            const notifDesc = `سلام ونعمة يا خادمنا المبارك (${s.speakerName})، نحيطك علماً بأنه لظروف طارئة تم تعديل وترحيل جدول المنهج، وبناءً عليه أصبح موعد كلمتك في موضوع: (${topic}) هو يوم (${upcomingFriday.displayDate}) مباشرة. نصلي أن يستخدمك الرب بقوة ويبارك تحضيرك لنمو إخوتك.`;
+
+            await addDoc(collection(db, 'notifications'), {
+              targetUserId: s.speakerId,
+              title: notifTitle,
+              desc: notifDesc,
+              time: 'الآن',
+              type: 'weekly_curriculum_shift',
+              createdAt: serverTimestamp()
+            }).catch(e => console.warn('Notif write warning:', e));
+
+            triggerServerPush({
+              targetUserId: s.speakerId,
+              title: notifTitle,
+              body: notifDesc,
+              url: '/'
+            }).catch(() => {});
+          }
+        }
+
+        // ب. تنبيه الخدام الذين تأجلت مواعيدهم للأمام
+        if (postponedServants && postponedServants.length > 0) {
+          for (const ps of postponedServants) {
+            const notifTitle = '📢 إشعار بتأجيل وترحيل موعد كلمة الخدمة';
+            const notifDesc = `سلام ونعمة يا خادمنا المبارك (${ps.servantName})، نود إخطارك بأنه تم ترحيل جدول المنهج أسبوعاً للأمام، وبالتالي تم تأجيل موعد إلقاء كلمتك في موضوع: (${ps.topic}) ليصبح في موعده الجديد يوم: (${ps.dateText}). يمكنك مراجعة تفاصيل الجدول المحدث عبر المنظومة.`;
+
+            await addDoc(collection(db, 'notifications'), {
+              targetUserId: ps.servantId,
+              title: notifTitle,
+              desc: notifDesc,
+              time: 'الآن',
+              type: 'weekly_curriculum_shift',
+              createdAt: serverTimestamp()
+            }).catch(e => console.warn('Notif write warning:', e));
+
+            triggerServerPush({
+              targetUserId: ps.servantId,
+              title: notifTitle,
+              body: notifDesc,
+              url: '/'
+            }).catch(() => {});
+          }
+        }
+
+        // ج. إشعار قيادة الخدمة (أمين الخدمة والمشرف العام)
+        const leaderTitle = '🔄 تقرير ترحيل وإعادة جدولة منهج الخدمة';
+        const upcomingSpeaker = upcomingFriday?.session1?.speakerName || upcomingFriday?.session2?.speakerName || 'خادم الخدمة';
+        const upcomingTopic = upcomingFriday?.session1?.title || upcomingFriday?.session2?.title || 'موضوع الجمعة';
+        const leaderDesc = `قام (${user?.fullName || 'أحد الخدام'}) بترحيل منهج الخدمة بدءاً من (${startFridayDisplayDate || 'الأسبوع المحدد'}). تم تحديث قاعدة البيانات تلقائياً، وإرسال إشعارات التعديل للخدام المتأثرين. الخادم المكلف بالجمعة القادمة هو: (${upcomingSpeaker}) في موضوع: (${upcomingTopic}).`;
+
+        await addDoc(collection(db, 'notifications'), {
+          targetUserId: 'LEADERSHIP',
+          title: leaderTitle,
+          desc: leaderDesc,
+          time: 'الآن',
+          type: 'weekly_curriculum_shift',
+          createdAt: serverTimestamp()
+        }).catch(e => console.warn('Leadership notif warning:', e));
+
+        triggerServerPush({
+          targetUserId: 'LEADERSHIP',
+          title: leaderTitle,
+          body: leaderDesc,
+          url: '/'
+        }).catch(() => {});
+      }
+
       setCurricula(updatedCurriculaList);
       setShowShiftModal(false);
-      showToast('تم ترحيل المنهج بنجاح وتحديث كافة الأسابيع والشهور 🚀');
+      showToast('تم ترحيل المنهج بنجاح وإرسال إشعارات التعديل والتذكير للخادم والقيادة 📢');
     } catch (err) {
       console.error('Error applying shift:', err);
       alert('حدث خطأ أثناء ترحيل المنهج: ' + (err?.message || ''));
     } finally {
       setSaving(false);
+    }
+  };
+
+  // إعادة تعيين وتصفير حالة التذكير للفقرة
+  const handleResetSessionReminders = async (friday, sessionKey) => {
+    if (!currentMonthData) return;
+    try {
+      const docKey = currentMonthData.docId || (currentMonthData.id.startsWith('weekly_') ? currentMonthData.id : `weekly_${currentMonthData.id}`);
+      const docRef = doc(db, 'service_curriculum', docKey);
+      const nextFridays = currentMonthData.fridays.map(f => {
+        if (f.id === friday.id) {
+          const targetSession = sessionKey === 'merged' ? f.mergedSession : f[sessionKey];
+          if (targetSession) {
+            targetSession.reminderSent = false;
+            targetSession.wednesdayReminderSent = false;
+            targetSession.whatsappSent = false;
+            targetSession.whatsappWednesdaySent = false;
+          }
+        }
+        return f;
+      });
+
+      await updateDoc(docRef, { fridays: nextFridays });
+      setCurricula(prev => prev.map(c => {
+        if (c.id === currentMonthData.id || c.docId === docKey) {
+          return { ...c, fridays: nextFridays };
+        }
+        return c;
+      }));
+      showToast('تمت إعادة تعيين وتصفير حالة التذكير بنجاح 🔄');
+    } catch (err) {
+      console.error('Error resetting reminder:', err);
     }
   };
 
@@ -1422,6 +1543,16 @@ export default function ServantWeeklyCurriculum({
           >
             <span>{wedSent ? 'تم واتساب الأربعاء ✅' : 'واتساب الأربعاء 🕊️'}</span>
           </button>
+          {(firstSent || wedSent) && (
+            <button
+              type="button"
+              onClick={() => handleResetSessionReminders(friday, sessionKey)}
+              className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+              title="إعادة تعيين وتصفير حالة التذكير للبدء من جديد 🔄"
+            >
+              <RefreshCw className="w-3 h-3" />
+            </button>
+          )}
         </div>
       );
     }
@@ -1449,6 +1580,16 @@ export default function ServantWeeklyCurriculum({
         >
           <span>{wedSent ? 'تم تذكير الأربعاء ✅' : 'تذكير الأربعاء 🕊️'}</span>
         </button>
+        {(firstSent || wedSent) && (
+          <button
+            type="button"
+            onClick={() => handleResetSessionReminders(friday, sessionKey)}
+            className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+            title="إعادة تعيين وتصفير حالة التذكير للبدء من جديد 🔄"
+          >
+            <RefreshCw className="w-3 h-3" />
+          </button>
+        )}
       </div>
     );
   };
@@ -2327,11 +2468,16 @@ export default function ServantWeeklyCurriculum({
                             <p className="text-xs font-black text-slate-800">
                               {friday.session1?.title || friday.session1?.subject || 'لم يُحدد موضوع'}
                             </p>
-                            <div className="flex items-center justify-between gap-2 pt-1 border-t border-slate-100">
-                              <span className="text-[11px] text-slate-600 font-bold truncate">
-                                المتكلم: {getSpeakerDisplayName(friday.session1)}
-                              </span>
-                              {renderReminderButtons(friday, friday.session1, 'session1', 'flex flex-wrap items-center gap-1')}
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1.5 border-t border-slate-100">
+                              <div className="flex items-center gap-1 text-xs font-bold min-w-0">
+                                <span className="text-slate-500 shrink-0">المتكلم:</span>
+                                <span className="font-black text-maroon-950 text-xs sm:text-sm">
+                                  {getSpeakerDisplayName(friday.session1)}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-1 self-end sm:self-auto shrink-0">
+                                {renderReminderButtons(friday, friday.session1, 'session1', 'flex flex-wrap items-center gap-1 justify-end')}
+                              </div>
                             </div>
                           </div>
                         )}
@@ -2516,11 +2662,16 @@ export default function ServantWeeklyCurriculum({
                             <p className="text-xs font-black text-slate-800">
                               {friday.session2?.title || friday.session2?.subject || 'لم يُحدد موضوع'}
                             </p>
-                            <div className="flex items-center justify-between gap-2 pt-1 border-t border-slate-100">
-                              <span className="text-[11px] text-slate-600 font-bold truncate">
-                                المتكلم: {getSpeakerDisplayName(friday.session2)}
-                              </span>
-                              {renderReminderButtons(friday, friday.session2, 'session2', 'flex flex-wrap items-center gap-1')}
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1.5 border-t border-slate-100">
+                              <div className="flex items-center gap-1 text-xs font-bold min-w-0">
+                                <span className="text-slate-500 shrink-0">المتكلم:</span>
+                                <span className="font-black text-maroon-950 text-xs sm:text-sm">
+                                  {getSpeakerDisplayName(friday.session2)}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-1 self-end sm:self-auto shrink-0">
+                                {renderReminderButtons(friday, friday.session2, 'session2', 'flex flex-wrap items-center gap-1 justify-end')}
+                              </div>
                             </div>
                           </div>
                         )}
