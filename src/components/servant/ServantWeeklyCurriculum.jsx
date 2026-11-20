@@ -3,7 +3,7 @@ import {
   Calendar, Users, User, Phone, MessageSquare, Send, Bell, 
   CheckCircle, Plus, Edit3, Save, Trash2, ChevronLeft, ChevronRight, 
   Printer, Sparkles, AlertCircle, Share2, Eye, ShieldCheck, Check, RefreshCw, X,
-  Camera, UploadCloud, FileText, Loader2
+  Camera, UploadCloud, FileText, Loader2, ArrowLeftRight
 } from 'lucide-react';
 import { 
   collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, 
@@ -13,6 +13,7 @@ import { db } from '../../firebase';
 import { triggerServerPush } from '../../services/webPushService';
 import { extractCurriculumFromPaperImage } from '../../services/geminiService';
 import ServantCurriculumShiftModal from './ServantCurriculumShiftModal';
+import ServantCurriculumSwapModal from './ServantCurriculumSwapModal';
 
 // الأشهر باللغة العربية
 const ARABIC_MONTHS = [
@@ -532,6 +533,9 @@ export default function ServantWeeklyCurriculum({
   const [showPrintModal, setShowPrintModal] = useState(false);
   const [showShiftModal, setShowShiftModal] = useState(false);
   const [shiftStartFridayId, setShiftStartFridayId] = useState(null);
+  const [showSwapModal, setShowSwapModal] = useState(false);
+  const [swapFridayId, setSwapFridayId] = useState(null);
+  const [swapSessionKey, setSwapSessionKey] = useState('session2');
   const [saving, setSaving] = useState(false);
   const [successToast, setSuccessToast] = useState('');
   const hasAutoSeededRef = useRef(false);
@@ -1090,6 +1094,103 @@ export default function ServantWeeklyCurriculum({
     } catch (err) {
       console.error('Error applying shift:', err);
       alert('حدث خطأ أثناء ترحيل المنهج: ' + (err?.message || ''));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // تطبيق التبديل التبادلي بين فقرتين وبث التنبيهات التلقائية
+  const handleApplyCurriculumSwap = async (updatedCurriculaList, swapNotificationPayload) => {
+    if (!updatedCurriculaList || !updatedCurriculaList.length) return;
+    setSaving(true);
+    try {
+      // 1. حفظ وثائق الشهور في قاعدة البيانات
+      for (const mDoc of updatedCurriculaList) {
+        const docKey = mDoc.docId || (mDoc.id.startsWith('weekly_') ? mDoc.id : `weekly_${mDoc.id}`);
+        const docRef = doc(db, 'service_curriculum', docKey);
+        await setDoc(docRef, {
+          ...mDoc,
+          isWeeklyCurriculum: true,
+          updatedAt: serverTimestamp(),
+          updatedBy: user?.fullName || 'أمين الخدمة'
+        }, { merge: true });
+      }
+
+      // 2. إرسال التنبيهات التلقائية الفورية للخدام وقيادة الخدمة
+      if (swapNotificationPayload) {
+        const { incomingToSource, movedToTarget, sourceDisplayDate, targetDisplayDate } = swapNotificationPayload;
+
+        // أ. تنبيه الخادم البديل الذي قُدّم موعده
+        if (incomingToSource?.servantId) {
+          const notifTitle = '🔄 إشعار بتبديل موعد الكلمة: تقديم الموعد';
+          const notifDesc = `سلام ونعمة يا خادمنا المبارك (${incomingToSource.servantName})، نحيطك علماً بأنه تم تقديم موعد كلمتك في موضوع: (${incomingToSource.topic}) ليصبح يوم (${sourceDisplayDate}) بالتبادل مع (${movedToTarget?.servantName || 'خادم آخر'}). نصلي أن يبارك الرب خدمتك وتحضيرك.`;
+
+          await addDoc(collection(db, 'notifications'), {
+            targetUserId: incomingToSource.servantId,
+            title: notifTitle,
+            desc: notifDesc,
+            time: 'الآن',
+            type: 'weekly_curriculum_swap',
+            createdAt: serverTimestamp()
+          }).catch(e => console.warn('Notif write warning:', e));
+
+          triggerServerPush({
+            targetUserId: incomingToSource.servantId,
+            title: notifTitle,
+            body: notifDesc,
+            url: '/'
+          }).catch(() => {});
+        }
+
+        // ب. تنبيه الخادم المعتذر الذي رُحّل موعده
+        if (movedToTarget?.servantId) {
+          const notifTitle = '🔄 إشعار بتبديل موعد الكلمة: ترحيل الموعد';
+          const notifDesc = `سلام ونعمة يا خادمنا المبارك (${movedToTarget.servantName})، نحيطك علماً بأنه تم ترحيل موعد كلمتك في موضوع: (${movedToTarget.topic}) ليصبح في موعده الجديد يوم (${targetDisplayDate}) بالتبادل مع (${incomingToSource?.servantName || 'خادم آخر'}).`;
+
+          await addDoc(collection(db, 'notifications'), {
+            targetUserId: movedToTarget.servantId,
+            title: notifTitle,
+            desc: notifDesc,
+            time: 'الآن',
+            type: 'weekly_curriculum_swap',
+            createdAt: serverTimestamp()
+          }).catch(e => console.warn('Notif write warning:', e));
+
+          triggerServerPush({
+            targetUserId: movedToTarget.servantId,
+            title: notifTitle,
+            body: notifDesc,
+            url: '/'
+          }).catch(() => {});
+        }
+
+        // ج. إشعار قيادة الخدمة (المشرف وأمين الخدمة)
+        const leaderTitle = '🔄 تقرير تبديل فقرتين في جدول الخدمة';
+        const leaderDesc = `قام (${user?.fullName || 'أحد الخدام'}) بإجراء تبديل تبادلي في جدول المنهج بين موعد (${sourceDisplayDate} - ${incomingToSource?.servantName || ''}) وموعد (${targetDisplayDate} - ${movedToTarget?.servantName || ''}). تم تحديث قاعدة البيانات وإشعار الخدام المعنيين.`;
+
+        await addDoc(collection(db, 'notifications'), {
+          targetUserId: 'LEADERSHIP',
+          title: leaderTitle,
+          desc: leaderDesc,
+          time: 'الآن',
+          type: 'weekly_curriculum_swap',
+          createdAt: serverTimestamp()
+        }).catch(e => console.warn('Leadership notif warning:', e));
+
+        triggerServerPush({
+          targetUserId: 'LEADERSHIP',
+          title: leaderTitle,
+          body: leaderDesc,
+          url: '/'
+        }).catch(() => {});
+      }
+
+      setCurricula(updatedCurriculaList);
+      setShowSwapModal(false);
+      showToast('تم تبديل الفقرتين بنجاح وتحديث الجدول وإشعار الخدام والقيادة 🔁');
+    } catch (err) {
+      console.error('Error applying swap:', err);
+      alert('حدث خطأ أثناء تبديل الفقرتين: ' + (err?.message || ''));
     } finally {
       setSaving(false);
     }
@@ -1755,6 +1856,23 @@ export default function ServantWeeklyCurriculum({
               </button>
             )}
 
+            {/* زر تبديل فقرتين عابر للجمعات */}
+            {curricula.length > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSwapFridayId(null);
+                  setSwapSessionKey('session2');
+                  setShowSwapModal(true);
+                }}
+                className="px-3 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-black flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
+                title="تبديل فقرة مع فقرة أخرى في أسبوع قادم"
+              >
+                <ArrowLeftRight className="w-3.5 h-3.5" />
+                <span>تبديل فقرة 🔁</span>
+              </button>
+            )}
+
             {/* زر قراءة وتفريغ الورقة بالذكاء الاصطناعي */}
             <button
               type="button"
@@ -2139,6 +2257,20 @@ export default function ServantWeeklyCurriculum({
                           >
                             <RefreshCw className="w-3.5 h-3.5 text-amber-700" />
                             <span>ترحيل بدءاً من هنا ⏩</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSwapFridayId(friday.id);
+                              setSwapSessionKey('session2');
+                              setShowSwapModal(true);
+                            }}
+                            className="px-2.5 py-1 rounded-xl bg-teal-50 hover:bg-teal-100 text-teal-900 border border-teal-300 text-xs font-bold flex items-center gap-1 cursor-pointer transition-all shadow-2xs"
+                            title="تبديل إحدى فقرات هذه الجمعة مع جمعة أخرى"
+                          >
+                            <ArrowLeftRight className="w-3.5 h-3.5 text-teal-700" />
+                            <span>تبديل فقرة 🔁</span>
                           </button>
 
                           <button
@@ -3116,6 +3248,17 @@ export default function ServantWeeklyCurriculum({
         curricula={curricula}
         initialFridayId={shiftStartFridayId}
         onApplyShift={handleApplyCurriculumShift}
+        saving={saving}
+      />
+
+      {/* نافذة تبديل فقرتين بين جمعتين */}
+      <ServantCurriculumSwapModal
+        isOpen={showSwapModal}
+        onClose={() => setShowSwapModal(false)}
+        curricula={curricula}
+        initialFridayId={swapFridayId}
+        initialSessionKey={swapSessionKey}
+        onApplySwap={handleApplyCurriculumSwap}
         saving={saving}
       />
     </div>
