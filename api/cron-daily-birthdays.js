@@ -51,22 +51,36 @@ export default async function handler(req, res) {
       const role = f.role?.stringValue || 'student';
       const phone = f.phone?.stringValue || '';
       const email = f.email?.stringValue || '';
-      const subStr = f.pushSubscription?.stringValue || null;
       const birthDate = f.birthDate?.stringValue || null;
+
+      const userSubsList = [];
+      const arrayValues = f.pushSubscriptions?.arrayValue?.values;
+      if (Array.isArray(arrayValues)) {
+        for (const val of arrayValues) {
+          const str = val.stringValue;
+          if (!str) continue;
+          try {
+            const parsed = JSON.parse(str);
+            if (parsed?.endpoint) userSubsList.push(parsed);
+          } catch (e) {}
+        }
+      }
+      const singleStr = f.pushSubscription?.stringValue;
+      if (singleStr) {
+        try {
+          const parsed = JSON.parse(singleStr);
+          if (parsed?.endpoint && !userSubsList.some(s => s.endpoint === parsed.endpoint)) {
+            userSubsList.push(parsed);
+          }
+        } catch (e) {}
+      }
 
       const isSuperAdmin = phone === '01275571569' || role === 'admin' || email.includes('nader.kamel');
       const isLeader = role === 'servant_leader' || isSuperAdmin;
       const isServant = role === 'servant' || isLeader;
 
-      let subObj = null;
-      if (subStr) {
-        try {
-          subObj = JSON.parse(subStr);
-        } catch (e) {}
-      }
-
-      if (isServant && subObj?.endpoint) {
-        servantSubs.push(subObj);
+      if (isServant && userSubsList.length > 0) {
+        servantSubs.push(...userSubsList);
       }
 
       if (birthDate && typeof birthDate === 'string' && birthDate.includes('-')) {

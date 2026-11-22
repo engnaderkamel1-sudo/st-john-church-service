@@ -51,16 +51,30 @@ export default async function handler(req, res) {
 
       for (const doc of docs) {
         const fields = doc.fields || {};
-        const subStr = fields.pushSubscription?.stringValue;
-        if (!subStr) continue;
 
-        let userSub = null;
-        try {
-          userSub = JSON.parse(subStr);
-        } catch (e) {
-          continue;
+        // Extract all device subscriptions (both array and legacy single string)
+        const userSubsList = [];
+        const arrayValues = fields.pushSubscriptions?.arrayValue?.values;
+        if (Array.isArray(arrayValues)) {
+          for (const val of arrayValues) {
+            const str = val.stringValue;
+            if (!str) continue;
+            try {
+              const parsed = JSON.parse(str);
+              if (parsed?.endpoint) userSubsList.push(parsed);
+            } catch (e) {}
+          }
         }
-        if (!userSub?.endpoint) continue;
+        const singleStr = fields.pushSubscription?.stringValue;
+        if (singleStr) {
+          try {
+            const parsed = JSON.parse(singleStr);
+            if (parsed?.endpoint && !userSubsList.some(s => s.endpoint === parsed.endpoint)) {
+              userSubsList.push(parsed);
+            }
+          } catch (e) {}
+        }
+        if (userSubsList.length === 0) continue;
 
         const docId = doc.name.split('/').pop();
         const role = fields.role?.stringValue;
@@ -102,7 +116,7 @@ export default async function handler(req, res) {
         }
 
         if (shouldSend) {
-          subscriptionsToSend.push(userSub);
+          subscriptionsToSend.push(...userSubsList);
         }
       }
     }

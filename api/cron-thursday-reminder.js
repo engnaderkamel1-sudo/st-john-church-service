@@ -63,9 +63,32 @@ export default async function handler(req, res) {
       const grade = f.grade?.stringValue || 'first';
 
       if (role === 'student') {
+        const userSubsList = [];
+        const arrayValues = f.pushSubscriptions?.arrayValue?.values;
+        if (Array.isArray(arrayValues)) {
+          for (const val of arrayValues) {
+            const str = val.stringValue;
+            if (!str) continue;
+            try {
+              const parsed = JSON.parse(str);
+              if (parsed?.endpoint) userSubsList.push(parsed);
+            } catch (e) {}
+          }
+        }
+        const singleStr = f.pushSubscription?.stringValue;
+        if (singleStr) {
+          try {
+            const parsed = JSON.parse(singleStr);
+            if (parsed?.endpoint && !userSubsList.some(s => s.endpoint === parsed.endpoint)) {
+              userSubsList.push(parsed);
+            }
+          } catch (e) {}
+        }
+
         studentsMap[uId] = {
           id: uId,
           grade,
+          subs: userSubsList,
           subStr,
           submittedExamIds: new Set()
         };
@@ -99,7 +122,9 @@ export default async function handler(req, res) {
         // Target matching
         const matchGrade = (quiz.grade === 'all' || quiz.grade === 'common_hall' || quiz.grade === st.grade);
         if (matchGrade && !st.submittedExamIds.has(quiz.id)) {
-          if (st.subStr) {
+          if (Array.isArray(st.subs) && st.subs.length > 0) {
+            unsubmittedSubscriptions.push(...st.subs);
+          } else if (st.subStr) {
             try {
               const subObj = JSON.parse(st.subStr);
               if (subObj?.endpoint) {

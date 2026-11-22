@@ -1,5 +1,5 @@
 // Web Push Client Service (Service Worker & PushManager Subscription)
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, updateDoc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 
 export const VAPID_PUBLIC_KEY = 'BAtx_VsX7sQqBLrErkVgQhJXjecTxKV0ohn_ICVeQsAjuskf2dAqTKA3982-WlTVeDiPMQ9ubQaBmfnlgW07660';
@@ -48,11 +48,45 @@ export async function registerServiceWorkerAndSubscribe(user, options = {}) {
 
     if (subscription && user?.id) {
       const subJson = JSON.stringify(subscription);
-      // Save subscription on user document in Firestore
-      await updateDoc(doc(db, 'users', user.id), {
-        pushSubscription: subJson,
-        pushUpdatedAt: new Date().toISOString()
-      }).catch(err => console.warn('Could not save push subscription to Firestore:', err));
+      const userRef = doc(db, 'users', user.id);
+
+      // Save subscription supporting multiple devices (Laptop, Phone, Tablet) without overwriting
+      try {
+        const userSnap = await getDoc(userRef);
+        let existingSubs = [];
+        if (userSnap.exists()) {
+          const userData = userSnap.data();
+          if (Array.isArray(userData.pushSubscriptions)) {
+            existingSubs = userData.pushSubscriptions;
+          }
+        }
+
+        const currentEndpoint = subscription.endpoint;
+        // Keep other device subscriptions, remove existing duplicate of current endpoint
+        const filteredSubs = existingSubs.filter(s => {
+          try {
+            const parsed = typeof s === 'string' ? JSON.parse(s) : s;
+            return parsed?.endpoint && parsed.endpoint !== currentEndpoint;
+          } catch {
+            return false;
+          }
+        });
+
+        filteredSubs.push(subJson);
+        const finalSubs = filteredSubs.slice(-6); // Keep up to 6 devices per servant/user
+
+        await updateDoc(userRef, {
+          pushSubscription: subJson, // Backward compatibility
+          pushSubscriptions: finalSubs,
+          pushUpdatedAt: new Date().toISOString()
+        });
+      } catch (err) {
+        // Fallback update
+        await updateDoc(userRef, {
+          pushSubscription: subJson,
+          pushUpdatedAt: new Date().toISOString()
+        }).catch(e => console.warn('Could not save push subscription to Firestore:', e));
+      }
 
       // Only send welcome push once when explicitly requested (e.g. manual toggle click), never on passive app open
       if (options.sendWelcomePush && isNewSubscription) {

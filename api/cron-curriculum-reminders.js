@@ -129,21 +129,37 @@ export default async function handler(req, res) {
       const role = f.role?.stringValue || 'student';
       const phone = f.phone?.stringValue || '';
       const email = f.email?.stringValue || '';
-      const subStr = f.pushSubscription?.stringValue || null;
 
-      let subObj = null;
-      if (subStr) {
+      const userSubsList = [];
+      const arrayValues = f.pushSubscriptions?.arrayValue?.values;
+      if (Array.isArray(arrayValues)) {
+        for (const val of arrayValues) {
+          const str = val.stringValue;
+          if (!str) continue;
+          try {
+            const parsed = JSON.parse(str);
+            if (parsed?.endpoint) userSubsList.push(parsed);
+          } catch (e) {}
+        }
+      }
+      const singleStr = f.pushSubscription?.stringValue;
+      if (singleStr) {
         try {
-          subObj = JSON.parse(subStr);
+          const parsed = JSON.parse(singleStr);
+          if (parsed?.endpoint && !userSubsList.some(s => s.endpoint === parsed.endpoint)) {
+            userSubsList.push(parsed);
+          }
         } catch (e) {}
       }
 
-      userById[uId] = { id: uId, fullName, subObj };
+      userById[uId] = { id: uId, fullName, subs: userSubsList, subObj: userSubsList[0] || null };
 
       const isSuperAdmin = phone === '01275571569' || role === 'admin' || email.includes('nader.kamel');
       const isLeader = role === 'servant_leader' || isSuperAdmin;
-      if (isLeader && subObj?.endpoint) {
-        leadershipSubsMap.set(subObj.endpoint, subObj);
+      if (isLeader && userSubsList.length > 0) {
+        for (const s of userSubsList) {
+          leadershipSubsMap.set(s.endpoint, s);
+        }
       }
     }
 
@@ -261,8 +277,8 @@ export default async function handler(req, res) {
           const ldrDocId = `curr_ldr_${reminderType}_${fridayId}_${entry.key}`;
 
           const shouldSendSpeakerPush = await createNotificationDoc(spkDocId, speakerId, notifTitle, notifDesc);
-          if (shouldSendSpeakerPush && speakerUser?.subObj?.endpoint) {
-            await sendWebPushToSubs([speakerUser.subObj], notifTitle, notifDesc, spkDocId);
+          if (shouldSendSpeakerPush && speakerUser?.subs?.length > 0) {
+            await sendWebPushToSubs(speakerUser.subs, notifTitle, notifDesc, spkDocId);
           }
 
           const shouldSendLeaderPush = await createNotificationDoc(ldrDocId, 'LEADERSHIP', leaderTitle, leaderDesc);
