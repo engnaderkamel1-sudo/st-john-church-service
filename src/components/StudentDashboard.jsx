@@ -19,6 +19,7 @@ import { calculateAttendancePoints, DEFAULT_STAGE_REGULATIONS, getDiaryPointsCon
 import { getDailyServicePin, isValidServicePin } from '../utils/security';
 import { formatNotificationTime, getNotificationTypeInfo } from '../utils/notificationSystem';
 import { useBackHandler, useTabBackHandler, NAV_PRIORITY } from '../utils/navigationManager';
+import { getExamScheduleState, getRecordedExamStartMs } from '../utils/examSchedule';
 
 export default function StudentDashboard({ user, onLogout, onUpdateUser, externalMenuTrigger }) {
   // Tabs: 'home', 'attendance', 'spiritual_diary', 'curriculum', 'exams', 'tasks', 'announcements'
@@ -755,12 +756,23 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser, externa
       return;
     }
 
+    const startedAtMs = getRecordedExamStartMs(user?.id, exam.id);
+    const scheduleState = getExamScheduleState(exam, Date.now(), startedAtMs);
+    if (!scheduleState.canSubmit) {
+      alert('عفواً، انتهى الموعد المحدد لتسليم هذا الامتحان.');
+      setActiveExam(null);
+      return;
+    }
+
     let autoScore = 0;
+    const questionScores = {};
     const questionsList = exam.questions || [];
     questionsList.forEach(q => {
       const isMcq = q.type === 'mcq' || q.type === 'multiple_choice';
-      if ((isMcq || q.type === 'true_false') && examAnswers[q.id] === q.correctAnswer) {
-        autoScore += (Number(q.points) || 1);
+      if (isMcq || q.type === 'true_false') {
+        const pts = examAnswers[q.id] === q.correctAnswer ? (Number(q.points) || 1) : 0;
+        autoScore += pts;
+        questionScores[q.id] = pts;
       }
     });
 
@@ -768,30 +780,50 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser, externa
       ? questionsList.reduce((sum, q) => sum + (Number(q.points) || 1), 0)
       : 20);
 
+    const hasSubjective = questionsList.some(q => q.type === 'essay' || q.type === 'fill_blank');
+    const requiresApproval = Boolean(exam.requiresManualApproval || hasSubjective);
+
     const result = { 
       examId: exam.id, 
       examTitle: exam.title || 'مسابقة بدون عنوان',
       subject: exam.subject || 'عام',
+      type: exam.type || 'formal_exam',
       grade: user.grade || 'first',
       userId: user.id,
       userName: user.fullName || 'مخدوم',
       userPhone: user.phone || '',
       answers: examAnswers,
-      autoScore, 
+      autoScore,
+      questionScores,
       totalScore: calculatedTotalScore,
-      essayPending: questionsList.some(q => q.type === 'essay'), 
+      essayPending: hasSubjective,
+      requiresApproval,
+      isApproved: !requiresApproval,
+      gradingStatus: requiresApproval ? 'pending_ai' : 'approved',
+      finalScore: requiresApproval ? null : autoScore,
       submittedAt: new Date().toLocaleTimeString('ar-EG'),
       date: new Date().toISOString().split('T')[0]
     };
 
     setExamResult(result);
     setCompletedExams(prev => ({ ...prev, [exam.id]: result }));
+    try {
+      localStorage.removeItem(`st_john_exam_draft_${user?.id || 'guest'}_${exam.id}`);
+    } catch {}
 
     try {
-      await addDoc(collection(db, 'exam_submissions'), {
+      const docRef = await addDoc(collection(db, 'exam_submissions'), {
         ...result,
         createdAt: serverTimestamp()
       });
+
+      if (requiresApproval) {
+        fetch('/api/grade-exam', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ submissionId: docRef.id, examId: exam.id })
+        }).catch(() => {});
+      }
     } catch (err) {
       console.log('Error saving exam submission to Firestore:', err);
     }
@@ -1237,7 +1269,11 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser, externa
           getGradeTitle={getGradeTitle}
           attendanceRecords={attendanceRecords}
           diaryRecords={diaryRecords}
-          availableExams={availableExams}
+          availableExams={availableExams.filter(ex => {
+            if (!ex.hideBeforeOpen) return true;
+            if (completedExams[ex.id]) return true;
+            return getExamScheduleState(ex, Date.now(), getRecordedExamStartMs(user?.id, ex.id)).isVisibleToStudent;
+          })}
           completedExams={completedExams}
           isWithinTime={isWithinTime}
           bypassTime={bypassTime}
@@ -1323,7 +1359,7 @@ export default function StudentDashboard({ user, onLogout, onUpdateUser, externa
         <StudentTasks
           user={user}
           getGradeTitle={getGradeTitle}
-          allQuizzes={availableExams.filter(ex => ex.type === 'online_quiz' || !ex.type || (ex.questions && ex.questions.length > 0))}
+          allQuizzes={availableExams.filter(ex => ex.type !== 'term_exam' && ex.type !== 'formal_exam' && (ex.type === 'online_quiz' || !ex.type || (ex.questions && ex.questions.length > 0)))}
           completedTasks={completedExams}
           onSubmitTask={handleSubmitTask}
         />

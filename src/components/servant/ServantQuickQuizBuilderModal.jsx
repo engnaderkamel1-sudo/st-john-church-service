@@ -9,6 +9,7 @@ import { compressImage } from '../../utils/imageCompressor';
 import { db } from '../../firebase';
 import { collection, addDoc, doc, updateDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { triggerServerPush } from '../../services/webPushService';
+import { toDatetimeLocalCairoValue } from '../../utils/examSchedule';
 
 export default function ServantQuickQuizBuilderModal({
   isOpen,
@@ -26,6 +27,14 @@ export default function ServantQuickQuizBuilderModal({
   const [grade, setGrade] = useState(initialGrade);
   const [deadline, setDeadline] = useState('');
   const [durationMinutes, setDurationMinutes] = useState(0); // 0 = unlimited
+  const [quizType, setQuizType] = useState('online_quiz'); // 'online_quiz' | 'formal_exam'
+  const [openAt, setOpenAt] = useState('');
+  const [closeAt, setCloseAt] = useState('');
+  const [graceMinutes, setGraceMinutes] = useState(15);
+  const [hideBeforeOpen, setHideBeforeOpen] = useState(true);
+  const [requiresManualApproval, setRequiresManualApproval] = useState(false);
+  const [suppressPublishNotification, setSuppressPublishNotification] = useState(false);
+  const [hideDuration, setHideDuration] = useState(false);
   const [questions, setQuestions] = useState([
     {
       id: 'q_1',
@@ -60,6 +69,14 @@ export default function ServantQuickQuizBuilderModal({
       }
       setDeadline(editingQuiz.deadline || '');
       setDurationMinutes(editingQuiz.durationMinutes || 0);
+      setQuizType(editingQuiz.type === 'formal_exam' || editingQuiz.type === 'term_exam' ? 'formal_exam' : 'online_quiz');
+      setOpenAt(toDatetimeLocalCairoValue(editingQuiz.openAt));
+      setCloseAt(toDatetimeLocalCairoValue(editingQuiz.closeAt));
+      setGraceMinutes(editingQuiz.graceMinutes ?? 15);
+      setHideBeforeOpen(editingQuiz.hideBeforeOpen ?? true);
+      setRequiresManualApproval(Boolean(editingQuiz.requiresManualApproval));
+      setSuppressPublishNotification(Boolean(editingQuiz.suppressPublishNotification));
+      setHideDuration(Boolean(editingQuiz.hideDuration));
       if (editingQuiz.questions && editingQuiz.questions.length > 0) {
         setQuestions(editingQuiz.questions);
       }
@@ -69,6 +86,14 @@ export default function ServantQuickQuizBuilderModal({
       setGrade(initialGrade);
       setDeadline('');
       setDurationMinutes(0);
+      setQuizType('online_quiz');
+      setOpenAt('');
+      setCloseAt('');
+      setGraceMinutes(15);
+      setHideBeforeOpen(true);
+      setRequiresManualApproval(false);
+      setSuppressPublishNotification(false);
+      setHideDuration(false);
       setQuestions([
         {
           id: 'q_1',
@@ -265,19 +290,29 @@ export default function ServantQuickQuizBuilderModal({
     setIsPublishing(targetStatus);
     const totalScore = questions.reduce((sum, q) => sum + (Number(q.points) || 0), 0);
 
+    const hasSubjective = questions.some(q => q.type === 'essay' || q.type === 'fill_blank');
+    const formatCairoInput = (val) => (val ? `${val}:00+02:00` : null);
+
     const quizData = {
       title: quizTitle.trim(),
       subject: subject || 'عام',
       grade: grade || 'first',
-      durationMinutes: Number(durationMinutes) || 0,
+      durationMinutes: hideDuration ? 0 : (Number(durationMinutes) || 0),
+      hideDuration: Boolean(hideDuration),
       deadline: deadline || null,
+      openAt: formatCairoInput(openAt),
+      closeAt: formatCairoInput(closeAt),
+      graceMinutes: Number(graceMinutes) || 0,
+      hideBeforeOpen: Boolean(hideBeforeOpen),
+      requiresManualApproval: Boolean(requiresManualApproval || hasSubjective),
+      suppressPublishNotification: Boolean(suppressPublishNotification),
       totalScore: totalScore || (questions.length * 2),
       questionsCount: questions.length,
       questions: questions.map(q => ({
         ...q,
         type: (q.type === 'multiple_choice' || q.type === 'mcq') ? 'mcq' : q.type
       })),
-      type: 'online_quiz',
+      type: quizType || 'online_quiz',
       status: targetStatus, // 'active' (متاحة للطلبة) | 'draft' (مسودة مغلقة)
       createdBy: user?.fullName || 'الخادم المسؤول',
       createdById: user?.id || null,
@@ -302,8 +337,8 @@ export default function ServantQuickQuizBuilderModal({
           onQuizPublished({ id: docRef.id, ...quizData });
         }
 
-        // Send in-app notification & Web Push to students and servants if activated
-        if (targetStatus === 'active') {
+        // Send in-app notification & Web Push to students and servants if activated and not suppressed
+        if (targetStatus === 'active' && !suppressPublishNotification) {
           try {
             const notifTitle = `📝 تم فتح تاسك جديدة: ${quizTitle.trim()}`;
             const notifBody = `تم نشر مسابقة جديدة لمرحلتكم: (${quizTitle.trim()}). آخر موعد لتسليم التاسك الخميس الساعة 12 بالليل.`;
@@ -614,14 +649,16 @@ export default function ServantQuickQuizBuilderModal({
 
             <div>
               <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                تاريخ انتهاء التسليم (اختياري)
+                نوع التقييم
               </label>
-              <input 
-                type="datetime-local"
-                value={deadline}
-                onChange={(e) => setDeadline(e.target.value)}
+              <select
+                value={quizType}
+                onChange={(e) => setQuizType(e.target.value)}
                 className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold"
-              />
+              >
+                <option value="online_quiz">مسابقة / تاسك أسبوعي</option>
+                <option value="formal_exam">امتحان رسمي</option>
+              </select>
             </div>
 
             <div>
@@ -636,6 +673,95 @@ export default function ServantQuickQuizBuilderModal({
                 onChange={(e) => setDurationMinutes(e.target.value)}
                 className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold"
               />
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                موعد الفتح التلقائي (اختياري)
+              </label>
+              <input 
+                type="datetime-local"
+                value={openAt}
+                onChange={(e) => setOpenAt(e.target.value)}
+                className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                موعد الإغلاق التلقائي (اختياري)
+              </label>
+              <input 
+                type="datetime-local"
+                value={closeAt}
+                onChange={(e) => setCloseAt(e.target.value)}
+                className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                فترة السماح بعد الإغلاق لمن بدأ مسبقاً (بالدقائق)
+              </label>
+              <input 
+                type="number"
+                min="0"
+                max="60"
+                value={graceMinutes}
+                onChange={(e) => setGraceMinutes(e.target.value)}
+                className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                تاريخ انتهاء التسليم للمسابقات (اختياري)
+              </label>
+              <input 
+                type="datetime-local"
+                value={deadline}
+                onChange={(e) => setDeadline(e.target.value)}
+                className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold"
+              />
+            </div>
+
+            <div className="sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+              <label className="flex items-center gap-2 text-[11px] font-bold text-slate-700 bg-white border border-slate-200 rounded-xl px-3 py-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={hideBeforeOpen}
+                  onChange={(e) => setHideBeforeOpen(e.target.checked)}
+                  className="accent-maroon-800 w-4 h-4"
+                />
+                <span>إخفاء تماماً عن المخدوم قبل موعد الفتح</span>
+              </label>
+              <label className="flex items-center gap-2 text-[11px] font-bold text-slate-700 bg-white border border-slate-200 rounded-xl px-3 py-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={requiresManualApproval}
+                  onChange={(e) => setRequiresManualApproval(e.target.checked)}
+                  className="accent-maroon-800 w-4 h-4"
+                />
+                <span>عدم إظهار الدرجة إلا بعد مراجعة واعتماد الخادم</span>
+              </label>
+              <label className="flex items-center gap-2 text-[11px] font-bold text-slate-700 bg-white border border-slate-200 rounded-xl px-3 py-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={suppressPublishNotification}
+                  onChange={(e) => setSuppressPublishNotification(e.target.checked)}
+                  className="accent-maroon-800 w-4 h-4"
+                />
+                <span>عدم إرسال إشعار للطلبة عند التفعيل</span>
+              </label>
+              <label className="flex items-center gap-2 text-[11px] font-bold text-slate-700 bg-white border border-slate-200 rounded-xl px-3 py-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={hideDuration}
+                  onChange={(e) => setHideDuration(e.target.checked)}
+                  className="accent-maroon-800 w-4 h-4"
+                />
+                <span>عدم عرض مدة الامتحان للمخدوم</span>
+              </label>
             </div>
           </div>
 
@@ -695,7 +821,8 @@ export default function ServantQuickQuizBuilderModal({
                     >
                       <option value="true_false">صح أو خطأ ✓/✗</option>
                       <option value="mcq">اختيار من متعدد (MCQ)</option>
-                      <option value="essay">سؤال مقالي (تصحيح خادم)</option>
+                      <option value="fill_blank">أكمل الفراغات</option>
+                      <option value="essay">سؤال مقالي (تصحيح ذكي + اعتماد خادم)</option>
                     </select>
                   </div>
 
@@ -797,8 +924,17 @@ export default function ServantQuickQuizBuilderModal({
                     </div>
                   </div>
                 ) : (
-                  <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-[11px] text-slate-500">
-                    سؤال مقالي يكتب فيه الطالب إجابته بحرية، ويظهر في لوحة الخادم لتصحيحه واعتماد درجاته.
+                  <div className="space-y-2">
+                    <span className="text-[10px] font-extrabold text-slate-500 block">
+                      نموذج الإجابة المعتمد (للتصحيح الذكي ومراجعة الخادم):
+                    </span>
+                    <textarea
+                      rows={2}
+                      value={q.correctAnswer || ''}
+                      onChange={(e) => handleUpdateQuestion(q.id, { correctAnswer: e.target.value })}
+                      placeholder="اكتب الإجابة النموذجية أو النقاط المطلوبة وتوزيع درجاتها..."
+                      className="w-full bg-emerald-50/40 border border-emerald-200 rounded-xl p-2.5 text-xs text-slate-900 font-bold focus:outline-none focus:border-emerald-600"
+                    />
                   </div>
                 )}
               </div>

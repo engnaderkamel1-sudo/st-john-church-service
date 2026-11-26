@@ -53,8 +53,8 @@ export default function ServantTasksTotals({
   const tasksList = useMemo(() => {
     const map = new Map();
 
-    // 1. Online quizzes
-    (createdExams || []).filter(e => e.type !== 'paper').forEach(e => {
+    // 1. Online quizzes (exclude paper & formal/term exams)
+    (createdExams || []).filter(e => e.type !== 'paper' && e.type !== 'formal_exam' && e.type !== 'term_exam').forEach(e => {
       map.set(e.id, {
         id: e.id,
         title: e.title || 'مسابقة أونلاين',
@@ -66,9 +66,10 @@ export default function ServantTasksTotals({
       });
     });
 
-    // 2. Weekly manual tasks from submissions
+    // 2. Weekly manual tasks from submissions (exclude formal/term exams)
+    const formalIds = new Set((createdExams || []).filter(e => e.type === 'formal_exam' || e.type === 'term_exam').map(e => e.id));
     submissions.forEach(sub => {
-      if (!sub.examId) return;
+      if (!sub.examId || sub.type === 'formal_exam' || sub.type === 'term_exam' || formalIds.has(sub.examId)) return;
       if (!map.has(sub.examId)) {
         map.set(sub.examId, {
           id: sub.examId,

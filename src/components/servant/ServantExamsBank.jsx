@@ -11,6 +11,8 @@ import ServantTasksTotals from './ServantTasksTotals';
 import { genesisQuizData } from '../../data/genesisQuizData';
 import { genesisQuizPart2Data } from '../../data/genesisQuizPart2Data';
 import { genesisQuizPart3Data } from '../../data/genesisQuizPart3Data';
+import { genesisFinalExamData } from '../../data/genesisFinalExamData';
+import { formatCairoDateTime } from '../../utils/examSchedule';
 import { triggerServerPush } from '../../services/webPushService';
 
 export default function ServantExamsBank({
@@ -139,8 +141,20 @@ export default function ServantExamsBank({
     const hasGenesis1 = rawList.some(isGen1Match);
     const hasGenesis2 = rawList.some(isGen2Match);
     const hasGenesis3 = rawList.some(isGen3Match);
+    const hasGenesisFinalExam = rawList.some(
+      ex => ex.id === genesisFinalExamData.id || (ex.title || '').trim() === genesisFinalExamData.title
+    );
 
     const merged = [...rawList];
+
+    // إضافة امتحان سفر التكوين الرسمي كمسودة مغلقة حتى التفعيل
+    if (!hasGenesisFinalExam && selectedGrade !== 'elisha') {
+      merged.push({
+        ...genesisFinalExamData,
+        createdBy: genesisFinalExamData.createdBy || 'الخادم المسؤول',
+        createdAt: genesisFinalExamData.createdAt || { seconds: Math.floor(Date.now() / 1000) }
+      });
+    }
 
     // إضافة مسابقة الأصحاحات 28 إلى 35 كمسابقة أساسية إن لم تكن مسجلة مسبقاً
     if (!hasGenesis3 && selectedGrade !== 'elisha') {
@@ -320,7 +334,12 @@ export default function ServantExamsBank({
     if (!window.confirm(`هل تريد بالتأكيد ${actionLabel}؟`)) return;
 
     try {
-      if (exam.id === genesisQuizData.id || exam.id === genesisQuizPart2Data.id || exam.id === genesisQuizPart3Data.id) {
+      if (
+        exam.id === genesisQuizData.id ||
+        exam.id === genesisQuizPart2Data.id ||
+        exam.id === genesisQuizPart3Data.id ||
+        exam.id === genesisFinalExamData.id
+      ) {
         // حفظ وتحديث الحالة المحددة في قاعدة البيانات بنفس المعرف الثابت لمنع أي تكرار
         await setDoc(doc(db, 'service_exams', exam.id), {
           ...exam,
@@ -342,8 +361,8 @@ export default function ServantExamsBank({
         setCreatedExams(prev => prev.map(e => e.id === exam.id ? { ...e, status: newStatus } : e));
       }
 
-      // If opened/activated, send notifications and Web Push to students and servants
-      if (newStatus === 'active') {
+      // If opened/activated, send notifications and Web Push unless suppressed
+      if (newStatus === 'active' && !exam.suppressPublishNotification) {
         const isFormalExam = exam.type === 'formal_exam';
         const notifTitle = isFormalExam ? `📑 تم نشر امتحان رسمي: ${exam.title}` : `📝 تم فتح تاسك جديدة: ${exam.title}`;
         const notifBody = isFormalExam
@@ -651,6 +670,23 @@ export default function ServantExamsBank({
                       <span className="bg-maroon-100 text-maroon-900 font-bold px-2 py-0.5 rounded text-[10px]">
                         {ex.subject || 'عام'}
                       </span>
+                      {(ex.type === 'formal_exam' || ex.type === 'term_exam') && (
+                        <span className="bg-indigo-100 text-indigo-900 border border-indigo-200 font-black px-2 py-0.5 rounded text-[10px]">
+                          امتحان رسمي
+                        </span>
+                      )}
+                      {ex.openAt && (
+                        <span className="bg-emerald-50 text-emerald-900 border border-emerald-200 px-2 py-0.5 rounded text-[10px] font-bold flex items-center gap-1">
+                          <Clock className="w-3 h-3 text-emerald-700" />
+                          <span>يفتح: {formatCairoDateTime(ex.openAt)}</span>
+                        </span>
+                      )}
+                      {ex.closeAt && (
+                        <span className="bg-rose-50 text-rose-900 border border-rose-200 px-2 py-0.5 rounded text-[10px] font-bold flex items-center gap-1">
+                          <Clock className="w-3 h-3 text-rose-700" />
+                          <span>يغلق: {formatCairoDateTime(ex.closeAt)}</span>
+                        </span>
+                      )}
                       {ex.deadline && (
                         <span className="bg-amber-50 text-amber-900 border border-amber-200 px-2 py-0.5 rounded text-[10px] font-bold flex items-center gap-1">
                           <Calendar className="w-3 h-3 text-amber-700" />
@@ -658,7 +694,9 @@ export default function ServantExamsBank({
                         </span>
                       )}
                       <span className="text-[11px] text-slate-500 font-bold">
-                        {ex.questions?.length ? `${ex.questions.length} أسئلة` : `${ex.questionsCount || 0} أسئلة`} • {ex.durationMinutes ? `${ex.durationMinutes} دقيقة` : 'وقت مفتوح'} • الدرجة: {ex.totalScore || 20}
+                        {ex.questions?.length ? `${ex.questions.length} أسئلة` : `${ex.questionsCount || 0} أسئلة`}
+                        {!ex.hideDuration ? (ex.durationMinutes ? ` • ${ex.durationMinutes} دقيقة` : ' • وقت مفتوح') : ''}
+                        {` • الدرجة: ${ex.totalScore || 20}`}
                       </span>
                     </div>
 

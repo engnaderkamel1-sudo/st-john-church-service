@@ -449,4 +449,123 @@ ${customInstructions ? `ملاحظات إضافية: ${customInstructions}` : ''
   return data;
 }
 
+/**
+ * تنسيق إجابة الطالب سواء كانت نصاً أو مصفوفة فراغات متعددة
+ */
+export function formatExamAnswerValue(ans) {
+  if (ans === null || ans === undefined) return '';
+  if (Array.isArray(ans)) return ans.map(a => String(a || '').trim()).filter(Boolean).join(' - ');
+  if (typeof ans === 'object') {
+    return Object.keys(ans)
+      .sort()
+      .map(k => String(ans[k] || '').trim())
+      .filter(Boolean)
+      .join(' - ');
+  }
+  return String(ans).trim();
+}
+
+/**
+ * تقييم إجابات أسئلة أكمل والمقالي بالذكاء الاصطناعي من لوحة الخادم (كاحتياطي تلقائي)
+ */
+export async function gradeExamSubmissionWithAi(exam, submission) {
+  const questions = Array.isArray(exam?.questions) ? exam.questions : [];
+  const answers = submission?.answers || {};
+
+  const aiEvaluation = {};
+  const questionScores = {};
+  const subjectiveItems = [];
+
+  for (const q of questions) {
+    const qId = q.id;
+    const maxPts = Number(q.points) || 1;
+    const isObj = q.type === 'mcq' || q.type === 'multiple_choice' || q.type === 'true_false';
+
+    if (isObj) {
+      const isCorrect = String(answers[qId] || '').trim() === String(q.correctAnswer || '').trim();
+      const pts = isCorrect ? maxPts : 0;
+      questionScores[qId] = pts;
+      aiEvaluation[qId] = {
+        score: pts,
+        maxPoints: maxPts,
+        isCorrect,
+        feedback: isCorrect ? 'إجابة صحيحة' : `الإجابة الصحيحة: ${q.correctAnswer || ''}`
+      };
+    } else {
+      const formatted = formatExamAnswerValue(answers[qId]);
+      if (!formatted) {
+        questionScores[qId] = 0;
+        aiEvaluation[qId] = {
+          score: 0,
+          maxPoints: maxPts,
+          isCorrect: false,
+          feedback: 'لم يكتب الطالب إجابة لهذا السؤال.'
+        };
+      } else {
+        subjectiveItems.push({
+          id: qId,
+          type: q.type === 'fill_blank' ? 'أكمل الفراغات' : 'سؤال مقالي',
+          questionText: q.questionText,
+          correctAnswer: q.correctAnswer || '',
+          explanation: q.explanation || '',
+          maxPoints: maxPts,
+          studentAnswer: formatted
+        });
+      }
+    }
+  }
+
+  if (subjectiveItems.length > 0) {
+    const gradingSystemInstruction = `أنت مصحح امتحانات كنسية دقيق وعادل باللغة العربية في كنيسة قبطية أرثوذكسية.
+تقوم بمقارنة إجابة المخدوم بنموذج الإجابة المعتمد لكل سؤال وتضع الدرجة العادلة من 0 إلى الدرجة القصوى للسؤال (يُسمح بأنصاف الدرجات مثل 0.5 فقط عند الإجابة الناقصة جزئياً).
+في أسئلة أكمل الفراغات: تجاوز الأخطاء الإملائية البسيطة أو الهمزات أو التاء المربوطة أو كتابة الرقم بالحروف ما دام المعنى الكتابي صحيحاً.
+في الأسئلة المقالية: قيّم الفكرة والمعنى الروحي الصحيح حتى لو عبّر الطالب بأسلوبه الخاص، ووزّع الدرجات حسب النقاط المطلوبة في النموذج.
+يجب أن يكون ردك JSON صالحاً فقط بهذا الشكل:
+{
+  "evaluations": {
+    "question_id": {
+      "score": 1,
+      "feedback": "سبب التقييم باختصار واضح"
+    }
+  }
+}`;
+
+    const prompt = `الامتحان: ${exam?.title || 'امتحان'}
+قيّم إجابات الطالب التالية بدقة مقارنة بنموذج الإجابة المعتمد والتوزيع الموضح لكل سؤال:
+
+${JSON.stringify(subjectiveItems, null, 2)}`;
+
+    const aiRes = await callGemini({ prompt, systemInstruction: gradingSystemInstruction });
+    const evals = aiRes?.evaluations || {};
+
+    for (const item of subjectiveItems) {
+      const found = evals[item.id] || {};
+      const rawScore = Number(found.score);
+      const clamped = Number.isFinite(rawScore)
+        ? Math.max(0, Math.min(item.maxPoints, Math.round(rawScore * 2) / 2))
+        : 0;
+      questionScores[item.id] = clamped;
+      aiEvaluation[item.id] = {
+        score: clamped,
+        maxPoints: item.maxPoints,
+        isCorrect: clamped >= item.maxPoints,
+        feedback: String(found.feedback || 'تم التقييم بالذكاء الاصطناعي').trim()
+      };
+    }
+  }
+
+  const aiSuggestedScore = Math.round(
+    Object.values(questionScores).reduce((sum, v) => sum + (Number(v) || 0), 0) * 2
+  ) / 2;
+
+  return {
+    aiEvaluation,
+    questionScores,
+    aiSuggestedScore,
+    gradingStatus: 'ai_graded',
+    aiGradedAt: new Date().toISOString()
+  };
+}
+
+
 

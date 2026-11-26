@@ -93,11 +93,17 @@ export default function ServantTaskPreviewModal({
                           {idx + 1}
                         </span>
                         <span className="font-bold text-[11px] text-slate-500">
-                          {isTrueFalse ? 'صح أو خطأ' : 'اختيار من متعدد'}
+                          {isTrueFalse
+                            ? 'صح أو خطأ'
+                            : q.type === 'fill_blank'
+                            ? 'أكمل الفراغات'
+                            : q.type === 'essay'
+                            ? 'سؤال مقالي'
+                            : 'اختيار من متعدد'}
                         </span>
                       </div>
                       <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 font-bold text-[10px]">
-                        {q.points || 2} درجات
+                        {q.points || 1} {Number(q.points) === 1 ? 'درجة' : 'درجات'}
                       </span>
                     </div>
 
@@ -106,31 +112,38 @@ export default function ServantTaskPreviewModal({
                       {q.questionText}
                     </p>
 
-                    {/* Options Preview */}
-                    <div className={`grid gap-2 pt-1 ${isTrueFalse ? 'grid-cols-2' : 'grid-cols-1'}`}>
-                      {options.map((opt, oIdx) => {
-                        const isCorrect = String(q.correctAnswer).trim() === String(opt).trim();
+                    {/* Options / Model Answer Preview */}
+                    {(q.type === 'fill_blank' || q.type === 'essay') ? (
+                      <div className="p-2.5 sm:p-3 rounded-xl border bg-emerald-50 border-emerald-300 text-emerald-950 text-xs font-bold space-y-1">
+                        <span className="text-[10px] font-black text-emerald-700 block">نموذج الإجابة المعتمد:</span>
+                        <p className="leading-relaxed">{q.correctAnswer || 'غير محدد'}</p>
+                      </div>
+                    ) : (
+                      <div className={`grid gap-2 pt-1 ${isTrueFalse ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                        {options.map((opt, oIdx) => {
+                          const isCorrect = String(q.correctAnswer).trim() === String(opt).trim();
 
-                        return (
-                          <div
-                            key={oIdx}
-                            className={`p-2.5 sm:p-3 rounded-xl border text-xs font-bold flex items-center justify-between transition-all ${
-                              isCorrect
-                                ? 'bg-emerald-50 border-emerald-400 text-emerald-900 font-black ring-1 ring-emerald-300'
-                                : 'bg-slate-50 border-slate-200 text-slate-700'
-                            }`}
-                          >
-                            <span>{opt}</span>
-                            {isCorrect && (
-                              <span className="flex items-center gap-1 text-[11px] text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
-                                <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
-                                <span>إجابة صحيحة</span>
-                              </span>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
+                          return (
+                            <div
+                              key={oIdx}
+                              className={`p-2.5 sm:p-3 rounded-xl border text-xs font-bold flex items-center justify-between transition-all ${
+                                isCorrect
+                                  ? 'bg-emerald-50 border-emerald-400 text-emerald-900 font-black ring-1 ring-emerald-300'
+                                  : 'bg-slate-50 border-slate-200 text-slate-700'
+                              }`}
+                            >
+                              <span>{opt}</span>
+                              {isCorrect && (
+                                <span className="flex items-center gap-1 text-[11px] text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
+                                  <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
+                                  <span>إجابة صحيحة</span>
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
 
                     {/* Optional Explanation */}
                     {q.explanation && (
