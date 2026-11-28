@@ -821,14 +821,16 @@ https://st-john-church-service-rust.vercel.app/
                           </span>
                         </button>
 
-                        {item.role === 'student' && onSelectStudent && (
+                        {onSelectStudent && (
                           <button
                             type="button"
                             onClick={() => onSelectStudent(item)}
                             className="w-full min-h-[44px] bg-gradient-to-r from-maroon-900 via-maroon-800 to-maroon-900 text-white rounded-xl font-bold text-xs shadow-xs flex items-center justify-center gap-2 cursor-pointer active:scale-95 ring-1 ring-gold-400/40"
                           >
                             <Eye className="w-4 h-4 text-gold-300" />
-                            <span>عرض الملف الشامل للمخدوم (360°) 🔍</span>
+                            <span>
+                              {item.role === 'student' ? 'عرض الملف الشامل للمخدوم (360°) 🔍' : 'عرض الملف الشامل للخادم (360°) 🔍'}
+                            </span>
                           </button>
                         )}
                       </div>
@@ -942,12 +944,13 @@ https://st-john-church-service-rust.vercel.app/
                             </div>
                           </td>
                           <td className="py-3.5 px-2 text-center">
-                            {item.role === 'student' && onSelectStudent ? (
+                            {onSelectStudent ? (
+                              <div className="flex flex-col items-center gap-1">
                               <button
                                 type="button"
                                 onClick={() => onSelectStudent(item)}
                                 className="px-2.5 py-1.5 bg-gradient-to-r from-maroon-800 to-maroon-900 hover:from-maroon-900 hover:to-maroon-950 text-white rounded-xl font-bold text-[11px] shadow-2xs flex items-center gap-1.5 transition-all cursor-pointer ring-1 ring-gold-400/30 active:scale-95"
-                                title="عرض الملف الشامل للمخدوم"
+                                title="عرض الملف الشامل (360°)"
                               >
                                 <Eye className="w-3.5 h-3.5 text-gold-300" />
                                 <span>الملف 360°</span>
@@ -964,6 +967,7 @@ https://st-john-church-service-rust.vercel.app/
                                 <Edit3 className="w-3 h-3" />
                                 <span>{getMissingProfileFields(item).isComplete ? 'تعديل' : 'ناقص'}</span>
                               </button>
+                              </div>
                             ) : (
                               <button
                                 type="button"

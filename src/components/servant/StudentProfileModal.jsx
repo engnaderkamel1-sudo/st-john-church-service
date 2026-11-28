@@ -7,8 +7,20 @@ import {
 import { db } from '../../firebase';
 import { collection, query, where, onSnapshot, doc, updateDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import StudentOfficialReportCard from './StudentOfficialReportCard';
+import { checkIsAppAdmin } from '../../utils/security';
 
 export default function StudentProfileModal({ student, onClose, getGradeTitle }) {
+  const isServantAccount = Boolean(student?.role && student.role !== 'student');
+  const isAdminProfile = checkIsAppAdmin(student);
+  const roleLabel = isServantAccount ? 'الخادم' : 'المخدوم';
+  const roleBadgeText = isAdminProfile
+    ? 'مشرف التطبيق 👑'
+    : student?.role === 'servant_leader'
+    ? 'أمين خدمة 🛡️'
+    : isServantAccount
+    ? 'خادم عام ✝️'
+    : (getGradeTitle ? getGradeTitle(student?.grade || 'first') : (student?.grade || 'الأولى'));
+
   const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'attendance' | 'exams' | 'diary' | 'notes'
   const [attendanceRecords, setAttendanceRecords] = useState([]);
   const [examSubmissions, setExamSubmissions] = useState([]);
@@ -51,9 +63,9 @@ export default function StudentProfileModal({ student, onClose, getGradeTitle })
       const docId = `${student.id}_${backfillDate}`;
       await setDoc(doc(db, 'spiritual_diaries', docId), {
         userId: student.id,
-        userName: student.fullName || 'مخدوم',
-        userRole: 'student',
-        grade: student.grade || 'first',
+        userName: student.fullName || roleLabel,
+        userRole: student.role || 'student',
+        grade: isServantAccount ? '' : (student.grade || 'first'),
         date: backfillDate,
         month: backfillDate.substring(0, 7),
         year: new Date(backfillDate).getFullYear(),
@@ -83,6 +95,14 @@ export default function StudentProfileModal({ student, onClose, getGradeTitle })
 
   useEffect(() => {
     if (!student?.id) return;
+
+    setCommentText(student?.comment || '');
+    const joinVal = student?.serviceJoinDate || student?.joinDate || '2026-10-02';
+    setServiceJoinDate(joinVal);
+    setTempJoinDate(joinVal);
+    if (student?.role && student.role !== 'student') {
+      setActiveTab((prev) => (prev === 'exams' ? 'overview' : prev));
+    }
 
     setLoading(true);
 
@@ -247,7 +267,7 @@ export default function StudentProfileModal({ student, onClose, getGradeTitle })
               type="button"
               onClick={() => setIsEnlargedPhotoOpen(true)}
               className="relative w-14 h-14 sm:w-16 sm:h-16 min-w-[56px] min-h-[56px] max-w-[56px] max-h-[56px] sm:min-w-[64px] sm:min-h-[64px] sm:max-w-[64px] sm:max-h-[64px] rounded-2xl bg-white/10 border-2 border-gold-400/40 text-gold-300 flex items-center justify-center font-bold text-xl shadow-xs overflow-hidden shrink-0 cursor-pointer active:scale-95 group transition-transform"
-              title="عرض صورة المخدوم"
+              title={`عرض صورة ${roleLabel}`}
             >
               {student.photoUrl ? (
                 <img src={student.photoUrl} alt={student.fullName} className="w-full h-full object-cover object-top" />
@@ -262,7 +282,7 @@ export default function StudentProfileModal({ student, onClose, getGradeTitle })
               <div className="flex items-center gap-2 flex-wrap">
                 <h3 className="text-base sm:text-lg font-extrabold text-white truncate max-w-[200px] sm:max-w-none">{student.fullName}</h3>
                 <span className="text-[10px] bg-gold-400 text-maroon-950 px-2 py-0.5 rounded-full font-bold shrink-0">
-                  {getGradeTitle ? getGradeTitle(student?.grade || 'first') : (student?.grade || 'الأولى')}
+                  {roleBadgeText}
                 </span>
               </div>
               <div className="flex flex-wrap items-center gap-2 text-xs text-slate-300 mt-1">
@@ -323,14 +343,16 @@ export default function StudentProfileModal({ student, onClose, getGradeTitle })
           >
             الحضور ({totalDaysPresent})
           </button>
-          <button
-            onClick={() => setActiveTab('exams')}
-            className={`py-2 px-3 rounded-xl transition-all cursor-pointer whitespace-nowrap shrink-0 ${
-              activeTab === 'exams' ? 'bg-maroon-800 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
-            }`}
-          >
-            الامتحانات ({totalExamsSolved})
-          </button>
+          {!isServantAccount && (
+            <button
+              onClick={() => setActiveTab('exams')}
+              className={`py-2 px-3 rounded-xl transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+                activeTab === 'exams' ? 'bg-maroon-800 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
+              }`}
+            >
+              الامتحانات ({totalExamsSolved})
+            </button>
+          )}
           <button
             onClick={() => setActiveTab('diary')}
             className={`py-2 px-3 rounded-xl transition-all cursor-pointer whitespace-nowrap shrink-0 ${
@@ -345,7 +367,7 @@ export default function StudentProfileModal({ student, onClose, getGradeTitle })
               activeTab === 'notes' ? 'bg-maroon-800 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
             }`}
           >
-            تقييم الخادم ✍️
+            {isServantAccount ? 'ملاحظات القيادة ✍️' : 'تقييم الخادم ✍️'}
           </button>
         </div>
 
@@ -489,7 +511,9 @@ export default function StudentProfileModal({ student, onClose, getGradeTitle })
 
               {commentText && (
                 <div className="bg-slate-50 border border-slate-200/80 p-3 rounded-2xl text-xs text-slate-600 flex items-center gap-2">
-                  <span className="font-extrabold text-slate-800 shrink-0">ملاحظة الخادم:</span>
+                  <span className="font-extrabold text-slate-800 shrink-0">
+                    {isServantAccount ? 'ملاحظة القيادة:' : 'ملاحظة الخادم:'}
+                  </span>
                   <span className="font-medium italic truncate">"{commentText}"</span>
                 </div>
               )}
@@ -498,14 +522,16 @@ export default function StudentProfileModal({ student, onClose, getGradeTitle })
               <div className="bg-white border border-slate-200 rounded-2xl p-4 space-y-4">
                 <h4 className="text-xs font-extrabold text-slate-900 flex items-center gap-2">
                   <User className="w-4 h-4 text-maroon-800" />
-                  <span>البيانات الشاملة للمخدوم:</span>
+                  <span>البيانات الشاملة لل{isServantAccount ? 'خادم' : 'مخدوم'}:</span>
                 </h4>
                 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
                   <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 flex items-center justify-between">
-                    <span className="text-slate-500 font-medium">السنة الدراسية / المرحلة:</span>
+                    <span className="text-slate-500 font-medium">
+                      {isServantAccount ? 'الصفة في الخدمة:' : 'السنة الدراسية / المرحلة:'}
+                    </span>
                     <strong className="text-maroon-900 bg-maroon-50 px-2.5 py-0.5 rounded-lg border border-maroon-200 font-extrabold">
-                      {getGradeTitle ? getGradeTitle(student?.grade || 'first') : (student?.grade || 'الأولى')}
+                      {roleBadgeText}
                     </strong>
                   </div>
 
@@ -598,7 +624,7 @@ export default function StudentProfileModal({ student, onClose, getGradeTitle })
 
               {/* Recent Activity Mini-List */}
               <div className="space-y-2">
-                <h4 className="text-xs font-extrabold text-slate-900">آخر أنشطة مسجلة للمخدوم:</h4>
+                <h4 className="text-xs font-extrabold text-slate-900">آخر أنشطة مسجلة لل{isServantAccount ? 'خادم' : 'مخدوم'}:</h4>
                 <div className="border border-slate-200 rounded-2xl divide-y divide-slate-100 text-xs bg-white">
                   <div className="p-3 flex items-center justify-between">
                     <span className="text-slate-700">آخر حضور بالكنيسة:</span>
@@ -606,12 +632,14 @@ export default function StudentProfileModal({ student, onClose, getGradeTitle })
                       {attendanceRecords[0] ? `${attendanceRecords[0].date} (${attendanceRecords[0].method === 'manual_servant' ? 'تسجيل خادم' : 'مسح QR'})` : 'لم يسجل حضور بعد'}
                     </span>
                   </div>
-                  <div className="p-3 flex items-center justify-between">
-                    <span className="text-slate-700">آخر اختبار قام بحله:</span>
-                    <span className="font-bold text-amber-800">
-                      {examSubmissions[0] ? `${examSubmissions[0].examTitle} (تم التسليم بنجاح ✓)` : 'لا توجد اختبارات مسلّمة'}
-                    </span>
-                  </div>
+                  {!isServantAccount && (
+                    <div className="p-3 flex items-center justify-between">
+                      <span className="text-slate-700">آخر اختبار قام بحله:</span>
+                      <span className="font-bold text-amber-800">
+                        {examSubmissions[0] ? `${examSubmissions[0].examTitle} (تم التسليم بنجاح ✓)` : 'لا توجد اختبارات مسلّمة'}
+                      </span>
+                    </div>
+                  )}
                   <div className="p-3 flex items-center justify-between">
                     <span className="text-slate-700">آخر تسجيل نوتة روحية:</span>
                     <span className="font-bold text-purple-800">
@@ -633,7 +661,7 @@ export default function StudentProfileModal({ student, onClose, getGradeTitle })
 
               {attendanceRecords.length === 0 ? (
                 <div className="text-center py-10 bg-slate-50 border border-dashed border-slate-200 rounded-2xl p-4 text-xs text-slate-400 font-bold">
-                  لم يتم تسجيل أي سجل حضور أو غياب لهذا المخدوم حتى الآن.
+                  لم يتم تسجيل أي سجل حضور أو غياب لهذا {roleLabel} حتى الآن.
                 </div>
               ) : (
                 <div className="border border-slate-200 rounded-2xl divide-y divide-slate-100 text-xs max-h-72 overflow-y-auto">
@@ -764,7 +792,7 @@ export default function StudentProfileModal({ student, onClose, getGradeTitle })
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
                     <Sun className="w-4 h-4 text-amber-500" />
-                    <span>رصد يومية للمخدوم (بأثر رجعي):</span>
+                    <span>رصد يومية لل{isServantAccount ? 'خادم' : 'مخدوم'} (بأثر رجعي):</span>
                   </span>
                   <button
                     type="button"
@@ -821,10 +849,10 @@ export default function StudentProfileModal({ student, onClose, getGradeTitle })
                       {backfillSaved ? (
                         <>
                           <Check className="w-4 h-4" />
-                          <span>تم تسجيل اليومية للمخدوم بنجاح ✓</span>
+                          <span>تم تسجيل اليومية لل{isServantAccount ? 'خادم' : 'مخدوم'} بنجاح ✓</span>
                         </>
                       ) : (
-                        <span>{isSavingBackfill ? 'جاري الحفظ...' : 'حفظ اليومية في سجل المخدوم ✓'}</span>
+                        <span>{isSavingBackfill ? 'جاري الحفظ...' : `حفظ اليومية في سجل ${roleLabel} ✓`}</span>
                       )}
                     </button>
                   </div>
@@ -834,7 +862,7 @@ export default function StudentProfileModal({ student, onClose, getGradeTitle })
               <div className="border border-slate-200 rounded-2xl divide-y divide-slate-100 text-xs max-h-60 overflow-y-auto">
                 {diaries.length === 0 ? (
                   <div className="text-center py-8 text-slate-400 text-xs font-bold">
-                    لم يسجل المخدوم نوتته الروحية بعد.
+                    لم يسجل {roleLabel} نوتته الروحية بعد.
                   </div>
                 ) : (
                   diaries.map(d => (
@@ -860,13 +888,13 @@ export default function StudentProfileModal({ student, onClose, getGradeTitle })
             <div className="space-y-3">
               <h4 className="text-xs font-extrabold text-slate-900 flex items-center gap-1.5">
                 <MessageSquare className="w-4 h-4 text-maroon-800" />
-                <span>ملاحظات الخادم وتقييم ترشيح إعداد خدام:</span>
+                <span>{isServantAccount ? 'ملاحظات القيادة وتقييم الخدمة:' : 'ملاحظات الخادم وتقييم ترشيح إعداد خدام:'}</span>
               </h4>
               <textarea
                 rows={4}
                 value={commentText}
                 onChange={(e) => setCommentText(e.target.value)}
-                placeholder="اكتب تقييمك للمخدوم: مستوى التزامه، اهتمامه الروحي، ملاحظات الافتقاد، أو ترشيحه لدخول إعداد خدام..."
+                placeholder={isServantAccount ? 'اكتب ملاحظات الخدمة والمتابعة الخاصة بالخادم...' : 'اكتب تقييمك للمخدوم: مستوى التزامه، اهتمامه الروحي، ملاحظات الافتقاد، أو ترشيحه لدخول إعداد خدام...'}
                 className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-3 text-xs text-slate-800 focus:outline-none focus:border-maroon-800 focus:bg-white transition-all"
               />
               <button
@@ -885,7 +913,7 @@ export default function StudentProfileModal({ student, onClose, getGradeTitle })
                 ) : (
                   <>
                     <Save className="w-4 h-4" />
-                    <span>{isSavingComment ? 'جاري الحفظ...' : 'حفظ التقييم والملاحظة في ملف المخدوم'}</span>
+                    <span>{isSavingComment ? 'جاري الحفظ...' : `حفظ التقييم والملاحظة في ملف ${roleLabel}`}</span>
                   </>
                 )}
               </button>
@@ -942,7 +970,7 @@ export default function StudentProfileModal({ student, onClose, getGradeTitle })
             <div className="text-center w-full">
               <h3 className="text-base sm:text-lg font-black text-white">{student.fullName}</h3>
               <span className="text-xs text-gold-300 font-bold block mt-0.5">
-                {getGradeTitle ? getGradeTitle(student?.grade || 'first') : (student?.grade || 'الأولى')}
+                {roleBadgeText}
               </span>
             </div>
           </div>
