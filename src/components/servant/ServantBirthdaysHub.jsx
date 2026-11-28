@@ -1,12 +1,25 @@
 import React, { useState, useMemo } from 'react';
-import { Cake, Calendar, Gift, Users, User, Search, Sparkles, AlertCircle, Phone, MessageCircle, Bell, Send, CheckCircle2, Loader2 } from 'lucide-react';
+import { Cake, Calendar, Gift, Users, User, Search, Sparkles, AlertCircle, Phone, MessageCircle, Bell, Send, CheckCircle2, Loader2, Edit3, ChevronDown, ChevronUp } from 'lucide-react';
+import ServantProfileEditModal from './ServantProfileEditModal';
+import { getMissingProfileFields, formatWhatsAppPhone } from '../../utils/profileCompleteness';
 
-export default function ServantBirthdaysHub({ allUsers = [], getGradeTitle, onSelectStudent }) {
+export default function ServantBirthdaysHub({
+  allUsers = [],
+  getGradeTitle,
+  onSelectStudent,
+  currentUser,
+  isAppAdmin = false,
+  isServantLeader = false,
+  fetchAllUsers,
+  onUpdateUser
+}) {
   const [filterType, setFilterType] = useState('all'); // 'all' | 'servants' | 'students'
   const [stageFilter, setStageFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [isPushing, setIsPushing] = useState(false);
   const [pushFeedback, setPushFeedback] = useState(null);
+  const [showMissingList, setShowMissingList] = useState(false);
+  const [editingBirthUser, setEditingBirthUser] = useState(null);
 
   // Servants with Web Push subscription
   const servantsWithPushCount = useMemo(() => {
@@ -125,6 +138,42 @@ export default function ServantBirthdaysHub({ allUsers = [], getGradeTitle, onSe
   const todayBirthdays = filteredUsers.filter(u => u.isToday);
   const upcoming3Days = filteredUsers.filter(u => u.isWithin3Days);
   const remainingBirthdays = filteredUsers.filter(u => !u.isToday && !u.isWithin3Days);
+
+  // Active users without birthDate (matching current filters & search)
+  const missingBirthDateUsers = useMemo(() => {
+    return allUsers
+      .filter(u => {
+        if (!u || u.status === 'inactive' || u.status === 'rejected' || u.status === 'pending_approval') {
+          return false;
+        }
+        if (!getMissingProfileFields(u).hasMissingBirthDate) return false;
+
+        if (filterType === 'servants' && u.role === 'student') return false;
+        if (filterType === 'students' && u.role !== 'student') return false;
+        if (filterType === 'students' && stageFilter !== 'all' && u.grade !== stageFilter) {
+          return false;
+        }
+
+        if (searchQuery.trim()) {
+          const q = searchQuery.toLowerCase().trim();
+          const nameMatch = (u.fullName || '').toLowerCase().includes(q);
+          const phoneMatch = (u.phone || '').includes(q);
+          return nameMatch || phoneMatch;
+        }
+        return true;
+      })
+      .sort((a, b) => {
+        const aIsServant = a.role !== 'student' ? 0 : 1;
+        const bIsServant = b.role !== 'student' ? 0 : 1;
+        if (aIsServant !== bIsServant) return aIsServant - bIsServant;
+        return (a.fullName || '').localeCompare(b.fullName || '', 'ar');
+      });
+  }, [allUsers, filterType, stageFilter, searchQuery]);
+
+  const getWhatsAppCompleteDataMessage = (u) => {
+    const name = u?.fullName ? u.fullName.trim() : 'يا غالي';
+    return `سلام ونعمة يا ${name}،\nبرجاء الدخول على منصة الخدمة واستكمال بيانات حسابك (وخاصة تاريخ الميلاد) من خلال الضغط على اسمك أعلى الشاشة ثم اختيار «حفظ تعديلات الحساب»:\nhttps://st-john-church-service-rust.vercel.app/\n\nخدمة مباركة! ✝️`;
+  };
 
   const getRoleBadge = (u) => {
     if (u.role === 'admin') return <span className="text-[10px] bg-red-100 text-red-900 border border-red-200 px-2 py-0.5 rounded-full font-bold">مسؤول 👑</span>;
@@ -282,6 +331,95 @@ export default function ServantBirthdaysHub({ allUsers = [], getGradeTitle, onSe
           </div>
         )}
       </div>
+
+      {/* Missing BirthDate Section */}
+      {missingBirthDateUsers.length > 0 && (
+        <div className="bg-amber-50/90 border border-amber-300 rounded-2xl p-3.5 sm:p-4 space-y-3 shadow-2xs">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-8 h-8 rounded-xl bg-amber-100 border border-amber-300 text-amber-800 flex items-center justify-center shrink-0">
+                <AlertCircle className="w-4 h-4" />
+              </div>
+              <div className="min-w-0">
+                <h3 className="text-xs sm:text-sm font-extrabold text-maroon-950">
+                  حسابات بدون تاريخ ميلاد ({missingBirthDateUsers.length})
+                </h3>
+                <p className="text-[11px] text-slate-600">
+                  لا تظهر في تنبيهات أعياد الميلاد لحين تسجيل التاريخ
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setShowMissingList((prev) => !prev)}
+              className="min-h-[38px] px-3 py-1.5 bg-white hover:bg-amber-100 text-maroon-900 border border-amber-300 rounded-xl text-xs font-bold inline-flex items-center gap-1.5 transition-colors cursor-pointer shrink-0"
+            >
+              <span>{showMissingList ? 'إخفاء القائمة' : 'عرض واستكمال'}</span>
+              {showMissingList ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            </button>
+          </div>
+
+          {showMissingList && (
+            <div className="bg-white border border-amber-200 rounded-2xl divide-y divide-slate-100 overflow-hidden">
+              {missingBirthDateUsers.map((u) => {
+                const canEditThisUser = isAppAdmin || isServantLeader || u.id === currentUser?.id;
+                const cleanWaPhone = formatWhatsAppPhone(u.phone);
+                return (
+                  <div
+                    key={u.id}
+                    className="p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 hover:bg-slate-50/70 transition-colors"
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="w-9 h-9 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center font-bold text-xs overflow-hidden shrink-0 border border-slate-200">
+                        {u.photoUrl ? (
+                          <img src={u.photoUrl} alt={u.fullName} className="w-full h-full object-cover" />
+                        ) : (
+                          <span>{u.fullName ? u.fullName[0] : '؟'}</span>
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <h4 className="font-bold text-xs text-slate-900 truncate">{u.fullName || 'بدون اسم'}</h4>
+                        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                          {getRoleBadge(u)}
+                          {u.phone && (
+                            <span className="text-[10px] text-slate-400 font-mono" dir="ltr">{u.phone}</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-auto">
+                      {cleanWaPhone && (
+                        <a
+                          href={`https://wa.me/${cleanWaPhone}?text=${encodeURIComponent(getWhatsAppCompleteDataMessage(u))}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="min-h-[36px] px-2.5 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-600 text-emerald-700 hover:text-white border border-emerald-200 text-[11px] font-bold inline-flex items-center gap-1 transition-all"
+                          title="تذكير عبر واتساب لاستكمال البيانات"
+                        >
+                          <MessageCircle className="w-3.5 h-3.5" />
+                          <span>تذكير واتساب</span>
+                        </a>
+                      )}
+                      {canEditThisUser && (
+                        <button
+                          type="button"
+                          onClick={() => setEditingBirthUser(u)}
+                          className="min-h-[36px] px-3 py-1.5 rounded-xl bg-maroon-800 hover:bg-maroon-900 text-white text-[11px] font-bold inline-flex items-center gap-1 transition-all cursor-pointer active:scale-95"
+                        >
+                          <Edit3 className="w-3.5 h-3.5 text-gold-300" />
+                          <span>إضافة الميلاد</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* 1. TODAY'S BIRTHDAYS (Prominent Celebration Card) */}
       {todayBirthdays.length > 0 && (
@@ -511,6 +649,19 @@ export default function ServantBirthdaysHub({ allUsers = [], getGradeTitle, onSe
           </div>
         )}
       </div>
+
+      {editingBirthUser && (
+        <ServantProfileEditModal
+          targetUser={editingBirthUser}
+          onClose={() => setEditingBirthUser(null)}
+          onSaved={(updatedUser) => {
+            if (updatedUser?.id === currentUser?.id && onUpdateUser) {
+              onUpdateUser(updatedUser);
+            }
+            if (fetchAllUsers) fetchAllUsers();
+          }}
+        />
+      )}
     </div>
   );
 }

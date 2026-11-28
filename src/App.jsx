@@ -7,7 +7,7 @@ import ServantDashboard from './components/ServantDashboard';
 import AutoUpdateWatcher from './components/common/AutoUpdateWatcher';
 import ErrorBoundary from './components/common/ErrorBoundary';
 
-import { collection, query, where, onSnapshot, orderBy, doc, deleteDoc } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, orderBy, doc, deleteDoc, getDoc } from 'firebase/firestore';
 import { checkIsAppAdmin } from './utils/security';
 import { playNotificationChime, triggerBrowserNotification, formatNotificationTime, getNotificationTimestamp, getNotificationTypeInfo } from './utils/notificationSystem';
 import { registerServiceWorkerAndSubscribe } from './services/webPushService';
@@ -374,9 +374,27 @@ export default function App() {
     }
   }, []);
 
-  // تتبع النشاط التلقائي ونبض التواجد الحي للمستخدم النشط
+  // تتبع النشاط التلقائي ونبض التواجد الحي للمستخدم النشط + مزامنة بيانات الحساب من قاعدة البيانات
   useEffect(() => {
     if (!currentUser || !currentUser.id) return;
+
+    let cancelled = false;
+    getDoc(doc(db, 'users', currentUser.id))
+      .then((snap) => {
+        if (cancelled || !snap.exists()) return;
+        const freshData = { id: snap.id, ...snap.data() };
+        setCurrentUser((prev) => {
+          if (!prev) return prev;
+          const merged = { ...prev, ...freshData };
+          try {
+            localStorage.setItem('church_user', JSON.stringify(merged));
+          } catch (e) {
+            // ignore storage quota errors
+          }
+          return merged;
+        });
+      })
+      .catch(() => {});
 
     recordUserSession(currentUser);
     sendPresenceHeartbeat(currentUser);
@@ -385,8 +403,26 @@ export default function App() {
       sendPresenceHeartbeat(currentUser);
     }, 2.5 * 60 * 1000);
 
-    return () => clearInterval(interval);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
   }, [currentUser?.id]);
+
+  const handleUpdateCurrentUser = (updated) => {
+    setCurrentUser((prev) => {
+      if (!prev) return prev;
+      const cleanUpdated = { ...updated };
+      delete cleanUpdated.updatedAt;
+      const merged = { ...prev, ...cleanUpdated };
+      try {
+        localStorage.setItem('church_user', JSON.stringify(merged));
+      } catch (e) {
+        // ignore storage quota errors
+      }
+      return merged;
+    });
+  };
 
   const handleLoginSuccess = (user) => {
     setCurrentUser(user);
@@ -906,7 +942,7 @@ export default function App() {
                   key={`student_${effectiveRole}`}
                   user={emulatedStudent} 
                   onLogout={handleLogout}
-                  onUpdateUser={(updated) => setCurrentUser(prev => ({ ...prev, ...updated }))}
+                  onUpdateUser={handleUpdateCurrentUser}
                   externalMenuTrigger={mobileMenuTrigger}
                 />
               );
@@ -924,7 +960,7 @@ export default function App() {
                 key={`servant_${effectiveRole}`}
                 user={emulatedUser} 
                 onLogout={handleLogout}
-                onUpdateUser={(updated) => setCurrentUser(prev => ({ ...prev, ...updated }))}
+                onUpdateUser={handleUpdateCurrentUser}
                 externalMenuTrigger={mobileMenuTrigger}
                 navTarget={adminNavTarget}
               />

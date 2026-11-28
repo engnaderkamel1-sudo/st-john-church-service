@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Users, History, RefreshCw, Activity, UserPlus, UserX, Check, Sparkles, Key, ExternalLink, Save, Eye, EyeOff, Lock, X, CheckCircle2, ShieldAlert, UserCheck, AlertCircle, PauseCircle, Ban, RotateCcw, Calendar, MessageCircle, Send, Trash2, Clock, Bell } from 'lucide-react';
+import { Users, History, RefreshCw, Activity, UserPlus, UserX, Check, Sparkles, Key, ExternalLink, Save, Eye, EyeOff, Lock, X, CheckCircle2, ShieldAlert, UserCheck, AlertCircle, PauseCircle, Ban, RotateCcw, Calendar, MessageCircle, Send, Trash2, Clock, Bell, Edit3 } from 'lucide-react';
+import ServantProfileEditModal from './ServantProfileEditModal';
+import { getMissingProfileFields } from '../../utils/profileCompleteness';
 import { getGeminiApiKey, saveGeminiApiKey } from '../../services/geminiService';
 import { db } from '../../firebase';
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
@@ -35,7 +37,8 @@ export default function ServantUsersHub({
   handleUpdateUserStatus,
   handleDeleteUserPermanently,
   roleUpdatingId,
-  onSelectStudent
+  onSelectStudent,
+  onUpdateUser
 }) {
   const [apiKeyInput, setApiKeyInput] = useState('');
   const [apiKeyLoading, setApiKeyLoading] = useState(false);
@@ -44,6 +47,7 @@ export default function ServantUsersHub({
 
   // Admin User Password Reset States
   const [resettingUser, setResettingUser] = useState(null);
+  const [editingProfileUser, setEditingProfileUser] = useState(null);
   const [newPassInput, setNewPassInput] = useState('');
   const [resetPassLoading, setResetPassLoading] = useState(false);
   const [resetPassSuccess, setResetPassSuccess] = useState(false);
@@ -568,6 +572,16 @@ https://st-john-church-service-rust.vercel.app/
                                 </span>
                               )}
                             </div>
+                            {(() => {
+                              const profileCheck = getMissingProfileFields(item);
+                              if (profileCheck.isComplete) return null;
+                              return (
+                                <span className="inline-flex items-center gap-1 text-[10px] bg-amber-50 text-amber-800 border border-amber-300 px-2 py-0.5 rounded-full font-bold mt-1">
+                                  <AlertCircle className="w-3 h-3 text-amber-600" />
+                                  <span>{profileCheck.hasMissingBirthDate ? 'بدون تاريخ ميلاد' : 'بيانات ناقصة'}</span>
+                                </span>
+                              );
+                            })()}
                             <span className="text-xs text-slate-500 font-mono block mt-0.5" dir="ltr">{item.phone}</span>
                             {item.email && (
                               <span className="text-[10px] text-slate-400 font-mono block truncate max-w-[200px]" dir="ltr">{item.email}</span>
@@ -792,6 +806,21 @@ https://st-john-church-service-rust.vercel.app/
                           </div>
                         )}
 
+                        <button
+                          type="button"
+                          onClick={() => setEditingProfileUser(item)}
+                          className={`w-full min-h-[44px] rounded-xl font-bold text-xs shadow-2xs flex items-center justify-center gap-2 cursor-pointer active:scale-95 border transition-all ${
+                            getMissingProfileFields(item).isComplete
+                              ? 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
+                              : 'bg-amber-50 hover:bg-amber-100 text-amber-900 border-amber-300'
+                          }`}
+                        >
+                          <Edit3 className="w-4 h-4 text-maroon-800" />
+                          <span>
+                            {getMissingProfileFields(item).isComplete ? 'تعديل البيانات الشخصية' : 'استكمال البيانات الناقصة'}
+                          </span>
+                        </button>
+
                         {item.role === 'student' && onSelectStudent && (
                           <button
                             type="button"
@@ -869,6 +898,16 @@ https://st-john-church-service-rust.vercel.app/
                                 {item.email && (
                                   <span className="text-[10px] text-slate-400 block font-normal font-mono" dir="ltr">{item.email}</span>
                                 )}
+                                {(() => {
+                                  const profileCheck = getMissingProfileFields(item);
+                                  if (profileCheck.isComplete) return null;
+                                  return (
+                                    <span className="inline-flex items-center gap-1 text-[10px] bg-amber-50 text-amber-800 border border-amber-300 px-2 py-0.5 rounded-full font-bold mt-1">
+                                      <AlertCircle className="w-3 h-3 text-amber-600" />
+                                      <span>{profileCheck.hasMissingBirthDate ? 'بدون تاريخ ميلاد' : 'بيانات ناقصة'}</span>
+                                    </span>
+                                  );
+                                })()}
                                 {isAppAdmin && (() => {
                                   const act = getRelativeActivityInfo(item);
                                   return (
@@ -913,8 +952,32 @@ https://st-john-church-service-rust.vercel.app/
                                 <Eye className="w-3.5 h-3.5 text-gold-300" />
                                 <span>الملف 360°</span>
                               </button>
+                              <button
+                                type="button"
+                                onClick={() => setEditingProfileUser(item)}
+                                className={`mt-1 px-2.5 py-1 rounded-lg font-bold text-[10px] border flex items-center gap-1 mx-auto cursor-pointer transition-all ${
+                                  getMissingProfileFields(item).isComplete
+                                    ? 'bg-slate-50 hover:bg-slate-100 text-slate-600 border-slate-200'
+                                    : 'bg-amber-50 hover:bg-amber-100 text-amber-900 border-amber-300'
+                                }`}
+                              >
+                                <Edit3 className="w-3 h-3" />
+                                <span>{getMissingProfileFields(item).isComplete ? 'تعديل' : 'ناقص'}</span>
+                              </button>
                             ) : (
-                              <span className="text-slate-300 text-[10px]">—</span>
+                              <button
+                                type="button"
+                                onClick={() => setEditingProfileUser(item)}
+                                className={`px-2.5 py-1.5 rounded-xl font-bold text-[11px] border flex items-center gap-1.5 mx-auto cursor-pointer transition-all active:scale-95 ${
+                                  getMissingProfileFields(item).isComplete
+                                    ? 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
+                                    : 'bg-amber-50 hover:bg-amber-100 text-amber-900 border-amber-300'
+                                }`}
+                                title="تعديل البيانات الشخصية وتاريخ الميلاد"
+                              >
+                                <Edit3 className="w-3.5 h-3.5 text-maroon-800" />
+                                <span>{getMissingProfileFields(item).isComplete ? 'تعديل البيانات' : 'استكمال البيانات'}</span>
+                              </button>
                             )}
                           </td>
                           <td className="py-3.5 px-3 font-mono text-slate-600" dir="ltr">{item.phone}</td>
@@ -1766,6 +1829,20 @@ https://st-john-church-service-rust.vercel.app/
             </div>
           </div>
         </div>
+      )}
+
+      {/* Modal: Edit User Profile (Servants & Students) */}
+      {editingProfileUser && (
+        <ServantProfileEditModal
+          targetUser={editingProfileUser}
+          onClose={() => setEditingProfileUser(null)}
+          onSaved={(updatedUser) => {
+            if (updatedUser?.id === user?.id && onUpdateUser) {
+              onUpdateUser(updatedUser);
+            }
+            if (fetchAllUsers) fetchAllUsers();
+          }}
+        />
       )}
 
       {/* Modal: WhatsApp Custom Message Approval */}

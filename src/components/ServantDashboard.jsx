@@ -36,6 +36,7 @@ import ServantNotificationsHub from './servant/ServantNotificationsHub';
 import ServantBackupsHub from './servant/ServantBackupsHub';
 import StageRegulationsModal from './common/StageRegulationsModal';
 import UserProfileModal from './common/UserProfileModal';
+import IncompleteProfileBanner from './common/IncompleteProfileBanner';
 import AppSupportToolsDrawerSection from './common/AppSupportToolsDrawerSection';
 import { triggerServerPush } from '../services/webPushService';
 import { calculateAttendancePoints, DEFAULT_STAGE_REGULATIONS } from '../utils/regulationsService';
@@ -73,6 +74,7 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
   const [tasksHubSubSection, setTasksHubSubSection] = useState('assign');
   const [showRegulationsModal, setShowRegulationsModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [isProfileBannerDismissed, setIsProfileBannerDismissed] = useState(false);
   const [previewPhotoModal, setPreviewPhotoModal] = useState(null);
 
   // Mobile Back Button Management for Servant Dashboard
@@ -2102,6 +2104,14 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
       {/* Main Content Area (100% Full Width Real Estate) */}
       <main className="w-full space-y-6">
 
+      {/* Flexible Incomplete Profile Reminder Banner for Servants (Non-blocking, session-dismissible) */}
+      <IncompleteProfileBanner
+        user={user}
+        dismissed={isProfileBannerDismissed}
+        onDismiss={() => setIsProfileBannerDismissed(true)}
+        onOpenProfile={() => setShowProfileModal(true)}
+      />
+
       {/* Prominent Pending Approvals Alert Banner for Super Admin */}
       {isAppAdmin && allUsers.filter(u => u.status === 'pending_approval').length > 0 && mainTab !== 'users_hub' && (
         <div 
@@ -2154,6 +2164,11 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
       {/* Birthdays Hub (Servants & Students) */}
       {mainTab === 'birthdays_hub' && (
         <ServantBirthdaysHub
+          currentUser={user}
+          isAppAdmin={isAppAdmin}
+          isServantLeader={isServantLeader}
+          fetchAllUsers={fetchAllUsers}
+          onUpdateUser={onUpdateUser}
           allUsers={allUsers}
           getGradeTitle={getGradeTitle}
           onSelectStudent={(st) => setStudent360Profile(st)}
@@ -2221,6 +2236,7 @@ export default function ServantDashboard({ user, onLogout, onUpdateUser, externa
           handleRejectUser={handleRejectUser}
           handleUpdateUserStatus={handleUpdateUserStatus}
           handleDeleteUserPermanently={handleDeleteUserPermanently}
+          onUpdateUser={onUpdateUser}
           roleUpdatingId={roleUpdatingId}
           onSelectStudent={(st) => setStudent360Profile(st)}
         />
